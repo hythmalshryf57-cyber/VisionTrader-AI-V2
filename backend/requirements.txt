@@ -28,7 +28,6 @@ pillow
 
 # Market & Charting
 yfinance==0.2.44
-MetaTrader5
 mplfinance
 matplotlib
 apscheduler
