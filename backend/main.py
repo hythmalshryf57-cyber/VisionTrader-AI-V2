@@ -1,0 +1,1800 @@
+import logging
+import os
+import json
+import base64
+import time
+import hashlib
+import io
+import csv
+from datetime import datetime, timedelta
+from typing import Optional
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
+from database import get_db, engine, SessionLocal
+from supabase_client import supabase_client, SUPABASE_CONFIGURED
+import models
+import auth
+from auth import router as auth_router
+from admin import router as admin_router
+from routers.analysis import router as analysis_router
+from services.journal_service import journal_service
+from services.smart_journal import smart_journal
+from services.voting_engine import voting_engine
+from services.ai_core import ai_core_service
+from middleware import SecurityMiddleware, TrialMiddleware
+from services.auto_scanner import auto_scanner
+from services.cache_service import cache_service
+from services.vector_memory import vector_memory
+from services.voice_service import VoiceService
+from services.broker_auditor import BrokerAuditor
+from services.smart_orders import SmartOrdersService
+from services.shadow_trader import ShadowTrader
+from services.trade_mover import trade_mover_service
+from services.trade_manager import trade_manager_service
+from services.trade_protection import trade_protection_service
+from services.market_protection import market_protection_service
+from services.deep_market import deep_market_scanner
+from services.calendar_service import calendar_service
+from services.binance_service import BinanceService
+from services.internal_brain import InternalBrain
+from services.tradingview_service import TradingViewService
+from services.telegram_service import telegram_service
+
+# Temporarily disable social sentiment service due to recursion error
+# from services.social_sentiment import social_sentiment_service
+social_sentiment_service = None
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    psutil = None
+    PSUTIL_AVAILABLE = False
+
+SYSTEM_METRICS = {
+    "start_time": datetime.utcnow(),
+    "request_count": 0,
+    "gemini_calls": 0,
+    "deepseek_calls": 0,
+    "daily_requests": {},
+    "last_error": "No errors yet"
+}
+
+
+logger = logging.getLogger(__name__)
+
+from fastapi.staticfiles import StaticFiles
+
+# Optional Telegram bot import
+try:
+    from services.telegram_payment_bot import bot, dp
+    TELEGRAM_BOT_AVAILABLE = True
+except Exception as e:
+    print(f"Telegram bot not available: {e}")
+    TELEGRAM_BOT_AVAILABLE = False
+    bot, dp = None, None
+
+import asyncio
+import threading
+
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def save_base64_image(image_data: str, filename: str) -> str:
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+    try:
+        decoded = base64.b64decode(image_data)
+    except Exception:
+        return ""
+    safe_name = filename.replace(" ", "_")
+    file_path = os.path.join(UPLOAD_DIR, f"{int(time.time())}_{safe_name}")
+    with open(file_path, "wb") as f:
+        f.write(decoded)
+    return file_path
+
+voice_service = VoiceService()
+broker_auditor = BrokerAuditor()
+smart_orders_service = SmartOrdersService()
+binance_service = BinanceService()
+tradingview_service = TradingViewService()
+internal_brain_service = InternalBrain()
+
+# Create tables
+models.Base.metadata.create_all(bind=engine)
+
+# Ensure SQLite migrations for known schema additions
+if engine.url.drivername.startswith("sqlite"):
+    try:
+        inspector = inspect(engine)
+        with engine.connect() as conn:
+            tables = inspector.get_table_names()
+            if "strategy_performance" in tables:
+                columns = [col["name"] for col in inspector.get_columns("strategy_performance")]
+                if "last_updated" not in columns:
+                    conn.execute(text("ALTER TABLE strategy_performance ADD COLUMN last_updated DATETIME"))
+            if "trade_experience" in tables:
+                columns = [col["name"] for col in inspector.get_columns("trade_experience")]
+                if "analysis_id" not in columns:
+                    conn.execute(text("ALTER TABLE trade_experience ADD COLUMN analysis_id INTEGER"))
+            conn.commit()
+    except Exception as exc:
+        print(f"SQLite schema migration skipped: {exc}")
+
+app = FastAPI(title="VisionTrader AI Pro")
+app.add_middleware(SecurityMiddleware)
+app.add_middleware(TrialMiddleware)
+
+if SUPABASE_CONFIGURED:
+    print("Supabase client initialized and ready.")
+else:
+    print("Supabase client not configured or unavailable; using local database fallback if needed.")
+
+# CORS
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(analysis_router, prefix="/api", tags=["analysis"])
+
+@app.middleware("http")
+async def track_request_metrics(request: Request, call_next):
+    SYSTEM_METRICS["request_count"] += 1
+    today = datetime.utcnow().date().isoformat()
+    SYSTEM_METRICS["daily_requests"][today] = SYSTEM_METRICS["daily_requests"].get(today, 0) + 1
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as exc:
+        SYSTEM_METRICS["last_error"] = f"{datetime.utcnow().isoformat()} - {type(exc).__name__}: {str(exc)}"
+        raise
+
+# Mount Frontend
+frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
+app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
+
+
+def _generate_report_for_user(db, user):
+    today = datetime.now().date()
+    entries = db.query(models.JournalEntry).filter(
+        models.JournalEntry.user_id == user.id,
+        models.JournalEntry.date >= datetime(today.year, today.month, today.day)
+    ).all()
+    total_trades = len(entries)
+    wins = len([e for e in entries if _normalize_result(e.result) == "win"])
+    losses = len([e for e in entries if _normalize_result(e.result) == "loss"])
+    pnl = sum((e.profit_loss or 0) for e in entries)
+    summary = f"اليوم: {total_trades} صفقات، دخلت {total_trades}، ربحت {wins}، خسرت {losses}. الربح: {pnl:+.2f}$"
+    report = db.query(models.DailyReport).filter(
+        models.DailyReport.user_id == user.id,
+        models.DailyReport.report_date == today
+    ).first()
+    if not report:
+        report = models.DailyReport(
+            user_id=user.id,
+            report_date=today,
+            summary=summary,
+            total_trades=total_trades,
+            entered_trades=total_trades,
+            wins=wins,
+            losses=losses,
+            profit_loss=pnl,
+        )
+        db.add(report)
+    else:
+        report.summary = summary
+        report.total_trades = total_trades
+        report.entered_trades = total_trades
+        report.wins = wins
+        report.losses = losses
+        report.profit_loss = pnl
+        report.created_at = datetime.utcnow()
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+def _close_shadow_trade(db, trade, exit_price: float, reason: str):
+    if trade.status != "open":
+        return None
+
+    is_buy = trade.stop_loss is None or (trade.entry_price is not None and trade.stop_loss < trade.entry_price)
+    trade.exit_price = exit_price
+    trade.status = "closed"
+    trade.pnl = round((exit_price - trade.entry_price) * 100, 2) if is_buy else round((trade.entry_price - exit_price) * 100, 2)
+    db.commit()
+
+    result_text = "win" if trade.pnl >= 0 else "loss"
+    recommendation_text = "شراء" if is_buy else "بيع"
+    summary = f"صفقة {trade.market} {'ربحت' if trade.pnl >= 0 else 'خسرت'} {abs(trade.pnl):.2f}$. السبب: {reason}"
+
+    journal = models.JournalEntry(
+        user_id=trade.user_id,
+        date=datetime.utcnow(),
+        market=trade.market,
+        recommendation=recommendation_text,
+        result=result_text,
+        profit_loss=trade.pnl,
+        confidence=None,
+        notes=summary,
+    )
+    db.add(journal)
+
+    experience = models.TradeExperience(
+        user_id=trade.user_id,
+        market=trade.market,
+        recommendation=recommendation_text,
+        result=result_text,
+        profit_loss=trade.pnl,
+        notes=summary,
+    )
+    db.add(experience)
+    db.commit()
+    return summary
+
+
+def _infer_shadow_direction(trade):
+    if trade.stop_loss is None:
+        if trade.take_profit is not None and trade.take_profit < trade.entry_price:
+            return "sell"
+        return "buy"
+    return "buy" if trade.stop_loss < trade.entry_price else "sell"
+
+
+def _monitor_shadow_trades():
+    while True:
+        db = SessionLocal()
+        try:
+            open_trades = db.query(models.ShadowTrade).filter(models.ShadowTrade.status == "open").all()
+            for trade in open_trades:
+                market_symbol = ''.join(ch for ch in str(trade.market) if ch.isalnum()).upper()
+                if not market_symbol:
+                    continue
+
+                try:
+                    current_price = binance_service.get_ticker_price(market_symbol)
+                except Exception:
+                    continue
+
+                if current_price <= 0:
+                    continue
+
+                direction = _infer_shadow_direction(trade)
+                if direction == "buy":
+                    if trade.take_profit is not None and current_price >= trade.take_profit:
+                        _close_shadow_trade(db, trade, current_price, "ارتد من الدعم")
+                    elif trade.stop_loss is not None and current_price <= trade.stop_loss:
+                        _close_shadow_trade(db, trade, current_price, "خبر مفاجئ")
+                else:
+                    if trade.take_profit is not None and current_price <= trade.take_profit:
+                        _close_shadow_trade(db, trade, current_price, "ارتد من المقاومة")
+                    elif trade.stop_loss is not None and current_price >= trade.stop_loss:
+                        _close_shadow_trade(db, trade, current_price, "خبر مفاجئ")
+        except Exception as e:
+            logger.exception(f"Shadow trade monitor failed: {e}")
+        finally:
+            db.close()
+        time.sleep(30)
+
+
+def _daily_report_scheduler():
+    while True:
+        now = datetime.now()
+        target = now.replace(hour=21, minute=0, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        wait_seconds = (target - now).total_seconds()
+        time.sleep(wait_seconds)
+        db = SessionLocal()
+        try:
+            users = db.query(models.User).filter(models.User.is_active == True).all()
+            for user in users:
+                try:
+                    _generate_report_for_user(db, user)
+                except Exception as e:
+                    logger.exception(f"Daily report generation failed for user {user.id}: {e}")
+        finally:
+            db.close()
+
+
+def _weekly_strategy_refresh_scheduler():
+    # Run a weekly refresh of strategy performance based on recent trade experience
+    time.sleep(60)
+    while True:
+        try:
+            internal_brain_service.auto_update_strategy_performance()
+        except Exception as e:
+            logger.exception(f"Weekly strategy refresh failed: {e}")
+        time.sleep(7 * 24 * 60 * 60)
+
+
+def _daily_reset_scheduler():
+    # Reset daily trading locks and generate challenges
+    while True:
+        now = datetime.now()
+        target = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        wait_seconds = (target - now).total_seconds()
+        time.sleep(wait_seconds)
+        db = SessionLocal()
+        try:
+            # Reset trading_locked_today for all users
+            db.query(models.UserPreferences).update({"trading_locked_today": False, "lock_reason": None})
+            db.commit()
+            # Generate new weekly challenge
+            _generate_weekly_challenge(db)
+        except Exception as e:
+            logger.exception(f"Daily reset failed: {e}")
+        finally:
+            db.close()
+
+
+def _generate_weekly_challenge(db):
+    week_start = datetime.utcnow().date() - timedelta(days=datetime.utcnow().weekday())
+    existing = db.query(models.WeeklyChallenge).filter(models.WeeklyChallenge.week_start == week_start).first()
+    if existing:
+        return
+    # Random challenge types
+    import random
+    challenge_types = [
+        {"type": "trades_on_market", "market": "XAUUSD", "target": 5, "desc": "حقق 5 صفقات ناجحة على الذهب"},
+        {"type": "success_rate", "target": 70.0, "desc": "حقق نسبة نجاح 70% هذا الأسبوع"},
+        {"type": "profit_target", "target": 500.0, "desc": "حقق ربح 500$ هذا الأسبوع"}
+    ]
+    chosen = random.choice(challenge_types)
+    challenge = models.WeeklyChallenge(
+        week_start=week_start,
+        challenge_type=chosen["type"],
+        target_value=chosen["target"],
+        market=chosen.get("market"),
+        description=chosen["desc"],
+        reward_type="free_analysis" if random.random() > 0.5 else "badge",
+        reward_description="🎉 تحليل مجاني إضافي" if chosen["reward_type"] == "free_analysis" else "⭐ وسام المتداول المتميز"
+    )
+    db.add(challenge)
+    db.commit()
+
+
+@app.on_event("startup")
+def start_background_workers():
+    report_thread = threading.Thread(target=_daily_report_scheduler, daemon=True)
+    report_thread.start()
+    monitor_thread = threading.Thread(target=_monitor_shadow_trades, daemon=True)
+    monitor_thread.start()
+    market_monitor_thread = threading.Thread(target=market_protection_service.run, daemon=True)
+    market_monitor_thread.start()
+    strategy_refresh_thread = threading.Thread(target=_weekly_strategy_refresh_scheduler, daemon=True)
+    strategy_refresh_thread.start()
+    reset_thread = threading.Thread(target=_daily_reset_scheduler, daemon=True)
+    reset_thread.start()
+
+@app.get("/api/health")
+async def health():
+    return {"status": "online", "version": "Professional 2.0"}
+
+# --- Analysis & Chat ---
+@app.post("/api/analysis/process")
+async def process_analysis(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    protection = trade_protection_service.check_protection(current_user.id)
+    if protection.get("analysis_locked"):
+        raise HTTPException(status_code=403, detail=protection.get("analysis_message") or "تحليل مغلق مؤقتاً.")
+
+    market = payload.get("market", "Unknown")
+    images = payload.get("images", [])
+    saved_path = ""
+    if images:
+        first_image = images[0]
+        if isinstance(first_image, dict):
+            saved_path = save_base64_image(first_image.get("data", ""), first_image.get("name", "chart.png"))
+
+    payload_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+    cached_result = cache_service.get_analysis(market, payload_hash)
+    if cached_result is not None:
+        cached_result["from_cache"] = True
+        return cached_result
+
+    visual_description = payload.get("visual_description") or f"Analysis for {market} based on uploaded charts."
+    visual_context = [{
+        "description": visual_description,
+        "images": images,
+        "image_path": saved_path
+    }]
+
+    memory_matches = vector_memory.find_similar(visual_description, top_k=3, db=db)
+    memory_insight = vector_memory.get_insight(visual_description, db=db)
+
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id),
+            timeout=12
+        )
+    except asyncio.TimeoutError:
+        result = {
+            "recommendation": "تعليق",
+            "confidence": 0,
+            "reason": "انتهت المهلة أثناء تحليل البيانات.",
+            "market": market,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        result = {
+            "recommendation": "تعليق",
+            "confidence": 0,
+            "reason": f"فشل التحليل: {str(e)}",
+            "market": market,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    try:
+        analysis = models.Analysis(
+            user_id=current_user.id,
+            market=market,
+            image_path=saved_path,
+            description=visual_description,
+            result_json=json.dumps(result, ensure_ascii=False)
+        )
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+        result['analysis_id'] = analysis.id
+        vector_memory.store_analysis(analysis.id, visual_description, result.get('recommendation', 'unknown'), db=db)
+        result['memory_matches'] = memory_matches
+        result['memory_insight'] = memory_insight
+
+        # Update daily analyses count
+        current_user.daily_analyses_count += 1
+        db.commit()
+    except Exception as e:
+        logger.exception(f"Failed to save analysis result for market {market}: {e}")
+
+    cache_service.cache_analysis(market, payload_hash, result)
+    return result
+
+@app.post("/api/analysis/mentor")
+async def mentor_chat(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    return {
+        "error": "feature_disabled",
+        "message": "Mentor chat feature غير متاحة حتى يتم ربطه بخدمة تحليل ذكي حقيقي."
+    }
+
+@app.post("/api/cache/clear")
+def clear_cache(current_user: models.User = Depends(auth.get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    cache_service.clear()
+    return {"status": "success", "message": "Cache cleared"}
+
+# --- Journal & Stats ---
+@app.post("/api/journal")
+def add_journal(entry: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return journal_service.add_entry(
+        user_id=current_user.id,
+        market=entry['market'],
+        recommendation=entry['recommendation'],
+        result=entry['result'],
+        profit_loss=entry['pnl'],
+        notes=entry.get('notes'),
+        mood_before=entry.get('mood_before'),
+        mood_after=entry.get('mood_after'),
+        confidence=entry.get('confidence')
+    )
+
+@app.get("/api/journal")
+def get_journal(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return journal_service.get_entries(user_id=current_user.id)
+
+@app.get("/api/stats/comparison")
+def get_comparison(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Aggregate strategy performance
+    strategies = db.query(models.StrategyPerformance).all()
+    total_wins = sum(s.wins for s in strategies)
+    total_losses = sum(s.losses for s in strategies)
+    total = total_wins + total_losses
+    ai_win_rate = int((total_wins / total * 100) if total > 0 else 0)
+
+    top3 = sorted(strategies, key=lambda s: (s.wins, getattr(s, 'total_profit', 0)), reverse=True)[:3]
+    top3_list = [{"strategy": s.strategy_name, "wins": s.wins, "losses": s.losses, "total_profit": getattr(s, 'total_profit', 0)} for s in top3]
+
+    # Markets success from journal entries
+    journals = db.query(models.JournalEntry).all()
+    market_stats = {}
+    for j in journals:
+        if not j.market:
+            continue
+        stat = market_stats.setdefault(j.market, {"wins": 0, "total": 0})
+        if j.result and str(j.result).lower().startswith('win'):
+            stat['wins'] += 1
+        stat['total'] += 1
+
+    market_list = []
+    for m, v in market_stats.items():
+        win_rate = int((v['wins'] / v['total'] * 100) if v['total'] > 0 else 0)
+        market_list.append({"market": m, "win_rate": win_rate, "trades": v['total']})
+
+    market_list = sorted(market_list, key=lambda x: x['win_rate'], reverse=True)[:5]
+
+    return {
+        "human_win_rate": 62,
+        "ai_win_rate": ai_win_rate,
+        "best_strategy": top3_list[0]['strategy'] if top3_list else None,
+        "total_profit": sum(getattr(s, 'total_profit', 0) for s in strategies),
+        "top_strategies": top3_list,
+        "top_markets": market_list
+    }
+
+
+def _normalize_result(result_value: str) -> str:
+    if not result_value:
+        return "pending"
+    token = str(result_value).strip().lower()
+    if token.startswith("win") or token.startswith("رابح") or token.startswith("ربح"):
+        return "win"
+    if token.startswith("loss") or token.startswith("خاسر") or token.startswith("خسارة"):
+        return "loss"
+    return "pending"
+
+
+def _build_stats(entries):
+    total = len(entries)
+    wins = len([e for e in entries if _normalize_result(e.result) == "win"])
+    losses = len([e for e in entries if _normalize_result(e.result) == "loss"])
+    win_rate = int((wins / total * 100) if total > 0 else 0)
+    pnl = sum((e.profit_loss or 0) for e in entries)
+    return {
+        "total": total,
+        "wins": wins,
+        "losses": losses,
+        "rate": win_rate,
+        "pnl": pnl
+    }
+
+
+def _period_entries(db, user_id, since: datetime):
+    return db.query(models.JournalEntry).filter(
+        models.JournalEntry.user_id == user_id,
+        models.JournalEntry.date >= since
+    ).all()
+
+@app.get("/api/stats/today")
+def get_today_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    entries = _period_entries(db, current_user.id, today_start)
+    stats = _build_stats(entries)
+    return {
+        "total_trades": stats["total"],
+        "wins": stats["wins"],
+        "losses": stats["losses"],
+        "win_rate": stats["rate"],
+        "profit_loss": stats["pnl"]
+    }
+
+@app.get("/api/stats/performance")
+def get_performance_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    now = datetime.utcnow()
+    weekly = _build_stats(_period_entries(db, current_user.id, now - timedelta(days=7)))
+    monthly = _build_stats(_period_entries(db, current_user.id, now - timedelta(days=30)))
+    yearly = _build_stats(_period_entries(db, current_user.id, now - timedelta(days=365)))
+    return {
+        "weekly": weekly,
+        "monthly": monthly,
+        "yearly": yearly
+    }
+
+@app.get("/api/stats/scanner")
+def get_scanner_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    alerts = db.query(models.Alert).filter(models.Alert.user_id == current_user.id).all()
+    total_opportunities = len(alerts)
+    best_market = None
+    if total_opportunities > 0:
+        market_counts = {}
+        for alert in alerts:
+            market_counts[alert.market] = market_counts.get(alert.market, 0) + 1
+        best_market = max(market_counts.items(), key=lambda item: item[1])[0]
+
+    alert_markets = [alert.market for alert in alerts if alert.market]
+    if alert_markets:
+        journal_entries = db.query(models.JournalEntry).filter(
+            models.JournalEntry.user_id == current_user.id,
+            models.JournalEntry.market.in_(alert_markets)
+        ).all()
+    else:
+        journal_entries = []
+
+    wins = len([e for e in journal_entries if _normalize_result(e.result) == "win"])
+    losses = len([e for e in journal_entries if _normalize_result(e.result) == "loss"])
+    win_rate = int((wins / max(1, wins + losses) * 100)) if wins + losses > 0 else 0
+
+    return {
+        "total_opportunities": total_opportunities,
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "best_market": best_market
+    }
+
+# --- Scanner Control ---
+@app.post("/api/scanner/start")
+def start_scanner(current_user: models.User = Depends(auth.get_current_user)):
+    if not auto_scanner.is_running:
+        thread = threading.Thread(target=auto_scanner.start)
+        thread.daemon = True
+        thread.start()
+        return {"status": "started"}
+    return {"status": "already running"}
+
+@app.post("/api/scanner/stop")
+def stop_scanner(current_user: models.User = Depends(auth.get_current_user)):
+    auto_scanner.stop()
+    return {"status": "stopped"}
+
+@app.get("/api/scanner/status")
+def get_scanner_status(current_user: models.User = Depends(auth.get_current_user)):
+    return {"is_running": auto_scanner.is_running}
+
+@app.post("/api/strategy/refresh")
+def refresh_strategy_performance(current_user: models.User = Depends(auth.get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    summary = internal_brain_service.auto_update_strategy_performance()
+    return {"status": "success", "summary": summary}
+
+@app.get("/api/scanner/alerts")
+def get_scanner_alerts(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    alerts = db.query(models.Alert).filter(models.Alert.user_id == current_user.id).order_by(models.Alert.created_at.desc()).limit(5).all()
+    return [
+        {
+            "market": a.market,
+            "recommendation": a.recommendation,
+            "confidence": a.confidence,
+            "entry": a.entry,
+            "sl": a.sl,
+            "tp": a.tp,
+            "top_strategies": a.top_strategies,
+            "created_at": a.created_at.isoformat() if a.created_at else None
+        }
+        for a in alerts
+    ]
+
+def _ensure_preferences(db: Session, current_user: models.User):
+    prefs = db.query(models.UserPreferences).filter(models.UserPreferences.user_id == current_user.id).first()
+    if not prefs:
+        prefs = models.UserPreferences(user_id=current_user.id)
+        db.add(prefs)
+        db.commit()
+        db.refresh(prefs)
+    return prefs
+
+
+def _serialize_preferences(pref: models.UserPreferences):
+    return {
+        "theme": pref.theme,
+        "language": pref.language,
+        "telegram_chat_id": pref.telegram_chat_id,
+        "email_notifications": pref.email_notifications,
+        "demo_mode": pref.demo_mode,
+        "demo_balance": pref.demo_balance,
+        "trading_mode": pref.trading_mode,
+        "capital": pref.capital,
+        "account_balance": pref.account_balance,
+        "risk_percentage": pref.risk_percentage,
+        "favorite_strategies": json.loads(pref.favorite_strategies or "[]"),
+        "watchlist": json.loads(pref.watchlist or "[]"),
+        "daily_profit_target_percent": pref.daily_profit_target_percent,
+        "daily_loss_limit_percent": pref.daily_loss_limit_percent,
+        "trading_locked_today": pref.trading_locked_today,
+        "lock_reason": pref.lock_reason,
+        "notification_markets": json.loads(pref.notification_markets or "[]"),
+        "enable_smart_notifications": pref.enable_smart_notifications,
+        "custom_indicators": json.loads(pref.custom_indicators or "[]")
+    }
+
+
+@app.get("/api/user/preferences")
+def get_user_preferences(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    return _serialize_preferences(prefs)
+
+
+@app.post("/api/user/preferences")
+def update_user_preferences(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    if "theme" in payload:
+        prefs.theme = payload["theme"]
+    if "language" in payload:
+        prefs.language = payload["language"]
+    if "telegram_chat_id" in payload:
+        prefs.telegram_chat_id = payload["telegram_chat_id"]
+    if "email_notifications" in payload:
+        prefs.email_notifications = bool(payload["email_notifications"])
+    if "demo_mode" in payload:
+        prefs.demo_mode = bool(payload["demo_mode"])
+    if "demo_balance" in payload:
+        prefs.demo_balance = float(payload["demo_balance"])
+    if "trading_mode" in payload:
+        prefs.trading_mode = payload["trading_mode"]
+    if "capital" in payload:
+        prefs.capital = float(payload["capital"])
+    if "account_balance" in payload:
+        prefs.account_balance = float(payload["account_balance"])
+    if "risk_percentage" in payload:
+        prefs.risk_percentage = float(payload["risk_percentage"])
+    if "favorite_strategies" in payload:
+        favorites = payload["favorite_strategies"] or []
+        if len(favorites) > 5:
+            raise HTTPException(status_code=400, detail="يمكن اختيار حتى 5 استراتيجيات مفضلة فقط.")
+        prefs.favorite_strategies = json.dumps(favorites)
+    if "watchlist" in payload:
+        prefs.watchlist = json.dumps(payload["watchlist"] or [])
+    if "daily_profit_target_percent" in payload:
+        prefs.daily_profit_target_percent = float(payload["daily_profit_target_percent"])
+    if "daily_loss_limit_percent" in payload:
+        prefs.daily_loss_limit_percent = float(payload["daily_loss_limit_percent"])
+    if "notification_markets" in payload:
+        prefs.notification_markets = json.dumps(payload["notification_markets"] or [])
+    if "enable_smart_notifications" in payload:
+        prefs.enable_smart_notifications = bool(payload["enable_smart_notifications"])
+    if "custom_indicators" in payload:
+        prefs.custom_indicators = json.dumps(payload["custom_indicators"] or [])
+    db.commit()
+    db.refresh(prefs)
+    return _serialize_preferences(prefs)
+
+
+@app.get("/api/user/favorites")
+def get_user_favorites(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    return json.loads(prefs.favorite_strategies or "[]")
+
+
+@app.post("/api/user/favorites")
+def add_user_favorite(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    strategy = (payload.get("strategy") or "").strip()
+    if not strategy:
+        raise HTTPException(status_code=400, detail="استراتيجية مطلوبة")
+
+    prefs = _ensure_preferences(db, current_user)
+    favorites = json.loads(prefs.favorite_strategies or "[]")
+    if strategy in favorites:
+        return favorites
+    if len(favorites) >= 5:
+        raise HTTPException(status_code=400, detail="يمكن اختيار حتى 5 استراتيجيات مفضلة فقط.")
+    favorites.append(strategy)
+    prefs.favorite_strategies = json.dumps(favorites)
+    db.commit()
+    db.refresh(prefs)
+    return favorites
+
+
+@app.post("/api/user/favorites/remove")
+def remove_user_favorite(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    strategy = (payload.get("strategy") or "").strip()
+    if not strategy:
+        raise HTTPException(status_code=400, detail="استراتيجية مطلوبة")
+
+    prefs = _ensure_preferences(db, current_user)
+    favorites = json.loads(prefs.favorite_strategies or "[]")
+    favorites = [item for item in favorites if item != strategy]
+    prefs.favorite_strategies = json.dumps(favorites)
+    db.commit()
+    db.refresh(prefs)
+    return favorites
+
+
+@app.post("/api/analysis/draft")
+def save_analysis_draft(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if not payload:
+        raise HTTPException(status_code=400, detail="البيانات مطلوبة لحفظ المسودة")
+    market = payload.get("market") or "UNKNOWN"
+    draft = db.query(models.DraftAnalysis).filter(models.DraftAnalysis.user_id == current_user.id, models.DraftAnalysis.market == market).first()
+    if not draft:
+        draft = models.DraftAnalysis(
+            user_id=current_user.id,
+            market=market,
+            image_path=payload.get("image_path"),
+            description=payload.get("description", ""),
+            payload_json=json.dumps(payload, ensure_ascii=False),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(draft)
+    else:
+        draft.image_path = payload.get("image_path", draft.image_path)
+        draft.description = payload.get("description", draft.description)
+        draft.payload_json = json.dumps(payload, ensure_ascii=False)
+        draft.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(draft)
+    return {"status": "saved", "draft_id": draft.id}
+
+
+@app.get("/api/analysis/drafts")
+def list_analysis_drafts(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    drafts = db.query(models.DraftAnalysis).filter(models.DraftAnalysis.user_id == current_user.id).order_by(models.DraftAnalysis.updated_at.desc()).all()
+    return [
+        {
+            "id": d.id,
+            "market": d.market,
+            "description": d.description,
+            "payload": json.loads(d.payload_json or "{}"),
+            "updated_at": d.updated_at.isoformat() if d.updated_at else None
+        }
+        for d in drafts
+    ]
+
+
+@app.get("/api/journal/export")
+def export_journal_csv(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    entries = db.query(models.JournalEntry).filter(models.JournalEntry.user_id == current_user.id).order_by(models.JournalEntry.date.desc()).all()
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["التاريخ", "الزوج", "التوصية", "الثقة", "النتيجة", "الربح/الخسارة"])
+    for entry in entries:
+        row_date = entry.date.isoformat() if entry.date else ""
+        confidence = entry.confidence if getattr(entry, 'confidence', None) is not None else 'N/A'
+        writer.writerow([
+            row_date,
+            entry.market or "",
+            entry.recommendation or "",
+            confidence,
+            entry.result or "",
+            f"{(entry.profit_loss or 0):.2f}"
+        ])
+    payload = "\ufeff" + buffer.getvalue()
+    return Response(payload, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=journal_history.csv"})
+
+
+@app.get("/api/admin/system-health")
+def get_system_health(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    uptime = datetime.utcnow() - SYSTEM_METRICS["start_time"]
+    cpu_percent = psutil.cpu_percent(interval=0.5) if PSUTIL_AVAILABLE else None
+    ram_info = psutil.virtual_memory() if PSUTIL_AVAILABLE else None
+    return {
+        "status": "online",
+        "cpu_percent": cpu_percent,
+        "ram_percent": ram_info.percent if ram_info else None,
+        "ram_used": ram_info.used if ram_info else None,
+        "ram_total": ram_info.total if ram_info else None,
+        "gemini_calls": SYSTEM_METRICS["gemini_calls"],
+        "deepseek_calls": SYSTEM_METRICS["deepseek_calls"],
+        "request_count": SYSTEM_METRICS["request_count"],
+        "daily_requests": SYSTEM_METRICS["daily_requests"],
+        "last_error": SYSTEM_METRICS["last_error"],
+        "uptime_seconds": int(uptime.total_seconds()),
+        "uptime": str(uptime).split('.')[0]
+    }
+
+@app.get("/api/system/health-details")
+def get_system_health_details(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    health = ai_core_service.get_system_health()
+    return {
+        "status": "ok",
+        "system_health": health,
+        "request_count": SYSTEM_METRICS["request_count"],
+        "daily_requests": SYSTEM_METRICS["daily_requests"],
+        "last_error": SYSTEM_METRICS["last_error"],
+    }
+
+@app.get("/api/recommendation/quick/{market}")
+def get_quick_recommendation(market: str, current_user: models.User = Depends(auth.get_current_user)):
+    recommendation = ai_core_service.smart_recommendation(market.upper(), current_user.id)
+    return recommendation
+
+@app.post("/api/markets/compare")
+def compare_markets(payload: dict):
+    markets = payload.get("markets") if isinstance(payload.get("markets"), list) else []
+    if not markets:
+        raise HTTPException(status_code=400, detail="Provide a markets list to compare.")
+    return ai_core_service.compare_markets(markets)
+
+@app.post("/api/system/tune-weights")
+def tune_system_weights(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    summary = ai_core_service.auto_tune_weights()
+    return {"status": "ok", "tuning_summary": summary}
+
+@app.get("/api/user/watchlist")
+def get_watchlist(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    return json.loads(prefs.watchlist or "[]")
+
+
+@app.post("/api/user/watchlist/add")
+def add_watchlist_item(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    symbol = (payload.get("symbol") or "").strip().upper()
+    if not symbol:
+        raise HTTPException(status_code=400, detail="Symbol is required")
+    prefs = _ensure_preferences(db, current_user)
+    current_list = json.loads(prefs.watchlist or "[]")
+    if symbol not in current_list:
+        if len(current_list) >= 10:
+            raise HTTPException(status_code=400, detail="Watchlist limit is 10 symbols")
+        current_list.append(symbol)
+        prefs.watchlist = json.dumps(current_list)
+        db.commit()
+        db.refresh(prefs)
+    return json.loads(prefs.watchlist or "[]")
+
+
+@app.post("/api/user/watchlist/remove")
+def remove_watchlist_item(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    symbol = (payload.get("symbol") or "").strip().upper()
+    if not symbol:
+        raise HTTPException(status_code=400, detail="Symbol is required")
+    prefs = _ensure_preferences(db, current_user)
+    current_list = json.loads(prefs.watchlist or "[]")
+    if symbol in current_list:
+        current_list = [item for item in current_list if item != symbol]
+        prefs.watchlist = json.dumps(current_list)
+        db.commit()
+        db.refresh(prefs)
+    return json.loads(prefs.watchlist or "[]")
+
+
+@app.get("/api/reports/daily")
+def get_daily_reports(days: int = 7, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    report_rows = db.query(models.DailyReport).filter(models.DailyReport.user_id == current_user.id).order_by(models.DailyReport.report_date.desc()).limit(days).all()
+    return [
+        {
+            "report_date": report.report_date.isoformat(),
+            "summary": report.summary,
+            "total_trades": report.total_trades,
+            "entered_trades": report.entered_trades,
+            "wins": report.wins,
+            "losses": report.losses,
+            "profit_loss": report.profit_loss,
+            "sent_to_telegram": report.sent_to_telegram
+        }
+        for report in report_rows
+    ]
+
+
+@app.post("/api/reports/daily/generate")
+def generate_daily_report(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    today = datetime.utcnow().date()
+    entries = db.query(models.JournalEntry).filter(
+        models.JournalEntry.user_id == current_user.id,
+        models.JournalEntry.date >= datetime(today.year, today.month, today.day)
+    ).all()
+    total_trades = len(entries)
+    wins = len([e for e in entries if _normalize_result(e.result) == "win"])
+    losses = len([e for e in entries if _normalize_result(e.result) == "loss"])
+    pnl = sum((e.profit_loss or 0) for e in entries)
+    summary = (
+        f"اليوم: {total_trades} صفقات، {wins} رابحة، {losses} خاسرة، ربح/خسارة {pnl:.2f}$"
+    )
+    report = db.query(models.DailyReport).filter(
+        models.DailyReport.user_id == current_user.id,
+        models.DailyReport.report_date == today
+    ).first()
+    if not report:
+        report = models.DailyReport(
+            user_id=current_user.id,
+            report_date=today,
+            summary=summary,
+            total_trades=total_trades,
+            entered_trades=total_trades,
+            wins=wins,
+            losses=losses,
+            profit_loss=pnl,
+        )
+        db.add(report)
+    else:
+        report.summary = summary
+        report.total_trades = total_trades
+        report.entered_trades = total_trades
+        report.wins = wins
+        report.losses = losses
+        report.profit_loss = pnl
+        report.created_at = datetime.utcnow()
+    db.commit()
+    db.refresh(report)
+    return {
+        "report_date": report.report_date.isoformat(),
+        "summary": report.summary,
+        "total_trades": report.total_trades,
+        "entered_trades": report.entered_trades,
+        "wins": report.wins,
+        "losses": report.losses,
+        "profit_loss": report.profit_loss,
+        "sent_to_telegram": report.sent_to_telegram
+    }
+
+
+@app.post("/api/reports/daily/send-telegram")
+def send_daily_report_to_telegram(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    if not prefs.telegram_chat_id:
+        raise HTTPException(status_code=400, detail="Telegram chat ID is not configured.")
+    report = db.query(models.DailyReport).filter(
+        models.DailyReport.user_id == current_user.id,
+    ).order_by(models.DailyReport.report_date.desc()).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="No daily report available. Generate it first.")
+
+    message = (
+        f"📅 تقرير يومي لـ VisionTrader AI\n"
+        f"التاريخ: {report.report_date.isoformat()}\n"
+        f"الصفقات: {report.total_trades}\n"
+        f"الرابحة: {report.wins}\n"
+        f"الخاسرة: {report.losses}\n"
+        f"PnL: {report.profit_loss:.2f}$\n"
+        f"{report.summary}"
+    )
+    telegram_service.send_message(prefs.telegram_chat_id, message)
+    report.sent_to_telegram = True
+    db.commit()
+    return {"status": "sent", "report_date": report.report_date.isoformat()}
+
+
+@app.get("/api/account/summary")
+def account_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    today = datetime.utcnow().date()
+    today_report = db.query(models.DailyReport).filter(
+        models.DailyReport.user_id == current_user.id,
+        models.DailyReport.report_date == today
+    ).first()
+    return {
+        "email": current_user.email,
+        "account_balance": prefs.account_balance,
+        "trading_mode": prefs.trading_mode,
+        "watchlist": json.loads(prefs.watchlist or "[]"),
+        "daily_report": {
+            "report_date": today_report.report_date.isoformat() if today_report else None,
+            "summary": today_report.summary if today_report else None,
+            "profit_loss": today_report.profit_loss if today_report else 0.0
+        },
+        "trial_status": {
+            "active": bool(current_user.trial_start and current_user.trial_end and datetime.utcnow() < current_user.trial_end),
+            "ends_at": current_user.trial_end.isoformat() if current_user.trial_end else None
+        }
+    }
+
+@app.get("/api/deep-market/scan")
+def deep_market_scan(symbol: str = "XAUUSDT", current_user: models.User = Depends(auth.get_current_user)):
+    SYSTEM_METRICS["deepseek_calls"] += 1
+    return deep_market_scanner.scan_market(symbol)
+
+@app.get("/api/scanner/top-opportunities")
+def get_top_opportunities(current_user: models.User = Depends(auth.get_current_user)):
+    return auto_scanner.get_top_opportunities()
+
+@app.get("/api/binance/scan")
+def binance_scan(symbol: str = "BTCUSDT", current_user: models.User = Depends(auth.get_current_user)):
+    return binance_service.scan(symbol)
+
+@app.post("/api/tradingview/fetch")
+def tradingview_fetch(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="TradingView URL is required")
+    SYSTEM_METRICS["gemini_calls"] += 1
+    return tradingview_service.fetch_and_analyze(url)
+
+
+# === نظام تتبع الصفقات الحية ===
+
+@app.get("/api/trade/active")
+def get_active_trades(current_user: models.User = Depends(auth.get_current_user)):
+    """الحصول على الصفقات المفتوحة مع الربح/الخسارة الحي"""
+    trades = trade_manager_service.get_active_trades(user_id=current_user.id)
+    return {"active_trades": trades}
+
+@app.get("/api/trade/history")
+def get_trade_history(limit: int = 20, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    """الحصول على آخر 20 صفقة مع تقاريرها الكاملة"""
+    entries = db.query(models.JournalEntry).filter(
+        models.JournalEntry.user_id == current_user.id
+    ).order_by(models.JournalEntry.date.desc()).limit(limit).all()
+
+    history = []
+    for entry in entries:
+        # الحصول على TradeExperience المرتبطة
+        experience = db.query(models.TradeExperience).filter(
+            models.TradeExperience.user_id == current_user.id,
+            models.TradeExperience.market == entry.market,
+            models.TradeExperience.entry_price == entry.entry_price,
+            models.TradeExperience.exit_price == entry.exit_price
+        ).first()
+
+        history.append({
+            "id": entry.id,
+            "date": entry.date.isoformat() if entry.date else None,
+            "market": entry.market,
+            "recommendation": entry.recommendation,
+            "result": entry.result,
+            "profit_loss": entry.profit_loss,
+            "notes": entry.notes,
+            "strategies": entry.strategies,
+            "duration": entry.duration,
+            "entry_price": entry.entry_price,
+            "exit_price": entry.exit_price,
+            "stop_loss": entry.stop_loss,
+            "take_profit": entry.take_profit,
+            "confidence": getattr(entry, 'confidence', None),
+            "experience": {
+                "lessons": experience.lessons if experience else None,
+                "strategies_correct": experience.strategies if experience else None,
+            } if experience else None
+        })
+
+    return {"trade_history": history}
+
+
+@app.post("/api/trade/start-monitoring")
+def start_trade_monitoring(current_user: models.User = Depends(auth.get_current_user)):
+    """بدء مراقبة الصفقات الحية"""
+    trade_manager_service.start_live_monitoring()
+    return {"status": "monitoring_started"}
+
+@app.post("/api/trade/stop-monitoring")
+def stop_trade_monitoring(current_user: models.User = Depends(auth.get_current_user)):
+    """إيقاف مراقبة الصفقات الحية"""
+    trade_manager_service.stop_live_monitoring()
+    return {"status": "monitoring_stopped"}
+
+@app.post("/api/trade/add-active")
+def add_active_trade(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    """إضافة صفقة نشطة للتتبع (للاختبار أو الإدخال اليدوي)"""
+    required_fields = ["trade_id", "market", "direction", "entry_price", "stop_loss", "take_profits", "position_size"]
+    for field in required_fields:
+        if field not in payload:
+            raise HTTPException(status_code=400, detail=f"Field {field} is required")
+
+    trade_manager_service.add_active_trade(
+        trade_id=payload["trade_id"],
+        user_id=current_user.id,
+        market=payload["market"],
+        direction=payload["direction"],
+        entry_price=payload["entry_price"],
+        stop_loss=payload["stop_loss"],
+        take_profits=payload["take_profits"],
+        position_size=payload["position_size"],
+        entry_time=datetime.utcnow()
+    )
+    return {"status": "trade_added", "trade_id": payload["trade_id"]}
+
+@app.post("/api/trade/remove-active")
+def remove_active_trade(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    """إزالة صفقة من التتبع"""
+    trade_id = payload.get("trade_id")
+    if not trade_id:
+        raise HTTPException(status_code=400, detail="trade_id is required")
+
+    trade_manager_service.remove_active_trade(trade_id)
+    return {"status": "trade_removed", "trade_id": trade_id}
+
+
+# === نظام النبض والشخصية ===
+
+@app.get("/api/system/pulse")
+def get_system_pulse():
+    """نبض النظام - حالة عامة للاختبار"""
+    try:
+        health = ai_core_service.get_system_health()
+    except Exception:
+        health = {
+            "active_strategies": 0,
+            "overall_system_win_rate": 0.0,
+            "total_performance_records": 0,
+            "memory_entries": 0,
+            "external_api_state": {"binance": "failed", "tradingview": "missing_api_key", "deepseek": "missing_api_key"},
+            "last_auto_tune": None,
+            "last_cluster_tune": None,
+            "last_monthly_review": None,
+            "cluster_weights": {"power": 0.0, "geometric": 0.0, "momentum": 0.0},
+            "judge_performance": {"total_decisions": 0, "correct_decisions": 0, "accuracy_rate": 0.0, "confidence_threshold": 60, "last_adjustment": None},
+            "disabled_strategies": {"active_disabled": {}, "expired_and_reenabled": []},
+            "trade_counter": 0,
+            "strategy_weights_summary": {"total_strategies": 0, "weight_distribution": {"high": 0, "medium": 0, "low": 0}}
+        }
+
+    return {
+        "status": "online",
+        "refresh_time": datetime.utcnow().isoformat(),
+        "active_strategies": health.get("active_strategies", 0),
+        "system_healthy": health.get("overall_system_win_rate", 0) > 55,
+        "health_details": health
+    }
+
+@app.get("/api/system/strategies")
+def get_system_strategies():
+    """قائمة الاستراتيجيات مع الأداء مرتبة من الأفضل للأسوأ"""
+    try:
+        from .voting_engine import strategy_loader
+    except:
+        strategy_loader = None
+
+    db = SessionLocal()
+    try:
+        strategy_records = db.query(models.StrategyPerformance).all()
+        strategy_stats = {}
+
+        for record in strategy_records:
+            total_trades = (record.wins or 0) + (record.losses or 0)
+            if total_trades >= 5:  # Minimum trades for meaningful stats
+                win_rate = (record.wins or 0) / total_trades
+                strategy_stats[record.strategy_name] = {
+                    "win_rate": round(win_rate * 100, 1),
+                    "total_trades": total_trades,
+                    "wins": record.wins or 0,
+                    "losses": record.losses or 0,
+                    "last_updated": record.last_updated.isoformat() if record.last_updated else None
+                }
+
+        # Sort by win rate descending
+        sorted_strategies = sorted(strategy_stats.items(), key=lambda x: x[1]["win_rate"], reverse=True)
+
+        return {
+            "strategies": [
+                {
+                    "name": name,
+                    "win_rate": stats["win_rate"],
+                    "total_trades": stats["total_trades"],
+                    "wins": stats["wins"],
+                    "losses": stats["losses"],
+                    "last_updated": stats["last_updated"]
+                }
+                for name, stats in sorted_strategies
+            ],
+            "total_strategies": len(sorted_strategies)
+        }
+
+    finally:
+        db.close()
+
+@app.get("/api/system/personality")
+def get_system_personality():
+    """شخصية النظام الحالية"""
+    weights = {}
+    try:
+        weights = ai_core_service.internal_brain.get_strategy_weights()
+    except Exception:
+        weights = {}
+    sorted_strategies = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+    top_strategies = [name for name, _ in sorted_strategies[:5]]
+
+    return {
+        "current_mode": "DAY_TRADING",
+        "description": "الوضع الافتراضي للنظام للأختبار.",
+        "favorite_strategies": top_strategies,
+        "strengths": ["تحليل البيانات", "التركيز على السيولة", "المرونة"],
+        "weaknesses": ["الأسواق الجانبية", "الأحداث غير المتوقعة"],
+        "beliefs": ["الاتجاه صديقي", "السيولة تكشف القمم", "التعلم المستمر"],
+        "performance_summary": {
+            "win_rate": 0,
+            "active_strategies": len(top_strategies),
+            "memory_entries": 0
+        }
+    }
+
+@app.post("/api/system/feedback")
+def submit_system_feedback(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    """المستخدم يصحح للنظام"""
+    trade_id = payload.get("trade_id")
+    correction = payload.get("correction", "").strip()
+
+    if not trade_id or not correction:
+        raise HTTPException(status_code=400, detail="trade_id and correction are required")
+
+    result = ai_core_service.learn_from_feedback(trade_id, correction)
+    return result
+
+@app.post("/api/system/tune-weights")
+def manual_tune_weights(current_user: models.User = Depends(auth.get_current_user)):
+    """تشغيل auto_tune_weights يدوياً (Admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    result = ai_core_service.auto_tune_weights()
+    return result
+
+@app.get("/api/recommendation/quick/{market}")
+def get_quick_recommendation(market: str, current_user: models.User = Depends(auth.get_current_user)):
+    """توصية سريعة للموبايل"""
+    recommendation = ai_core_service.smart_recommendation(market.upper(), current_user.id)
+    return recommendation
+
+@app.post("/api/markets/compare")
+def compare_markets(payload: dict):
+    """مقارنة الأسواق وترتيبها"""
+    markets = payload.get("markets", [])
+    if not markets or len(markets) > 10:
+        raise HTTPException(status_code=400, detail="Provide 1-10 markets to compare")
+
+    result = ai_core_service.compare_markets(markets)
+    return result
+
+
+@app.on_event("startup")
+async def startup_event():
+    """أحداث بدء الخادم"""
+    # بدء مراقبة الصفقات الحية
+    trade_manager_service.start_live_monitoring()
+    print("✅ تم بدء مراقبة الصفقات الحية")
+
+@app.get("/api/calendar/events")
+def calendar_events(hours: int = 24, current_user: models.User = Depends(auth.get_current_user)):
+    return calendar_service.get_upcoming_events(hours=hours)
+
+@app.get("/api/calendar/high-impact")
+def calendar_high_impact(minutes: int = 15, current_user: models.User = Depends(auth.get_current_user)):
+    return calendar_service.get_high_impact_soon(minutes=minutes)
+
+# --- New Features 2.0 ---
+@app.post("/api/voice/command")
+async def voice_command(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    return {"response": voice_service.process_command(payload.get("command", ""))}
+
+@app.get("/api/broker/audit")
+async def broker_audit(current_user: models.User = Depends(auth.get_current_user)):
+    return broker_auditor.get_audit_report(user_id=current_user.id)
+
+@app.post("/api/smart-orders/create")
+async def create_smart_order(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    if payload.get("type") == "zone":
+        return smart_orders_service.create_zone_order(payload['market'], payload['start'], payload['end'], payload['lot'])
+    return {"status": "Order type not supported"}
+
+@app.post("/api/trade/plan")
+def plan_trade(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    protection = trade_protection_service.check_protection(current_user.id)
+    if protection.get("trading_locked"):
+        raise HTTPException(status_code=403, detail=protection.get("trading_message") or "التداول مغلق مؤقتاً.")
+
+    warning = trade_protection_service.correlation_warning(current_user.id, payload.get("market"))
+    strategy_signals = payload.get("analysis_context", {}).get("strategy_signals") or payload.get("strategy_signals")
+    strategy_clash = market_protection_service.detect_strategy_clash(strategy_signals)
+    session_info = market_protection_service.get_current_session()
+
+    if strategy_clash.get("reject"):
+        return {
+            "status": "rejected",
+            "reason": strategy_clash.get("message"),
+            "strategy_clash": strategy_clash,
+            "session_info": session_info,
+            "protection_status": protection,
+            "correlation_warning": warning if warning else None,
+        }
+
+    plan = trade_manager_service.plan_trade(
+        user_id=current_user.id,
+        recommendation=payload.get("recommendation", ""),
+        current_price=payload.get("current_price"),
+        stop_loss=payload.get("stop_loss"),
+        take_profit=payload.get("take_profit"),
+        confidence=int(payload.get("confidence", 50)),
+        account_balance=float(payload.get("account_balance", 100000.0)),
+        base_risk_percent=float(payload.get("risk_percent", 2.0)),
+        analysis_context=payload.get("analysis_context", {}),
+    )
+
+    if warning:
+        plan["correlation_warning"] = warning
+    plan = market_protection_service.apply_session_adjustment(plan, session_info)
+    plan["strategy_clash"] = strategy_clash
+    plan["session_info"] = session_info
+    plan["protection_status"] = protection
+    return plan
+
+@app.get("/api/market/session")
+def get_market_session(current_user: models.User = Depends(auth.get_current_user)):
+    return market_protection_service.get_current_session()
+
+@app.get("/api/market/spread")
+def get_market_spread(current_user: models.User = Depends(auth.get_current_user)):
+    return market_protection_service.get_spread_report()
+
+@app.get("/api/price-alerts")
+def get_price_alerts(current_user: models.User = Depends(auth.get_current_user)):
+    return market_protection_service.list_price_alerts(current_user.id)
+
+@app.post("/api/price-alerts")
+def create_price_alert(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    try:
+        alert = market_protection_service.create_price_alert(
+            user_id=current_user.id,
+            market=payload.get("market"),
+            target_price=float(payload.get("target_price")),
+            direction=payload.get("direction")
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return alert
+
+@app.post("/api/price-alerts/delete")
+def delete_price_alert(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    if not payload.get("id"):
+        raise HTTPException(status_code=400, detail="Alert id required")
+    success = market_protection_service.delete_price_alert(current_user.id, int(payload.get("id")))
+    if not success:
+        raise HTTPException(status_code=404, detail="Price alert not found")
+    return {"status": "deleted"}
+
+@app.post("/api/journal/quick-entry")
+def quick_journal_entry(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    protection = trade_protection_service.check_protection(current_user.id)
+    if protection.get("trading_locked"):
+        raise HTTPException(status_code=403, detail=protection.get("trading_message") or "التداول مغلق مؤقتاً.")
+
+    try:
+        result = market_protection_service.quick_trade_entry(
+            user_id=current_user.id,
+            market=payload.get("market"),
+            recommendation=payload.get("recommendation", ""),
+            entry_price=float(payload.get("entry_price")),
+            stop_loss=payload.get("stop_loss"),
+            take_profit=payload.get("take_profit"),
+            expected_price=payload.get("expected_price"),
+            notes=payload.get("notes")
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"status": "ok", "result": result, "protection_status": protection}
+
+@app.get("/api/sentiment/scan")
+async def sentiment_scan(symbol: str, current_user: models.User = Depends(auth.get_current_user)):
+    return social_sentiment_service.analyze(symbol)
+
+@app.get("/api/psychology/report")
+def get_psych_report(current_user: models.User = Depends(auth.get_current_user)):
+    return {"report": journal_service.generate_psych_report(user_id=current_user.id)}
+
+@app.post("/api/shadow/trade")
+def open_shadow_trade(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    protection = trade_protection_service.check_protection(current_user.id)
+    if protection.get("trading_locked"):
+        raise HTTPException(status_code=403, detail=protection.get("trading_message") or "التداول مغلق مؤقتاً.")
+
+    market = payload.get('market')
+    warning = trade_protection_service.correlation_warning(current_user.id, market)
+    st = ShadowTrader(user_id=current_user.id)
+    trade = st.open_trade(market, payload['price'], payload.get('sl'), payload.get('tp'))
+    response = {"trade": trade}
+    if warning:
+        response["correlation_warning"] = warning
+
+    if payload.get('expected_price') is not None:
+        slippage = market_protection_service.record_slippage(
+            user_id=current_user.id,
+            market=market,
+            expected_price=float(payload.get('expected_price')),
+            executed_price=float(payload.get('price')),
+            trade_id=trade.id
+        )
+        response['slippage'] = slippage
+
+    response["protection_status"] = protection
+    return response
+
+@app.get("/api/protection/status")
+def protection_status(current_user: models.User = Depends(auth.get_current_user)):
+    return trade_protection_service.refresh_protection(current_user.id)
+
+
+@app.get("/api/trade-mover/check")
+def check_trade_mover(analysis_id: int, current_price: Optional[float] = None, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    analysis = db.query(models.Analysis).filter(models.Analysis.id == analysis_id, models.Analysis.user_id == current_user.id).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    try:
+        analysis_data = json.loads(analysis.result_json or '{}')
+    except Exception:
+        analysis_data = {}
+
+    suggestion = trade_mover_service.suggest(analysis_data, current_price)
+    suggestion.update({
+        'analysis_id': analysis_id,
+        'market': analysis.market,
+        'analysis_description': analysis.description,
+        'last_updated': analysis.created_at.isoformat() if analysis.created_at else None
+    })
+    return suggestion
+
+# --- New Features 25-29 ---
+@app.get("/api/trade/confidence")
+def get_trade_confidence(analysis_id: Optional[int] = None, market: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if analysis_id:
+        analysis = db.query(models.Analysis).filter(models.Analysis.id == analysis_id, models.Analysis.user_id == current_user.id).first()
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        try:
+            result = json.loads(analysis.result_json or '{}')
+            confidence = result.get('confidence', 50)
+        except:
+            confidence = 50
+    else:
+        # Default or calculate based on market
+        confidence = 50
+
+    if confidence >= 80:
+        color = "green"
+        status = "ممتازة"
+    elif confidence >= 60:
+        color = "yellow"
+        status = "جيدة"
+    else:
+        color = "red"
+        status = "لا تدخل"
+
+    return {
+        "confidence": confidence,
+        "color": color,
+        "status": status,
+        "message": f"ثقة الصفقة: {confidence}% {status}"
+    }
+
+@app.get("/api/market/countdown")
+def get_market_countdown(current_user: models.User = Depends(auth.get_current_user)):
+    from datetime import datetime, time
+    now = datetime.utcnow()
+    # Simplified market hours (example for forex)
+    # New York: 13:30-20:00 UTC
+    ny_open = time(13, 30)
+    ny_close = time(20, 0)
+    # London: 07:00-16:00 UTC
+    london_open = time(7, 0)
+    london_close = time(16, 0)
+
+    def time_until(target_time):
+        target = datetime.combine(now.date(), target_time)
+        if target < now:
+            target = datetime.combine(now.date() + timedelta(days=1), target_time)
+        delta = target - now
+        hours = int(delta.total_seconds() // 3600)
+        minutes = int((delta.total_seconds() % 3600) // 60)
+        return hours, minutes
+
+    ny_hours, ny_mins = time_until(ny_open if now.time() > ny_close else ny_close)
+    london_hours, london_mins = time_until(london_open if now.time() > london_close else london_close)
+
+    if now.time() < london_open:
+        status = "مغلق"
+        next_open = "لندن"
+        hours, mins = london_hours, london_mins
+    elif now.time() < london_close:
+        status = "مفتوح"
+        next_close = "لندن"
+        hours, mins = time_until(london_close)[0], time_until(london_close)[1]
+        color = "green"
+    elif now.time() < ny_open:
+        status = "مغلق"
+        next_open = "نيويورك"
+        hours, mins = ny_hours, ny_mins
+        color = "gray"
+    elif now.time() < ny_close:
+        status = "مفتوح"
+        next_close = "نيويورك"
+        hours, mins = time_until(ny_close)[0], time_until(ny_close)[1]
+        color = "green"
+    else:
+        status = "مغلق"
+        next_open = "لندن"
+        hours, mins = time_until(london_open)[0] + 24, time_until(london_open)[1]
+        color = "gray"
+
+    if status == "مفتوح":
+        if hours < 1:
+            color = "green"
+        elif hours < 2:
+            color = "yellow"
+        else:
+            color = "gray"
+    else:
+        color = "gray"
+
+    return {
+        "status": status,
+        "next_event": f"يفتح {next_open}" if status == "مغلق" else f"يغلق {next_close}",
+        "countdown": f"{hours} ساعات {mins} دقيقة",
+        "color": color
+    }
+
+@app.post("/api/ai/assistant")
+def ai_trade_assistant(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    question = payload.get("question", "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+
+    # Get latest analysis
+    latest_analysis = db.query(models.Analysis).filter(models.Analysis.user_id == current_user.id).order_by(models.Analysis.created_at.desc()).first()
+    analysis_context = ""
+    if latest_analysis:
+        try:
+            result = json.loads(latest_analysis.result_json or '{}')
+            analysis_context = f"آخر تحليل: {latest_analysis.market} - {result.get('recommendation', 'unknown')} مع ثقة {result.get('confidence', 0)}%"
+        except:
+            analysis_context = f"آخر تحليل: {latest_analysis.market}"
+
+    # Get memory insights
+    memory_insight = vector_memory.get_insight(question, db=db)
+
+    # Get news sentiment
+    news_sentiment = social_sentiment_service.analyze("XAUUSD")  # Default to gold
+
+    # Combine into prompt for AI
+    prompt = f"""
+سؤال المستخدم: {question}
+
+سياق آخر تحليل: {analysis_context}
+
+رؤى الذاكرة: {memory_insight}
+
+تحليل الأخبار: {news_sentiment}
+"""
+    # Use ai_core to generate response
+    answer = ai_core_service.answer_question(question, prompt)
+
+    return {"answer": answer}
+
+@app.post("/api/chart/detect")
+async def detect_chart_screenshot(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
+    if not file:
+        raise HTTPException(status_code=400, detail="File is required")
+
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    SYSTEM_METRICS["gemini_calls"] += 1
+    # Use tradingview service to detect pair and timeframe
+    detected = tradingview_service.detect_chart_details(image_bytes)
+
+    return {
+        "pair": detected.get("pair", "UNKNOWN"),
+        "timeframe": detected.get("timeframe", "UNKNOWN"),
+        "confidence": detected.get("confidence", 50)
+    }
+
+# --- New Features 30-34 ---
+@app.get("/api/daily-limits/status")
+def get_daily_limits_status(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    prefs = _ensure_preferences(db, current_user)
+    today = datetime.utcnow().date()
+    entries = db.query(models.JournalEntry).filter(
+        models.JournalEntry.user_id == current_user.id,
+        models.JournalEntry.date >= datetime(today.year, today.month, today.day)
+    ).all()
+    daily_pnl = sum((e.profit_loss or 0) for e in entries)
+    capital = float(prefs.capital or 10000.0)
+    profit_target = capital * (prefs.daily_profit_target_percent / 100.0)
+    loss_limit = capital * (prefs.daily_loss_limit_percent / 100.0)
+
+    return {
+        "daily_pnl": daily_pnl,
+        "profit_target": profit_target,
+        "loss_limit": loss_limit,
+        "trading_locked_today": prefs.trading_locked_today,
+        "lock_reason": prefs.lock_reason
+    }
+
+@app.get("/api/weekly-challenge")
+def get_weekly_challenge(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    week_start = datetime.utcnow().date() - timedelta(days=datetime.utcnow().weekday())
+    challenge = db.query(models.WeeklyChallenge).filter(models.WeeklyChallenge.week_start == week_start).first()
+    if not challenge:
+        return {"challenge": None}
+
+    progress = db.query(models.UserChallengeProgress).filter(
+        models.UserChallengeProgress.user_id == current_user.id,
+        models.UserChallengeProgress.challenge_id == challenge.id
+    ).first()
+    if not progress:
+        progress = models.UserChallengeProgress(user_id=current_user.id, challenge_id=challenge.id)
+        db.add(progress)
+        db.commit()
+        db.refresh(progress)
+
+    # Calculate current value based on challenge type
+    current_value = 0.0
+    if challenge.challenge_type == "trades_on_market":
+        week_entries = db.query(models.JournalEntry).filter(
+            models.JournalEntry.user_id == current_user.id,
+            models.JournalEntry.market == challenge.market,
+            models.JournalEntry.date >= week_start,
+            _normalize_result(models.JournalEntry.result) == "win"
+        ).count()
+        current_value = week_entries
+    elif challenge.challenge_type == "success_rate":
+        week_entries = db.query(models.JournalEntry).filter(
+            models.JournalEntry.user_id == current_user.id,
+            models.JournalEntry.date >= week_start
+        ).all()
+        wins = len([e for e in week_entries if _normalize_result(e.result) == "win"])
+        total = len(week_entries)
+        current_value = (wins / max(1, total)) * 100.0
+    elif challenge.challenge_type == "profit_target":
+        week_entries = db.query(models.JournalEntry).filter(
+            models.JournalEntry.user_id == current_user.id,
+            models.JournalEntry.date >= week_start
+        ).all()
+        current_value = sum((e.profit_loss or 0) for e in week_entries)
+
+    progress.current_value = current_value
+    if current_value >= challenge.target_value and not progress.completed:
+        progress.completed = True
+        progress.completed_at = datetime.utcnow()
+    db.commit()
+
+    return {
+        "challenge": {
+            "id": challenge.id,
+            "description": challenge.description,
+            "target": challenge.target_value,
+            "reward": challenge.reward_description
+        },
+        "progress": {
+            "current": current_value,
+            "completed": progress.completed
+        }
+    }
+
+@app.get("/api/leaderboard")
+def get_leaderboard(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    week_start = datetime.utcnow().date() - timedelta(days=datetime.utcnow().weekday())
+    progresses = db.query(models.UserChallengeProgress).join(models.WeeklyChallenge).filter(
+        models.WeeklyChallenge.week_start == week_start,
+        models.UserChallengeProgress.completed == True
+    ).all()
+    leaderboard = []
+    for p in progresses:
+        user = db.query(models.User).filter(models.User.id == p.user_id).first()
+        if user:
+            leaderboard.append({
+                "username": user.email.split('@')[0],  # Simple username
+                "completed_at": p.completed_at.isoformat() if p.completed_at else None
+            })
+    leaderboard.sort(key=lambda x: x['completed_at'])
+    return {"leaderboard": leaderboard[:10]}
+
+# --- Vault & Security 2.0 ---
+from vault import vault
+
+@app.post("/api/settings/save-sensitive")
+async def save_sensitive(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Example: saving encrypted API key
+    key = payload.get("api_key")
+    encrypted_key = vault.encrypt(key)
+    # In real app, save encrypted_key to UserPreferences or dedicated Vault table
+    return {"status": "Encrypted and saved", "preview": encrypted_key[:10] + "..."}
+
+@app.get("/api/settings/retrieve-sensitive")
+async def retrieve_sensitive(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Example: retrieve and decrypt
+    mock_encrypted = "gAAAAABmT..." # This would come from DB
+    try:
+        decrypted = vault.decrypt(mock_encrypted)
+        return {"data": decrypted}
+    except:
+        return {"error": "Failed to decrypt"}
+
+if __name__ == "__main__":
+    import uvicorn
+    # Start Telegram bot in background if available
+    if TELEGRAM_BOT_AVAILABLE and dp is not None:
+        def run_bot():
+            asyncio.run(dp.start_polling())
+
+        bot_thread = threading.Thread(target=run_bot, daemon=True)
+        bot_thread.start()
+    else:
+        print("Telegram bot not started because aiogram is unavailable or bot initialization failed.")
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

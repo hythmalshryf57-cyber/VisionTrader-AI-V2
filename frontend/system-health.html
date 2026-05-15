@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <title>حالة النظام - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dark-theme">
+    <div class="settings-container">
+        <h1>حالة النظام</h1>
+        <p style="color: #888; margin-bottom: 30px;">مراقبة سريعة لحالة الخادم ومؤشرات الأداء.</p>
+
+        <div class="settings-section" style="padding: 30px;">
+            <div class="settings-row">
+                <span>مدة التشغيل</span>
+                <strong id="uptime">جارٍ التحميل...</strong>
+            </div>
+            <div class="settings-row">
+                <span>استخدام CPU</span>
+                <strong id="cpuPercent">-</strong>
+            </div>
+            <div class="settings-row">
+                <span>استخدام RAM</span>
+                <strong id="ramPercent">-</strong>
+            </div>
+            <div class="settings-row">
+                <span>الذاكرة المستخدَمة</span>
+                <strong id="ramUsed">-</strong>
+            </div>
+            <div class="settings-row">
+                <span>إجمالي الذاكرة</span>
+                <strong id="ramTotal">-</strong>
+            </div>
+            <div class="settings-row">
+                <span>طلبات اليوم</span>
+                <strong id="dailyRequests">-</strong>
+            </div>
+            <div class="settings-row">
+                <span>خطأ أخير</span>
+                <strong id="lastError">-</strong>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="refreshHealth()" style="margin-top: 15px;">تحديث البيانات</button>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        async function refreshHealth() {
+            try {
+                const health = await api.getSystemHealth();
+                document.getElementById('uptime').innerText = health.uptime || '-';
+                document.getElementById('cpuPercent').innerText = health.cpu_percent !== null ? health.cpu_percent + '%' : '-';
+                document.getElementById('ramPercent').innerText = health.ram_percent !== null ? health.ram_percent + '%' : '-';
+                document.getElementById('ramUsed').innerText = health.ram_used !== null ? `${health.ram_used} bytes` : '-';
+                document.getElementById('ramTotal').innerText = health.ram_total !== null ? `${health.ram_total} bytes` : '-';
+                document.getElementById('dailyRequests').innerText = health.daily_requests ? Object.values(health.daily_requests).reduce((sum, x) => sum + x, 0) : '-';
+                document.getElementById('lastError').innerText = health.last_error || 'لا يوجد';
+            } catch (err) {
+                alert('فشل جلب حالة النظام: ' + err.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshHealth();
+        });
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

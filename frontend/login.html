@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>تسجيل الدخول - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+        .login-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+            animation: fadeIn 0.6s ease;
+        }
+        .login-card .brand-logo { text-align: center; margin-bottom: 32px; }
+        .login-card .brand-logo i { font-size: 2.5rem; background: linear-gradient(135deg, var(--accent), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .login-card .brand-logo h2 { margin-top: 8px; font-weight: 800; font-size: 1.6rem; }
+        .login-card .brand-logo p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+        .form-group input { width: 100%; padding: 14px 16px; font-size: 1rem; }
+        .login-btn { width: 100%; padding: 14px; font-size: 1.05rem; margin-top: 8px; }
+        .login-error { color: var(--danger); font-size: 0.85rem; margin-top: 12px; text-align: center; display: none; }
+        .login-footer { text-align: center; margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner-sm { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-left: 8px; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="login-card">
+        <div class="brand-logo">
+            <i class="fas fa-eye"></i>
+            <h2>VisionTrader AI</h2>
+            <p>منصة التحليل المؤسسي الذكي</p>
+        </div>
+        <form id="loginForm" onsubmit="return false;">
+            <div class="form-group">
+                <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                <input type="email" id="email" placeholder="test@test.com" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
+                <input type="password" id="password" placeholder="••••••" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary login-btn" id="loginBtn">
+                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="googleSignIn()">
+                <i class="fab fa-google"></i> تسجيل الدخول بـ Google
+            </button>
+            <div class="login-error" id="loginError"></div>
+        </form>
+        <div class="login-footer">
+            <a href="https://t.me/your_bot_username" target="_blank">الحصول على رمز الدعوة</a> | VisionTrader AI Pro &copy; 2026
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async () => {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            const errEl = document.getElementById('loginError');
+            errEl.style.display = 'none';
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-sm"></span> جاري الدخول...';
+
+            try {
+                const res = await api.login(email, password);
+                localStorage.setItem('token', res.access_token);
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                errEl.textContent = err.message || 'فشل تسجيل الدخول';
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل الدخول';
+            }
+        });
+
+        // Auto-redirect if already logged in
+        if (localStorage.getItem('token')) {
+            window.location.href = 'dashboard.html';
+        }
+
+        function googleSignIn() {
+            alert('Google Sign-In قيد التطوير');
+            // Implement Google OAuth here
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

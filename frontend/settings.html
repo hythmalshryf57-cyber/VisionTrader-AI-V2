@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Settings - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .settings-container { max-width: 800px; margin: 40px auto; padding: 20px; }
+        .settings-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 25px; margin-bottom: 25px; }
+        .settings-section h2 { margin-bottom: 20px; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border); }
+        .settings-row:last-child { border-bottom: none; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-blue); }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="settings-container">
+        <h1>إعدادات المنصة</h1>
+        <p style="color: #888; margin-bottom: 30px;">خصص تجربتك في VisionTrader AI بما يناسب احتياجاتك</p>
+
+        <!-- UI Settings -->
+        <div class="settings-section">
+            <h2><i class="fas fa-palette"></i> المظهر واللغة</h2>
+            <div class="settings-row">
+                <span>الوضع الداكن (Dark Mode)</span>
+                <label class="switch">
+                    <input type="checkbox" checked onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-row">
+                <span>لغة المنصة</span>
+                <select id="langSelect" style="width: 150px;">
+                    <option value="ar">العربية</option>
+                    <option value="en">English</option>
+                    <option value="tr">Türkçe</option>
+                    <option value="zh">中文</option>
+                    <option value="es">Español</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="settings-section">
+            <h2><i class="fas fa-bell"></i> التنبيهات</h2>
+            <div class="settings-row">
+                <span>إشعارات Telegram</span>
+                <button class="btn btn-ghost" onclick="promptTelegram()">ربط Telegram</button>
+            </div>
+            <div class="settings-row">
+                <span>تقرير أسبوعي عبر البريد</span>
+                <label class="switch">
+                    <input type="checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-row">
+                <span>تنبيهات صوتية</span>
+                <label class="switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Favorite Strategies -->
+        <div class="settings-section">
+            <h2><i class="fas fa-star"></i> استراتيجيات مفضلة</h2>
+            <div style="margin-bottom: 15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <input id="favoriteStrategyInput" type="text" placeholder="أدخل اسم الاستراتيجية" style="flex:1; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: #111; color: #fff;" />
+                <button class="btn btn-primary" onclick="addFavoriteStrategy()">إضافة</button>
+            </div>
+            <div id="favoriteStrategiesList" style="display:grid; gap: 10px;"></div>
+        </div>
+
+        <!-- Sync & Backup -->
+        <div class="settings-section">
+            <h2><i class="fas fa-sync"></i> المزامنة والنسخ الاحتياطي</h2>
+            <div class="settings-row">
+                <span>مزامنة Google Drive</span>
+                <button class="btn btn-ghost"><i class="fab fa-google-drive"></i> مزامنة الآن</button>
+            </div>
+            <div class="settings-row">
+                <span>تصدير البيانات (JSON)</span>
+                <button class="btn btn-ghost" onclick="exportData()"><i class="fas fa-download"></i> تصدير</button>
+            </div>
+            <div class="settings-row">
+                <span>استيراد البيانات</span>
+                <button class="btn btn-ghost"><i class="fas fa-upload"></i> استيراد</button>
+            </div>
+        </div>
+
+        <!-- Demo Mode -->
+        <div class="settings-section">
+            <h2><i class="fas fa-flask"></i> الوضع التجريبي (Demo Mode)</h2>
+            <div class="settings-row">
+                <span>تفعيل الحساب التجريبي ($1M)</span>
+                <label class="switch">
+                    <input type="checkbox" onchange="toggleDemo()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            api.applyTheme();
+            api.applyLanguage();
+            loadFavoriteStrategies();
+            const select = document.getElementById('langSelect');
+            if (select) {
+                select.value = localStorage.getItem('language') || 'ar';
+                select.addEventListener('change', () => {
+                    const next = select.value;
+                    localStorage.setItem('language', next);
+                    api.applyLanguage();
+                    api.updateUserPreferences({ language: next }).catch(() => {});
+                });
+            }
+        });
+
+        function toggleTheme() {
+            const next = api.toggleTheme();
+            api.updateUserPreferences({ theme: next }).catch(() => {});
+        }
+
+        function toggleDemo() {
+            alert('تم تفعيل الوضع التجريبي برأس مال 1,000,000$');
+        }
+
+        function promptTelegram() {
+            const chatId = prompt('أدخل Chat ID الخاص بك من Telegram Bot:');
+            if (chatId) {
+                api.updateUserPreferences({ telegram_chat_id: chatId }).catch(() => {});
+                alert('تم ربط حساب Telegram بنجاح!');
+            }
+        }
+
+        async function loadFavoriteStrategies() {
+            try {
+                const favorites = await api.getFavorites();
+                const container = document.getElementById('favoriteStrategiesList');
+                container.innerHTML = favorites.length ? favorites.map(strategy => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding: 12px 15px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                        <span>${strategy}</span>
+                        <button class="btn btn-ghost" onclick="removeFavoriteStrategy('${strategy.replace(/'/g, "\\'")}')">إزالة</button>
+                    </div>
+                `).join('') : '<p style="color:#aaa;">لم يتم اختيار أي استراتيجيات مفضلة بعد.</p>';
+            } catch (err) {
+                console.error('Failed loading favorites', err);
+            }
+        }
+
+        async function addFavoriteStrategy() {
+            const input = document.getElementById('favoriteStrategyInput');
+            const strategy = input.value.trim();
+            if (!strategy) {
+                return alert('أدخل اسم استراتيجية صحيحة.');
+            }
+            try {
+                await api.addFavorite(strategy);
+                input.value = '';
+                loadFavoriteStrategies();
+            } catch (err) {
+                alert('فشل إضافة الاستراتيجية: ' + err.message);
+            }
+        }
+
+        async function removeFavoriteStrategy(strategy) {
+            try {
+                await api.removeFavorite(strategy);
+                loadFavoriteStrategies();
+            } catch (err) {
+                alert('فشل إزالة الاستراتيجية: ' + err.message);
+            }
+        }
+
+        function exportData() {
+            const data = { user: localStorage.getItem('user_email') || 'Unknown', journal: [], stats: {} };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'VisionTrader_backup.json';
+            a.click();
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

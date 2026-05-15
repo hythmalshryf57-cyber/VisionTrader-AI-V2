@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Ask AI - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .chat-container { height: calc(100vh - 100px); max-width: 1000px; margin: 20px auto; display: flex; flex-direction: column; background: rgba(255,255,255,0.02); border-radius: 25px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; }
+        .chat-messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .message { max-width: 80%; padding: 15px 20px; border-radius: 20px; line-height: 1.6; }
+        .ai-msg { align-self: flex-start; background: rgba(255,255,255,0.05); border-bottom-left-radius: 5px; }
+        .user-msg { align-self: flex-end; background: var(--accent-gradient); border-bottom-right-radius: 5px; color: white; }
+        
+        .chat-input-area { padding: 20px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 15px; align-items: center; }
+        .chat-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; color: white; resize: none; height: 50px; }
+        .action-btn { background: none; border: none; color: #888; font-size: 1.5rem; cursor: pointer; transition: 0.3s; }
+        .action-btn:hover { color: var(--accent-color); }
+        .send-btn { background: var(--accent-color); color: white; width: 50px; height: 50px; border-radius: 15px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai-msg">
+                أهلاً بك في **Mentor AI**! أنا مدعوم بنموذج DeepSeek R1. كيف يمكنني مساعدتك في تحليلاتك اليوم؟ يمكنك سؤالي عن أي سوق أو رفع صورة شارت.
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <button class="action-btn"><i class="fas fa-image"></i></button>
+            <button class="action-btn"><i class="fas fa-microphone"></i></button>
+            <textarea class="chat-input" id="userInput" placeholder="اسأل أي سؤال تداولي..."></textarea>
+            <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const messages = document.getElementById('chatMessages');
+            if (!input.value.trim()) return;
+
+            // User Message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'message user-msg';
+            userDiv.innerText = input.value;
+            messages.appendChild(userDiv);
+
+            const val = input.value;
+            input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+
+            // AI Response (Mock)
+            setTimeout(() => {
+                const aiDiv = document.createElement('div');
+                aiDiv.className = 'message ai-msg';
+                aiDiv.innerText = `بناءً على طلبك حول "${val}"، أرى أن السوق في منطقة تجميع حالياً وفقاً لمنطق وايكوف. أنصح بانتظار اختراق منطقة 1.0850 للتأكيد.`;
+                messages.appendChild(aiDiv);
+                messages.scrollTop = messages.scrollHeight;
+            }, 1000);
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

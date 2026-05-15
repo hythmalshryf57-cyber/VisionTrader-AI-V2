@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Upload Chart - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { direction: rtl; font-family: Arial, sans-serif; background: #090b16; color: #eee; margin: 0; padding: 0; }
+        .container { max-width: 1120px; margin: 0 auto; padding: 24px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 24px; margin-bottom: 24px; }
+        .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+        .page-header h1 { margin: 0; font-size: 2rem; }
+        .field-group { display: grid; gap: 12px; margin-bottom: 18px; }
+        .field-group label { color: #a7b0cc; font-size: 0.95rem; }
+        .field-group input, .field-group select, .field-group textarea { width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #f1f5f9; }
+        .field-group input::placeholder, .field-group textarea::placeholder { color: #8b98b1; }
+        .button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+        .btn { border: none; border-radius: 12px; padding: 13px 22px; cursor: pointer; font-weight: 700; transition: transform 0.2s ease, opacity 0.2s ease; }
+        .btn-primary { background: linear-gradient(135deg, #22c55e, #0ea5e9); color: white; }
+        .btn-secondary { background: rgba(255,255,255,0.06); color: #f8fafc; }
+        .btn:hover { transform: translateY(-1px); }
+        .upload-dropzone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease; }
+        .upload-dropzone.dragover { border-color: #38bdf8; background: rgba(56,189,248,0.08); }
+        .upload-preview { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+        .upload-preview img { max-width: 180px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); }
+        .analysis-output { display: grid; gap: 16px; }
+        .alert { padding: 14px 16px; border-radius: 14px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); }
+        .status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: rgba(34,197,94,0.12); color: #a7f3d0; }
+        .hidden { display: none; }
+        pre { white-space: pre-wrap; word-break: break-word; color: #dbeafe; background: rgba(15,23,42,0.95); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1>رفع وتحليل الشارت</h1>
+                <p style="color:#9ca3af; margin-top: 8px;">ارفع صورة الشارت أو استخدم رابط TradingView لتحصل على تحليل فوري.</p>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">العودة إلى لوحة التحكم</button>
+                <button class="btn btn-secondary" onclick="window.location.href='login.html'">تسجيل الخروج</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="field-group">
+                <label for="marketInput">رمز السوق</label>
+                <input id="marketInput" type="text" placeholder="مثال: XAUUSD أو BTCUSDT" value="XAUUSD">
+            </div>
+            <div class="field-group">
+                <label for="timeframeSelect">الفريم الزمني</label>
+                <select id="timeframeSelect">
+                    <option value="1m">1 دقيقة</option>
+                    <option value="5m">5 دقائق</option>
+                    <option value="15m">15 دقيقة</option>
+                    <option value="1h">ساعة</option>
+                    <option value="4h">4 ساعات</option>
+                    <option value="1d" selected>يومي</option>
+                </select>
+            </div>
+            <div class="upload-dropzone" id="dropZone">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #38bdf8;"></i>
+                <h3 style="margin: 12px 0 6px;">قم بسحب الشارت هنا</h3>
+                <p style="color:#9ca3af;">أو انقر لرفع صورة. يدعم PNG/JPG.</p>
+                <input id="fileInput" type="file" accept="image/*" multiple class="hidden">
+            </div>
+            <div class="upload-preview" id="previewContainer"></div>
+            <div class="button-row" style="margin-top:18px;">
+                <button class="btn btn-primary" id="analyzeBtn">ابدأ التحليل</button>
+                <button class="btn btn-secondary" id="clearBtn">مسح الصور</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="field-group">
+                <label for="tvUrlInput">رابط TradingView</label>
+                <input id="tvUrlInput" type="text" placeholder="https://www.tradingview.com/chart/...">
+            </div>
+            <div class="button-row">
+                <button class="btn btn-primary" id="fetchTvBtn">جلب وتحليل من TradingView</button>
+            </div>
+            <div class="alert" id="tvStatus" style="margin-top:12px; display:none;"></div>
+        </div>
+
+        <div class="card analysis-output hidden" id="resultCard">
+            <h2>نتائج التحليل</h2>
+            <div class="status-chip" id="resultRecommendation">—</div>
+            <div style="display:grid; gap:12px; margin-top:16px;">
+                <div><strong>السوق:</strong> <span id="resultMarket">-</span></div>
+                <div><strong>الثقة:</strong> <span id="resultConfidence">-</span>%</div>
+                <div><strong>التوصية:</strong> <span id="resultStrength">-</span></div>
+                <div><strong>السبب/الوصف:</strong> <span id="resultReason">-</span></div>
+                <div><strong>التفاصيل:</strong></div>
+                <pre id="resultDetails">-</pre>
+                <div><strong>نصيحة الذاكرة:</strong></div>
+                <pre id="memoryInsight">-</pre>
+            </div>
+        </div>
+
+        <div class="card hidden" id="errorCard" style="background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.35);">
+            <h3 style="margin-top:0; color:#fee2e2;">حدث خطأ</h3>
+            <p id="errorText" style="color:#fecaca;">-</p>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const previewContainer = document.getElementById('previewContainer');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const tvUrlInput = document.getElementById('tvUrlInput');
+        const fetchTvBtn = document.getElementById('fetchTvBtn');
+        const resultCard = document.getElementById('resultCard');
+        const errorCard = document.getElementById('errorCard');
+        const errorText = document.getElementById('errorText');
+        const tvStatus = document.getElementById('tvStatus');
+        const previewFiles = [];
+
+        function redirectToLogin() {
+            window.location.href = 'login.html';
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorCard.classList.remove('hidden');
+        }
+
+        function clearError() {
+            errorCard.classList.add('hidden');
+            errorText.textContent = '';
+        }
+
+        function setLoading(isLoading) {
+            analyzeBtn.textContent = isLoading ? 'جاري التحليل...' : 'ابدأ التحليل';
+            analyzeBtn.disabled = isLoading;
+        }
+
+        function updatePreview() {
+            previewContainer.innerHTML = '';
+            previewFiles.forEach(file => {
+                const url = URL.createObjectURL(file);
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = file.name;
+                previewContainer.appendChild(img);
+            });
+        }
+
+        function addFiles(files) {
+            for (let file of files) {
+                if (!file.type.startsWith('image/')) continue;
+                if (previewFiles.length >= 3) break;
+                previewFiles.push(file);
+            }
+            updatePreview();
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', event => {
+            event.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', event => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+            addFiles(event.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', () => {
+            addFiles(fileInput.files);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            previewFiles.length = 0;
+            updatePreview();
+            clearError();
+            resultCard.classList.add('hidden');
+        });
+
+        async function convertFileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('فشل في قراءة الصورة'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function collectImages() {
+            const images = [];
+            for (let file of previewFiles) {
+                const dataUrl = await convertFileToDataUrl(file);
+                images.push({ name: file.name, data: dataUrl });
+            }
+            return images;
+        }
+
+        async function performAnalysis() {
+            clearError();
+            if (!localStorage.getItem('token')) return redirectToLogin();
+            if (previewFiles.length === 0) {
+                showError('يرجى رفع صورة واحدة على الأقل لتحليلها.');
+                return;
+            }
+            setLoading(true);
+            try {
+                const market = document.getElementById('marketInput').value.trim() || 'XAUUSD';
+                const images = await collectImages();
+                const payload = { market, timeframe: document.getElementById('timeframeSelect').value, images };
+                const result = await api.analyzeMarket(payload.market, payload.images);
+                displayResult(result);
+            } catch (err) {
+                showError(err.message || 'حدث خطأ أثناء تحليل الشارت.');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function displayResult(result) {
+            resultCard.classList.remove('hidden');
+            document.getElementById('resultMarket').textContent = result.market || document.getElementById('marketInput').value || 'غير محدد';
+            document.getElementById('resultConfidence').textContent = result.confidence || 0;
+            document.getElementById('resultStrength').textContent = result.strength || result.recommendation || 'غير مؤكد';
+            document.getElementById('resultReason').textContent = result.reason || result.notes || 'لا توجد بيانات إضافية.';
+            document.getElementById('resultRecommendation').textContent = (result.recommendation || 'غير محدد').toUpperCase();
+            document.getElementById('resultDetails').textContent = JSON.stringify(result, null, 2);
+            document.getElementById('memoryInsight').textContent = result.memory_insight || 'لا يوجد.';
+        }
+
+        analyzeBtn.addEventListener('click', performAnalysis);
+
+        fetchTvBtn.addEventListener('click', async () => {
+            clearError();
+            if (!localStorage.getItem('token')) return redirectToLogin();
+            const url = tvUrlInput.value.trim();
+            if (!url) {
+                showError('يرجى إدخال رابط TradingView.');
+                return;
+            }
+            tvStatus.style.display = 'block';
+            tvStatus.textContent = 'جاري جلب التحليل من TradingView...';
+            try {
+                const response = await api.fetchTradingView(url);
+                tvStatus.textContent = response.summary || response.message || 'تم جلب البيانات بنجاح.';
+            } catch (err) {
+                tvStatus.textContent = err.message || 'فشل جلب رابط TradingView.';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            if (!localStorage.getItem('token')) {
+                redirectToLogin();
+            }
+        });
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Trading Journal - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .journal-container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+        .journal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .stat-card h3 { color: #888; font-size: 0.9rem; margin-bottom: 10px; }
+        .stat-card p { font-size: 1.8rem; font-weight: bold; color: var(--accent-color); }
+        
+        .journal-table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.02); border-radius: 15px; overflow: hidden; }
+        .journal-table th, .journal-table td { padding: 15px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .journal-table th { background: rgba(255,255,255,0.05); color: #888; font-weight: 500; }
+        
+        .result-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .win { background: rgba(0, 255, 136, 0.1); color: #00ff88; }
+        .loss { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; }
+        
+        .add-btn { background: var(--accent-gradient); border: none; padding: 12px 25px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal-content { background: #1a1a1a; width: 90%; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #888; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="journal-container">
+        <div class="journal-header">
+            <h1><i class="fas fa-book"></i> دفتر يوميات التداول</h1>
+            <button class="add-btn" onclick="openModal()"><i class="fas fa-plus"></i> إضافة صفقة جديدة</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>نسبة النجاح</h3>
+                <p id="winRate">75%</p>
+            </div>
+            <div class="stat-card">
+                <h3>إجمالي الربح/الخسارة</h3>
+                <p id="totalPnL">$12,450</p>
+            </div>
+            <div class="stat-card">
+                <h3>عدد الصفقات</h3>
+                <p id="totalTrades">42</p>
+            </div>
+            <div class="stat-card">
+                <h3>أفضل سوق</h3>
+                <p id="bestMarket">XAUUSD</p>
+            </div>
+        </div>
+
+        <table class="journal-table">
+            <thead>
+                <tr>
+                    <th>التاريخ</th>
+                    <th>السوق</th>
+                    <th>التوصية</th>
+                    <th>النتيجة</th>
+                    <th>الربح/الخسارة</th>
+                    <th>الملاحظات</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="journalBody">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add Entry Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2>إضافة صفقة جديدة</h2>
+            <form id="journalForm">
+                <div class="form-group">
+                    <label>السوق</label>
+                    <input type="text" id="market" placeholder="مثلاً: BTCUSD" required>
+                </div>
+                <div class="form-group">
+                    <label>التوصية</label>
+                    <select id="recommendation">
+                        <option value="Buy">شراء</option>
+                        <option value="Sell">بيع</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>النتيجة</label>
+                    <select id="result">
+                        <option value="Win">رابحة</option>
+                        <option value="Loss">خاسرة</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الربح/الخسارة ($)</label>
+                    <input type="number" id="pnl" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>شعورك قبل الصفقة</label>
+                    <select id="mood_before">
+                        <option value="واثق">واثق (Confident)</option>
+                        <option value="خائف">خائف (Fearful)</option>
+                        <option value="متردد">متردد (Hesitant)</option>
+                        <option value="طماع">طماع (Greedy)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>شعورك بعد الصفقة</label>
+                    <select id="mood_after">
+                        <option value="راضٍ">راضٍ (Satisfied)</option>
+                        <option value="ندم">ندم (Regretful)</option>
+                        <option value="غاضب">غاضب (Angry)</option>
+                        <option value="متحمس">متحمس (Excited)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات</label>
+                    <textarea id="notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="add-btn" style="width: 100%;">حفظ الصفقة</button>
+                <button type="button" onclick="closeModal()" style="width: 100%; margin-top: 10px; background: none; border: 1px solid #444; color: #888; padding: 10px; border-radius: 10px;">إلغاء</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        function openModal() { document.getElementById('addModal').style.display = 'block'; }
+        function closeModal() { document.getElementById('addModal').style.display = 'none'; }
+        
+        async function loadJournal() {
+            try {
+                const entries = await api.getJournal();
+                const stats = await api.getComparisonStats();
+                
+                document.getElementById('winRate').innerText = stats.human_win_rate + '%';
+                document.getElementById('totalPnL').innerText = '$' + stats.total_profit;
+                document.getElementById('totalTrades').innerText = entries.length;
+
+                const body = document.getElementById('journalBody');
+                body.innerHTML = entries.map(entry => `
+                    <tr>
+                        <td>${new Date(entry.date).toLocaleDateString()}</td>
+                        <td>${entry.market}</td>
+                        <td>${entry.recommendation}</td>
+                        <td><span class="result-badge ${entry.result.toLowerCase()}">${entry.result === 'Win' ? 'رابحة' : 'خاسرة'}</span></td>
+                        <td style="color: ${entry.profit_loss >= 0 ? '#00ff88' : '#ff4d4d'}">$${entry.profit_loss}</td>
+                        <td>${entry.notes || ''}</td>
+                        <td><i class="fas fa-trash" style="cursor: pointer; color: #444;"></i></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load journal', e);
+            }
+        }
+
+        document.getElementById('journalForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                market: document.getElementById('market').value,
+                recommendation: document.getElementById('recommendation').value,
+                result: document.getElementById('result').value,
+                pnl: parseFloat(document.getElementById('pnl').value),
+                mood_before: document.getElementById('mood_before').value,
+                mood_after: document.getElementById('mood_after').value,
+                notes: document.getElementById('notes').value
+            };
+            try {
+                await api.addJournalEntry(payload);
+                closeModal();
+                loadJournal();
+            } catch (err) {
+                alert(err.message);
+            }
+        };
+
+        loadJournal();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

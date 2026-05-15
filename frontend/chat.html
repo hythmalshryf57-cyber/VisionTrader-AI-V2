@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>AI Assistant - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .chat-wrapper { height: 100vh; display: flex; flex-direction: column; background: #05070a; }
+        .chat-header { padding: 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 15px; }
+        .chat-body { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 25px; }
+        
+        .bot-message, .user-message { max-width: 80%; padding: 18px 22px; border-radius: 20px; line-height: 1.6; position: relative; animation: fadeIn 0.4s ease; }
+        .bot-message { align-self: flex-start; background: rgba(255,255,255,0.04); border-bottom-left-radius: 5px; }
+        .user-message { align-self: flex-end; background: var(--accent-gradient); border-bottom-right-radius: 5px; color: white; }
+        
+        .chat-footer { padding: 20px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); }
+        .input-group { max-width: 900px; margin: 0 auto; display: flex; gap: 15px; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .input-group input { flex: 1; background: none; border: none; padding: 12px; color: white; outline: none; }
+        
+        .upload-options { display: flex; gap: 10px; margin-top: 15px; }
+        .upload-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 10px; color: #888; cursor: pointer; font-size: 0.9rem; transition: 0.3s; }
+        .upload-btn:hover { border-color: var(--accent-blue); color: white; }
+
+        /* Scanning Animation */
+        .scanner-container { position: relative; width: 100%; max-width: 300px; border-radius: 15px; overflow: hidden; margin-top: 10px; border: 1px solid var(--accent-cyan); }
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: #00f3ff; box-shadow: 0 0 15px #00f3ff; animation: scan 2s linear infinite; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        .typing-dots { display: flex; gap: 5px; margin-top: 10px; }
+        .dot { width: 6px; height: 6px; background: #888; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="chat-wrapper">
+        <header class="chat-header">
+            <a href="dashboard.html" style="color: white;"><i class="fas fa-chevron-right"></i></a>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; background: var(--accent-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div>
+                    <h3 style="font-size: 1rem;">مساعد VisionTrader الذكي</h3>
+                    <span style="font-size: 0.7rem; color: #00ff88;">● متصل حالياً</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="chat-body" id="chatBody">
+            <div class="bot-message">
+                مرحباً بك في VisionTrader AI. ما هو السوق الذي ترغب في تحليله اليوم؟
+            </div>
+        </div>
+
+        <footer class="chat-footer">
+            <div class="input-group">
+                <input type="text" id="userInput" placeholder="اكتب اسم السوق (مثلاً: Gold)..." onkeypress="handleKey(event)">
+                <button class="upload-btn"><i class="fas fa-paperclip"></i></button>
+                <button onclick="sendMessage()" style="background: var(--accent-blue); border: none; color: white; width: 40px; height: 40px; border-radius: 10px; cursor: pointer;">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        const chatBody = document.getElementById('chatBody');
+        const userInput = document.getElementById('userInput');
+        let step = 0;
+        let selectedMarket = '';
+
+        function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
+
+        function addMessage(text, isUser = false) {
+            const div = document.createElement('div');
+            div.className = isUser ? 'user-message' : 'bot-message';
+            div.innerHTML = text;
+            chatBody.appendChild(div);
+            chatBody.scrollTop = chatBody.scrollHeight;
+            return div;
+        }
+
+        function addTyping() {
+            const div = document.createElement('div');
+            div.className = 'bot-message';
+            div.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+            chatBody.appendChild(div);
+            chatBody.scrollTop = chatBody.scrollHeight;
+            return div;
+        }
+
+        async function sendMessage(manualText = null) {
+            const text = manualText || userInput.value.trim();
+            if (!text) return;
+            
+            addMessage(text, true);
+            if (!manualText) userInput.value = '';
+            
+            const typing = addTyping();
+            
+            setTimeout(async () => {
+                typing.remove();
+                await processResponse(text);
+            }, 1000);
+        }
+
+        async function processResponse(text) {
+            if (step === 0) {
+                selectedMarket = text;
+                addMessage(`رائع، اخترت <b>${text}</b>. الآن ارفع شارت الإطار الزمني الكبير (HTF - يومي أو 4 ساعات) للبدء.`);
+                showUploadOptions('HTF');
+                step = 1;
+            } else if (step === 1) {
+                simulateScan('HTF');
+                setTimeout(() => {
+                    addMessage("لقد حددت منطقة طلب مؤسسية قوية على الفريم اليومي. هل يمكنك تزويدي بشارت الإطار المتوسط (MTF - ساعة)؟");
+                    showUploadOptions('MTF');
+                    step = 2;
+                }, 3000);
+            } else if (step === 2) {
+                simulateScan('MTF');
+                setTimeout(() => {
+                    addMessage("المثالي! الاتجاه متوافق. أخيراً، نحتاج شارت الإطار الصغير (LTF - 15 دقيقة) لتحديد الدقة.");
+                    showUploadOptions('LTF');
+                    step = 3;
+                }, 3000);
+            } else if (step === 3) {
+                simulateScan('Final');
+                addMessage("جاري تشغيل الـ 34 استراتيجية للتصويت النهائي...");
+                try {
+                    const result = await api.analyzeMarket(selectedMarket, []);
+                    localStorage.setItem('lastAnalysis', JSON.stringify(result));
+                    setTimeout(() => {
+                        window.location.href = 'result.html';
+                    }, 2000);
+                } catch (err) {
+                    addMessage("عذراً، حدث خطأ أثناء التحليل: " + err.message);
+                }
+            }
+        }
+
+        function showUploadOptions(type) {
+            const div = document.createElement('div');
+            div.className = 'upload-options';
+            div.innerHTML = `<button class="upload-btn" onclick="sendMessage('صورة ${type} مرفوعة')"><i class="fas fa-upload"></i> ارفع شارت ${type}</button>`;
+            chatBody.appendChild(div);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        function simulateScan(type) {
+            const div = document.createElement('div');
+            div.className = 'bot-message';
+            div.innerHTML = `
+                <div style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">جاري مسح ${type}...</div>
+                <div class="scanner-container">
+                    <img src="dummy.png" style="width: 100%; opacity: 0.5;">
+                    <div class="scan-line"></div>
+                </div>
+            `;
+            chatBody.appendChild(div);
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build_apk:
+    name: Build Flutter APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.1'
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          cd mobile/visiontrader_app
+          flutter pub get
+
+      - name: Verify assets exist
+        run: |
+          cd mobile/visiontrader_app
+          ls -la assets/
+
+      - name: Build release APK
+        run: |
+          cd mobile/visiontrader_app
+          flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: mobile/visiontrader_app/build/app/outputs/flutter-apk/app-release.apk

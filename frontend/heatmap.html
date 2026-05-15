@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Market Heatmap - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .heatmap-container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+        .heatmap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .heat-box { height: 120px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; cursor: pointer; transition: 0.3s; }
+        .heat-box:hover { transform: scale(1.05); filter: brightness(1.2); }
+        .heat-box h3 { font-size: 1.2rem; margin-bottom: 5px; }
+        .heat-box span { font-size: 1.1rem; font-weight: bold; }
+        
+        /* Intensities */
+        .up-strong { background: #00c853; }
+        .up-weak { background: #69f0ae; color: #000; }
+        .neutral { background: #455a64; }
+        .down-weak { background: #ff8a80; color: #000; }
+        .down-strong { background: #d50000; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="heatmap-container">
+        <h1>الخريطة الحرارية للأسواق</h1>
+        <p style="color: #888; margin-bottom: 30px;">تحديث تلقائي كل 5 دقائق لمتابعة سيولة الأسواق الـ 18</p>
+
+        <div class="heatmap-grid" id="heatmapGrid">
+            <!-- Dynamically generated -->
+        </div>
+    </div>
+
+    <script>
+        const markets = [
+            { name: 'BTCUSD', change: '+4.2%', class: 'up-strong' },
+            { name: 'ETHUSD', change: '+2.1%', class: 'up-weak' },
+            { name: 'XAUUSD', change: '-0.5%', class: 'down-weak' },
+            { name: 'EURUSD', change: '+0.1%', class: 'neutral' },
+            { name: 'GBPUSD', change: '-1.8%', class: 'down-strong' },
+            { name: 'NAS100', change: '+3.5%', class: 'up-strong' },
+            { name: 'US30', change: '+1.2%', class: 'up-weak' },
+            { name: 'USDJPY', change: '-3.2%', class: 'down-strong' },
+            { name: 'SOLUSD', change: '+8.4%', class: 'up-strong' }
+        ];
+
+        function renderHeatmap() {
+            const grid = document.getElementById('heatmapGrid');
+            grid.innerHTML = markets.map(m => `
+                <div class="heat-box ${m.class}">
+                    <h3>${m.name}</h3>
+                    <span>${m.change}</span>
+                </div>
+            `).join('');
+        }
+
+        renderHeatmap();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

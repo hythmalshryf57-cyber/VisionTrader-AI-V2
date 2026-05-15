@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Trading Academy - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .academy-container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+        .hero-section { text-align: center; margin-bottom: 50px; background: var(--accent-gradient); padding: 50px; border-radius: 30px; }
+        .hero-section h1 { font-size: 2.5rem; margin-bottom: 15px; }
+        
+        .strategy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; }
+        .course-card { background: rgba(255,255,255,0.03); border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; transition: 0.3s; }
+        .course-card:hover { transform: translateY(-10px); background: rgba(255,255,255,0.06); }
+        .course-img { height: 160px; background: #222; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--accent-color); }
+        .course-content { padding: 20px; }
+        .course-content h3 { margin-bottom: 10px; }
+        .course-content p { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+        .progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 15px; }
+        .progress-fill { height: 100%; background: var(--accent-color); border-radius: 3px; }
+        .start-btn { display: block; text-align: center; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 10px; color: white; text-decoration: none; font-weight: bold; }
+        .start-btn:hover { background: var(--accent-color); }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="academy-container">
+        <div class="hero-section">
+            <h1>أكاديمية VisionTrader للتداول</h1>
+            <p>تعلم أسرار الـ 34 استراتيجية مؤسسية من الصفر إلى الاحتراف</p>
+        </div>
+
+        <div class="strategy-grid">
+            <!-- SMC Course -->
+            <div class="course-card">
+                <div class="course-img"><i class="fas fa-chart-line"></i></div>
+                <div class="course-content">
+                    <h3>SMC / ICT (سيولة المؤسسات)</h3>
+                    <p>تعلم كيفية تتبع صانع السوق باستخدام مناطق السيولة والـ Order Blocks.</p>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 40%;"></div></div>
+                    <a href="#" class="start-btn">متابعة الدرس</a>
+                </div>
+            </div>
+
+            <!-- Elliott Wave -->
+            <div class="course-card">
+                <div class="course-img"><i class="fas fa-wave-square"></i></div>
+                <div class="course-content">
+                    <h3>Elliott Wave (موجات إليوت)</h3>
+                    <p>تحليل الدورات السعرية والتنبؤ بالاتجاه القادم بدقة متناهية.</p>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
+                    <a href="#" class="start-btn">ابدأ الآن</a>
+                </div>
+            </div>
+
+            <!-- Wyckoff -->
+            <div class="course-card">
+                <div class="course-img"><i class="fas fa-vector-square"></i></div>
+                <div class="course-content">
+                    <h3>Wyckoff Theory (وايكوف)</h3>
+                    <p>فهم مراحل التجميع والتصريف في السوق.</p>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 80%;"></div></div>
+                    <a href="#" class="start-btn">متابعة الدرس</a>
+                </div>
+            </div>
+
+            <!-- Harmonic -->
+            <div class="course-card">
+                <div class="course-img"><i class="fas fa-shapes"></i></div>
+                <div class="course-content">
+                    <h3>Harmonic Patterns (الهارمونيك)</h3>
+                    <p>اكتشاف النماذج السعرية المتكررة بناءً على نسب فيبوناتشي.</p>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 10%;"></div></div>
+                    <a href="#" class="start-btn">ابدأ الآن</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

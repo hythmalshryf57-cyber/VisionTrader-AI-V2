@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>لوحة تحكم الأدمن - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/api.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>لوحة تحكم الأدمن</h1>
+            <div id="stats">
+                <div class="stat-card">
+                    <h3>إجمالي المستخدمين</h3>
+                    <p id="total-users">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>المستخدمون النشطون</h3>
+                    <p id="active-users">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>المستخدمون المعطلون</h3>
+                    <p id="inactive-users">0</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- SOC Dashboard -->
+        <section id="soc-dashboard" style="margin: 30px 0; padding: 20px; background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.3); border-radius: 18px;">
+            <h2>مركز عمليات الأمن (SOC)</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div class="stat-card">
+                    <h3>خريطة التهديدات</h3>
+                    <div id="threat-map">لا توجد محاولات فاشلة</div>
+                </div>
+                <div class="stat-card">
+                    <h3>مستخدمين مشبوهين</h3>
+                    <div id="suspicious-users">لا يوجد</div>
+                </div>
+                <div class="stat-card">
+                    <h3>استهلاك API</h3>
+                    <div id="api-usage">Gemini: 0<br>DeepSeek: 0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>حالة السيرفر</h3>
+                    <div id="server-status">CPU: 0%<br>RAM: 0%</div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <h3>تنبيهات حية</h3>
+                <div id="live-alerts">لا توجد تنبيهات</div>
+            </div>
+        </section>
+
+        <section id="invite-code-section" style="margin: 30px 0; padding: 20px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px;">
+            <h2>توليد رموز دعوة ذكية</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-top: 15px;">
+                <div style="flex: 1; min-width: 180px;">
+                    <label>عدد الأيام</label>
+                    <input id="expiryDays" type="number" min="1" value="30" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #111; color: #fff;" />
+                </div>
+                <div style="flex: 1; min-width: 180px;">
+                    <label>عدد الاستخدامات</label>
+                    <input id="maxUses" type="number" min="1" value="1" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #111; color: #fff;" />
+                </div>
+                <button onclick="generateSmartCode()" style="padding: 12px 22px; border-radius: 12px; background: #0ea25f; color: white; border: none; cursor: pointer;">🎫 توليد رمز</button>
+            </div>
+            <div id="generated-code-card" style="display:none; margin-top: 20px; padding: 18px; border-radius: 16px; background: rgba(0, 174, 95, 0.1); border: 1px solid rgba(0, 174, 95, 0.25);">
+                <h3>الرمز الجديد</h3>
+                <p id="generatedCodeValue" style="font-size: 1.4rem; font-weight: bold; margin: 8px 0;"></p>
+                <p style="margin: 5px 0;">ينتهي في: <span id="generatedCodeExpiry"></span></p>
+                <p style="margin: 5px 0;">عدد الاستخدامات: <span id="generatedCodeUses"></span></p>
+                <button id="copyGeneratedCodeButton" onclick="copyInviteCode(document.getElementById('generatedCodeValue').textContent)" style="padding: 10px 18px; border-radius: 10px; background: #111; color: #fff; border: 1px solid #0ea25f; cursor: pointer;">نسخ الرمز</button>
+            </div>
+            <div style="margin-top: 24px;">
+                <h3>الرموز النشطة</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.12);">
+                            <th style="padding: 10px;">الكود</th>
+                            <th style="padding: 10px;">تاريخ الإنشاء</th>
+                            <th style="padding: 10px;">تاريخ الانتهاء</th>
+                            <th style="padding: 10px;">الاستعمالات</th>
+                            <th style="padding: 10px;">المستخدم</th>
+                            <th style="padding: 10px;">نسخ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inviteCodesBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="search-bar">
+            <input type="text" id="search" placeholder="البحث عن مستخدم...">
+            <button onclick="searchUsers()">بحث</button>
+        </div>
+
+        <table id="users-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>رمز الدعوة</th>
+                    <th>IP</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>الحالة</th>
+                            <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="users-body">
+            </tbody>
+        </table>
+
+        <div id="user-details" style="display: none;">
+            <h2>تفاصيل المستخدم</h2>
+            <div id="user-info"></div>
+        </div>
+
+        <div id="security-logs">
+            <h2>سجل الأمان</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>الحدث</th>
+                        <th>IP</th>
+                        <th>التاريخ</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let allUsers = [];
+        let allLogs = [];
+
+        async function loadData() {
+            try {
+                const [usersRes, statsRes, logsRes, inviteCodesRes, socRes, healthRes] = await Promise.all([
+                    api.request('GET', '/api/admin/users'),
+                    api.request('GET', '/api/admin/stats'),
+                    api.request('GET', '/api/admin/security-logs'),
+                    api.request('GET', '/api/admin/invite-codes'),
+                    api.request('GET', '/api/admin/soc-dashboard'),
+                    api.getSystemHealth()
+                ]);
+
+                allUsers = usersRes;
+                allLogs = logsRes;
+
+                displayStats(statsRes);
+                displayUsers(allUsers);
+                displayLogs(allLogs);
+                displayInviteCodes(inviteCodesRes);
+                displaySOC(socRes);
+                displayHealth(healthRes);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('فشل في تحميل البيانات');
+            }
+        }
+
+        function displaySOC(soc) {
+            document.getElementById('threat-map').innerHTML = soc.threat_map.length ? soc.threat_map.join('<br>') : 'لا توجد محاولات فاشلة';
+            document.getElementById('suspicious-users').innerHTML = soc.suspicious_users.length ? soc.suspicious_users.map(u => u.email).join('<br>') : 'لا يوجد';
+            document.getElementById('api-usage').innerHTML = `Gemini: ${soc.api_usage.gemini}<br>DeepSeek: ${soc.api_usage.deepseek}`;
+            document.getElementById('server-status').innerHTML = `CPU: ${soc.server_status.cpu}%<br>RAM: ${soc.server_status.ram}%`;
+            document.getElementById('live-alerts').innerHTML = soc.live_alerts.length ? soc.live_alerts.join('<br>') : 'لا توجد تنبيهات';
+        }
+
+        function displayHealth(health) {
+            const healthText = `Uptime: ${health.uptime || 'N/A'}<br>Last error: ${health.last_error || 'لا توجد'}<br>Requests today: ${health.daily_requests ? Object.values(health.daily_requests).reduce((sum, x) => sum + x, 0) : 0}`;
+            const card = document.getElementById('server-status');
+            if (card) {
+                card.innerHTML = `CPU: ${health.cpu_percent ?? 'N/A'}%<br>RAM: ${health.ram_percent ?? 'N/A'}%<br>${healthText}`;
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('users-body');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.email}</td>
+                    <td>${user.invite_code || 'N/A'}</td>
+                    <td>${user.ip_address || 'N/A'}</td>
+                    <td>${new Date(user.registered_at).toLocaleDateString('ar')}</td>
+                    <td>${user.is_active ? 'نشط' : 'معطل'}</td>
+                        <td>
+                            <button onclick="toggleUser(${user.id})">${user.is_active ? 'تعطيل' : 'تفعيل'}</button>
+                            <button onclick="viewUser(${user.id})">عرض</button>
+                            <button onclick="forceLogout(${user.id})">طرد</button>
+                            <button onclick="freezeUser(${user.id})">تجميد</button>
+                            <button onclick="shadowMonitor(${user.id})">Shadow Monitor</button>
+                            <button onclick="deviceLockPrompt(${user.id})">قفل جهاز</button>
+                            <button onclick="killSwitch(${user.id})">Kill Switch</button>
+                        </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function displayLogs(logs) {
+            const tbody = document.getElementById('logs-body');
+            tbody.innerHTML = '';
+
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.event_type}</td>
+                    <td>${log.ip_address || 'N/A'}</td>
+                    <td>${new Date(log.timestamp).toLocaleString('ar')}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function toggleUser(userId) {
+            try {
+                await api.request('PUT', `/api/admin/users/${userId}/toggle`);
+                loadData();
+            } catch (error) {
+                alert('فشل في تحديث المستخدم');
+            }
+        }
+
+        async function viewUser(userId) {
+            try {
+                const user = await api.request('GET', `/api/admin/users/${userId}`);
+                const details = document.getElementById('user-details');
+                const info = document.getElementById('user-info');
+                info.innerHTML = `
+                    <p><strong>ID:</strong> ${user.id}</p>
+                    <p><strong>البريد:</strong> ${user.email}</p>
+                    <p><strong>رمز الدعوة:</strong> ${user.invite_code || 'N/A'}</p>
+                    <p><strong>IP:</strong> ${user.ip_address || 'N/A'}</p>
+                    <p><strong>نشط:</strong> ${user.is_active ? 'نعم' : 'لا'}</p>
+                    <p><strong>أدمن:</strong> ${user.is_admin ? 'نعم' : 'لا'}</p>
+                    <p><strong>تاريخ التسجيل:</strong> ${new Date(user.registered_at).toLocaleString('ar')}</p>
+                    <p><button onclick="decryptField(${user.id}, 'email')">عرض البريد مؤقتاً</button></p>
+                `;
+                details.style.display = 'block';
+            } catch (error) {
+                alert('فشل في تحميل تفاصيل المستخدم');
+            }
+        }
+
+        async function decryptField(userId, field) {
+            try {
+                const res = await api.request('POST', '/api/admin/decrypt-user-field', { user_id: userId, field });
+                if (res && res.value) {
+                    alert('Decrypted value: ' + res.value);
+                } else {
+                    alert('No value to decrypt');
+                }
+            } catch (e) {
+                alert('فشل فك التشفير: ' + (e?.detail || e));
+            }
+        }
+
+        async function forceLogout(userId) {
+            if (!confirm('تأكيد طرد المستخدم من الجلسات؟')) return;
+            await api.request('POST', `/api/admin/users/${userId}/force-logout`);
+            loadData();
+        }
+
+        async function freezeUser(userId) {
+            if (!confirm('تأكيد تجميد الحساب؟')) return;
+            await api.request('POST', `/api/admin/users/${userId}/freeze`);
+            loadData();
+        }
+
+        function deviceLockPrompt(userId) {
+            const device = prompt('أدخل device_id للقفل (انظر سجلات الأجهزة في قسم الأنشطة)');
+            if (device) deviceLock(userId, device);
+        }
+
+        async function deviceLock(userId, deviceId) {
+            try {
+                await api.request('POST', `/api/admin/users/${userId}/device-lock`, { device_id: deviceId });
+                alert('تم ربط الحساب بهذا الجهاز');
+            } catch (e) {
+                alert('فشل في ربط الجهاز');
+            }
+        }
+
+        async function killSwitch(userId) {
+            if (!confirm('Kill Switch: سيتم تعطيل الحساب ومسح الجلسات. متابعة؟')) return;
+            try {
+                await api.request('POST', `/api/admin/users/${userId}/kill-switch`);
+                alert('Kill switch applied');
+                loadData();
+            } catch (e) {
+                alert('فشل في تطبيق Kill Switch');
+            }
+        }
+
+        async function shadowMonitor(userId) {
+            if (!confirm('بدء Shadow Monitor للمستخدم؟ سيتم إنشاء توكن مؤقت.')) return;
+            try {
+                const res = await api.request('POST', `/api/admin/users/${userId}/shadow-monitor`);
+                if (res && res.stream_token) {
+                    alert('Shadow token: ' + res.stream_token + '\nاستخدمه لبدء المراقبة (تطبيق البث منفصل)');
+                } else {
+                    alert('Shadow monitor started');
+                }
+            } catch (e) {
+                alert('فشل بدء Shadow Monitor');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
+                try {
+                    await api.request('DELETE', `/api/admin/users/${userId}`);
+                    loadData();
+                } catch (error) {
+                    alert('فشل في حذف المستخدم');
+                }
+            }
+        }
+
+        function searchUsers() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const filtered = allUsers.filter(user =>
+                user.email.toLowerCase().includes(query) ||
+                (user.invite_code && user.invite_code.toLowerCase().includes(query))
+            );
+            displayUsers(filtered);
+        }
+
+        function displayInviteCodes(codes) {
+            const tbody = document.getElementById('inviteCodesBody');
+            tbody.innerHTML = '';
+
+            codes.forEach(invite => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid rgba(255,255,255,0.12)';
+                row.innerHTML = `
+                    <td style="padding: 10px;">${invite.code}</td>
+                    <td style="padding: 10px;">${invite.created_at ? new Date(invite.created_at).toLocaleDateString('ar') : 'N/A'}</td>
+                    <td style="padding: 10px;">${invite.expires_at ? new Date(invite.expires_at).toLocaleDateString('ar') : 'N/A'}</td>
+                    <td style="padding: 10px;">${invite.uses_count} / ${invite.max_uses}</td>
+                    <td style="padding: 10px;">${invite.used_ip || 'N/A'}</td>
+                    <td style="padding: 10px;"><button onclick="copyInviteCode('${invite.code}')" style="padding: 6px 10px; border-radius: 8px; background: #0ea25f; color: white; border: none; cursor: pointer;">نسخ</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function generateSmartCode() {
+            try {
+                const expiryDays = parseInt(document.getElementById('expiryDays').value, 10) || 30;
+                const maxUses = parseInt(document.getElementById('maxUses').value, 10) || 1;
+                const res = await api.request('POST', '/api/admin/generate-code-smart', { expiry_days: expiryDays, max_uses: maxUses });
+                document.getElementById('generatedCodeValue').innerText = res.code;
+                document.getElementById('generatedCodeExpiry').innerText = res.expires_at ? new Date(res.expires_at).toLocaleString('ar') : 'N/A';
+                document.getElementById('generatedCodeUses').innerText = `${res.uses_count} / ${res.max_uses}`;
+                document.getElementById('generated-code-card').style.display = 'block';
+                loadData();
+            } catch (error) {
+                alert('فشل في توليد الرمز: ' + (error?.detail || error));
+            }
+        }
+
+        function copyInviteCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                alert('تم نسخ الرمز بنجاح.');
+            }).catch(() => {
+                alert('فشل نسخ الرمز. حاول يدوياً.');
+            });
+        }
+
+        // Check if admin
+        async function checkAdmin() {
+            try {
+                const user = await api.me();
+                if (!user.is_admin) {
+                    window.location.href = 'index.html';
+                } else {
+                    loadData();
+                }
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        checkAdmin();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

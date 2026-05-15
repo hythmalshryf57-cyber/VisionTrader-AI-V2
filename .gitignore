@@ -1,0 +1,50 @@
+# VisionTrader AI - .gitignore
+# ================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+.env/
+
+# Environment
+.env
+*.env.local
+
+# Logs
+logs/
+*.log
+
+# Database
+visiontrader.db
+*.db
+*.sqlite3
+
+# Uploads
+uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Frontend
+node_modules/
+*.min.js.map
