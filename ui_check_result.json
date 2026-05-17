@@ -1,0 +1,248 @@
+{
+  "index": {
+    "url": "http://127.0.0.1:8000/frontend/index.html",
+    "status": "ERR",
+    "found": {},
+    "error": "TimeoutError('timed out')"
+  },
+  "dashboard": {
+    "url": "http://127.0.0.1:8000/frontend/dashboard.html",
+    "status": 200,
+    "found": {
+      "statistics": false,
+      "news": true,
+      "ticker": true,
+      "watchlist": true,
+      "session": true,
+      "dark": true,
+      "light": false,
+      "alerts": true,
+      "????????": false,
+      "Watchlist": true,
+      "????": false,
+      "???????": false
+    },
+    "error": null
+  },
+  "upload": {
+    "url": "http://127.0.0.1:8000/frontend/upload.html",
+    "status": 200,
+    "found": {
+      "drop": true,
+      "drag": true,
+      "TradingView": true,
+      "scan": false,
+      "analyze": true,
+      "???": false,
+      "????": false,
+      "?????": false
+    },
+    "error": null
+  },
+  "result": {
+    "url": "http://127.0.0.1:8000/frontend/result.html",
+    "status": 200,
+    "found": {
+      "PDF": false,
+      "confidence": true,
+      "target": false,
+      "stop": true,
+      "explain": false,
+      "recommendation": true,
+      "?????": false,
+      "???": false
+    },
+    "error": null
+  },
+  "history": {
+    "url": "http://127.0.0.1:8000/frontend/history.html",
+    "status": 200,
+    "found": {
+      "filter": false,
+      "table": false,
+      "expand": false,
+      "delete": false,
+      "history": true,
+      "???": false,
+      "???????": false,
+      "?????": false
+    },
+    "error": null
+  },
+  "calendar": {
+    "url": "http://127.0.0.1:8000/frontend/calendar.html",
+    "status": 200,
+    "found": {
+      "calendar": false,
+      "events": false,
+      "forex": false,
+      "google news": false,
+      "????????": false,
+      "Forex": false,
+      "Google News": false
+    },
+    "error": null
+  },
+  "settings": {
+    "url": "http://127.0.0.1:8000/frontend/settings.html",
+    "status": 200,
+    "found": {
+      "capital": false,
+      "risk": false,
+      "telegram": true,
+      "trading mode": false,
+      "dark": true,
+      "light": false,
+      "language": true,
+      "multi-language": false,
+      "??? ?????": false,
+      "??????": false,
+      "Telegram": true,
+      "?????": false
+    },
+    "error": null
+  },
+  "backtest": {
+    "url": "http://127.0.0.1:8000/frontend/backtest.html",
+    "status": 200,
+    "found": {
+      "symbol": false,
+      "pair": false,
+      "timeframe": false,
+      "period": false,
+      "run": false,
+      "results": false,
+      "backtest": false,
+      "??????": false,
+      "?????": false
+    },
+    "error": null
+  },
+  "journal": {
+    "url": "http://127.0.0.1:8000/frontend/journal.html",
+    "status": 200,
+    "found": {
+      "mood": true,
+      "feel": false,
+      "before": true,
+      "after": true,
+      "save": false,
+      "journal": true,
+      "?????": false,
+      "???": false
+    },
+    "error": null
+  },
+  "admin": {
+    "url": "http://127.0.0.1:8000/frontend/admin.html",
+    "status": 200,
+    "found": {
+      "users": true,
+      "invites": false,
+      "SOC": true,
+      "freeze": true,
+      "kill": true,
+      "admin": true,
+      "??????????": false,
+      "????": false,
+      "???": false
+    },
+    "error": null
+  },
+  "strategy_factory": {
+    "url": "http://127.0.0.1:8000/frontend/strategy_factory.html",
+    "status": 200,
+    "found": {
+      "strategy": true,
+      "weights": true,
+      "weight": true,
+      "change": true,
+      "??????????": false,
+      "?????": false
+    },
+    "error": null
+  },
+  "strategy_battle": {
+    "url": "http://127.0.0.1:8000/frontend/strategy-battle.html",
+    "status": 200,
+    "found": {
+      "strategy": true,
+      "battle": true,
+      "?????": false
+    },
+    "error": null
+  },
+  "ask_ai": {
+    "url": "http://127.0.0.1:8000/frontend/ask-ai.html",
+    "status": 200,
+    "found": {
+      "ask": true,
+      "AI": true,
+      "????": false
+    },
+    "error": null
+  },
+  "academy": {
+    "url": "http://127.0.0.1:8000/frontend/academy.html",
+    "status": 200,
+    "found": {
+      "academy": true,
+      "????????": false
+    },
+    "error": null
+  },
+  "service_health": {
+    "url": "http://127.0.0.1:8000/frontend/service-health.html",
+    "status": 404,
+    "found": {},
+    "error": "HTTP Error 404: Not Found"
+  },
+  "health": {
+    "url": "http://127.0.0.1:8000/api/health",
+    "status": 200,
+    "error": null,
+    "body": "{\"status\":\"online\",\"version\":\"Professional 2.0\"}"
+  },
+  "pulse": {
+    "url": "http://127.0.0.1:8000/api/system/pulse",
+    "status": 200,
+    "error": null,
+    "body": "{\"status\":\"online\",\"refresh_time\":\"2026-05-15T16:26:01.762254\",\"active_strategies\":35,\"system_healthy\":false,\"health_details\":{\"active_strategies\":35,\"clusters\":{\"power\":{\"count\":13,\"strategies\":[\"chaos_fractal_theory.ChaosFractalStrategy\",\"composite_operator_tracking.CompositeOperatorStrategy\",\"crypto_whales.CryptoWhalesStrategy\",\"hft_simulation.HFTSpoofingStrategy\",\"liquidation_heatmap.LiquidationHeatmapStrategy\",\"market_making.MarketMakingStrategy\",\"options_flow.OptionsFlowStrategy\",\"order_flow_tape_reading.OrderFlowStrategy\",\"psychological_engineering.PsychologicalEngineeringStrategy\",\"smc_ict.ICTStrategy\",\"social_sentiment.SocialSentimentStrategy\",\"volume_spread_analysis.VSAStrategy\",\"vpin_toxicity.VPINToxicityStrategy\"]},\"geometric\":{\"count\":7,\"strategies\":[\"auction_market_theory.AuctionMarketStrategy\",\"elliott_wave.ElliottWaveStrategy\",\"fibonacci.DynamicFibonacciStrategy\",\"harmonic_patterns.HarmonicPatternStrategy\",\"market_profile.MarketProfileStrategy\",\"seasonality.SeasonalityS"
+  },
+  "strategies": {
+    "url": "http://127.0.0.1:8000/api/system/strategies",
+    "status": 200,
+    "error": null,
+    "body": "{\"strategies\":[],\"total_strategies\":0}"
+  },
+  "personality": {
+    "url": "http://127.0.0.1:8000/api/system/personality",
+    "status": 200,
+    "error": null,
+    "body": "{\"current_mode\":\"DAY_TRADING\",\"description\":\"الوضع الافتراضي للنظام للأختبار.\",\"favorite_strategies\":[],\"strengths\":[\"تحليل البيانات\",\"التركيز على السيولة\",\"المرونة\"],\"weaknesses\":[\"الأسواق الجانبية\",\"الأحداث غير المتوقعة\"],\"beliefs\":[\"الاتجاه صديقي\",\"السيولة تكشف القمم\",\"التعلم المستمر\"],\"performance_summary\":{\"win_rate\":0,\"active_strategies\":0,\"memory_entries\":0}}"
+  },
+  "recommendation_quick": {
+    "url": "http://127.0.0.1:8000/api/recommendation/quick/XAUUSD",
+    "status": 401,
+    "error": "HTTP Error 401: Unauthorized",
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  "trade_active": {
+    "url": "http://127.0.0.1:8000/api/trade/active",
+    "status": 401,
+    "error": "HTTP Error 401: Unauthorized",
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  "trade_history": {
+    "url": "http://127.0.0.1:8000/api/trade/history",
+    "status": 401,
+    "error": "HTTP Error 401: Unauthorized",
+    "body": "{\"detail\":\"Not authenticated\"}"
+  },
+  "markets_compare": {
+    "url": "http://127.0.0.1:8000/api/markets/compare",
+    "status": "ERR",
+    "error": "TimeoutError('timed out')",
+    "body": null
+  }
+}

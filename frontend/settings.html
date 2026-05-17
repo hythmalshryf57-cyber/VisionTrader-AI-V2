@@ -33,7 +33,7 @@
             <div class="settings-row">
                 <span>الوضع الداكن (Dark Mode)</span>
                 <label class="switch">
-                    <input type="checkbox" checked onchange="toggleTheme()">
+                    <input id="themeToggle" type="checkbox" checked onchange="toggleTheme()">
                     <span class="slider"></span>
                 </label>
             </div>
@@ -45,6 +45,15 @@
                     <option value="tr">Türkçe</option>
                     <option value="zh">中文</option>
                     <option value="es">Español</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <span>وضع التداول</span>
+                <select id="tradingModeSelect" style="width: 150px;">
+                    <option value="day">يومي</option>
+                    <option value="swing">متأرجح</option>
+                    <option value="scalp">سكالب</option>
+                    <option value="position">موقفي</option>
                 </select>
             </div>
         </div>
@@ -117,6 +126,12 @@
             api.applyTheme();
             api.applyLanguage();
             loadFavoriteStrategies();
+
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.checked = localStorage.getItem('theme') === 'light';
+            }
+
             const select = document.getElementById('langSelect');
             if (select) {
                 select.value = localStorage.getItem('language') || 'ar';
@@ -127,10 +142,24 @@
                     api.updateUserPreferences({ language: next }).catch(() => {});
                 });
             }
+
+            const tradingModeSelect = document.getElementById('tradingModeSelect');
+            if (tradingModeSelect) {
+                tradingModeSelect.value = localStorage.getItem('trading_mode') || 'day';
+                tradingModeSelect.addEventListener('change', (event) => {
+                    const next = event.target.value;
+                    localStorage.setItem('trading_mode', next);
+                    api.updateUserPreferences({ trading_mode: next }).catch(() => {});
+                });
+            }
         });
 
         function toggleTheme() {
             const next = api.toggleTheme();
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.checked = next === 'light';
+            }
             api.updateUserPreferences({ theme: next }).catch(() => {});
         }
 

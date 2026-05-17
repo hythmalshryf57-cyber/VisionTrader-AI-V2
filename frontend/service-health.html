@@ -7,6 +7,22 @@
     <title>حالة الخدمات - VisionTrader AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 110px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .status-good { background: rgba(16, 185, 129, 0.18); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.28); }
+        .status-bad { background: rgba(239, 68, 68, 0.18); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.28); }
+        .status-warning { background: rgba(234, 179, 8, 0.18); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.28); }
+        .status-pending { background: rgba(148, 163, 184, 0.18); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.28); }
+    </style>
 </head>
 <body class="dark-theme">
     <div class="main-content" style="max-width: 980px; margin: 0 auto; padding-top: 40px;">
@@ -24,7 +40,7 @@
                         <p style="color: var(--muted); margin: 0;">منصة تداول الأسعار والبيانات.</p>
                     </div>
                 </div>
-                <span class="text-success" style="font-weight: 700;">متصل</span>
+                <span id="binanceStatus" class="status-pill status-pending">جارٍ التحقق</span>
             </div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px;">
@@ -35,7 +51,7 @@
                         <p style="color: var(--muted); margin: 0;">خدمة تحليل الرسوم البيانية وحركة السوق.</p>
                     </div>
                 </div>
-                <span class="text-success" style="font-weight: 700;">متصل</span>
+                <span id="tradingviewStatus" class="status-pill status-pending">جارٍ التحقق</span>
             </div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px;">
@@ -46,7 +62,7 @@
                         <p style="color: var(--muted); margin: 0;">تنبيهات ومراسلات البوت.</p>
                     </div>
                 </div>
-                <span class="text-success" style="font-weight: 700;">متصل</span>
+                <span id="telegramStatus" class="status-pill status-pending">جارٍ التحقق</span>
             </div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px;">
@@ -57,7 +73,7 @@
                         <p style="color: var(--muted); margin: 0;">قاعدة بيانات وتخزين المستخدم.</p>
                     </div>
                 </div>
-                <span class="text-success" style="font-weight: 700;">متصل</span>
+                <span id="supabaseStatus" class="status-pill status-pending">جارٍ التحقق</span>
             </div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px;">
@@ -68,14 +84,94 @@
                         <p style="color: var(--muted); margin: 0;">الكاش والذاكرة السريعة.</p>
                     </div>
                 </div>
-                <span class="text-success" style="font-weight: 700;">متصل</span>
+                <span id="redisStatus" class="status-pill status-pending">جارٍ التحقق</span>
             </div>
         </div>
 
-        <div class="card" style="padding: 24px; display: flex; justify-content: flex-end; gap: 12px;">
-            <button class="btn btn-primary" onclick="window.location.reload();">تحديث الصفحة</button>
-            <button class="btn btn-ghost" onclick="alert('هذه الصفحة تعرض الحالة بشكل ثابت. يمكن إضافة اتصال حقيقي للخدمات لاحقًا.')">معلومة</button>
+        <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div>
+                    <strong>وضع النظام العام:</strong> <span id="systemOverall">جارٍ التحقق...</span>
+                </div>
+                <div><strong>آخر تحديث:</strong> <span id="systemRefresh">-</span></div>
+            </div>
+            <p id="systemNote" style="color: var(--muted); margin: 0;">ستعرض هذه الصفحة الحالة الحقيقية للخادم والخدمات الخارجية عندما تكون متاحة.</p>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="refreshServiceHealth();">تحديث الحالة</button>
+                <button class="btn btn-ghost" onclick="toggleInfo()">معلومات أكثر</button>
+            </div>
         </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script>
+        function setStatus(elementId, state, note = '') {
+            const span = document.getElementById(elementId);
+            if (!span) return;
+            span.innerText = state;
+            span.className = 'status-pill ' + (state === 'متصل' ? 'status-good' : state === 'غير متصل' ? 'status-bad' : 'status-warning');
+            if (note) span.dataset.note = note;
+        }
+
+        async function fetchJson(path, options = {}) {
+            const headers = options.headers || {};
+            const token = localStorage.getItem('token');
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            try {
+                const res = await fetch(path, { ...options, headers, signal: controller.signal });
+                clearTimeout(timeout);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return await res.json();
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        async function refreshServiceHealth() {
+            setStatus('binanceStatus', 'جارٍ التحقق');
+            setStatus('tradingviewStatus', 'جارٍ التحقق');
+            setStatus('telegramStatus', 'جارٍ التحقق');
+            setStatus('supabaseStatus', 'جارٍ التحقق');
+            setStatus('redisStatus', 'جارٍ التحقق');
+            document.getElementById('systemOverall').innerText = 'جارٍ التحقق...';
+            document.getElementById('systemRefresh').innerText = '-';
+
+            let pulseData = null;
+            try {
+                pulseData = await fetchJson('/api/system/pulse');
+                setStatus('supabaseStatus', 'متصل');
+                setStatus('redisStatus', pulseData && pulseData.status === 'online' ? 'متصل' : 'غير متصل');
+                document.getElementById('systemOverall').innerText = pulseData.system_healthy ? 'صحي' : 'غير مستقر';
+                document.getElementById('systemRefresh').innerText = pulseData.refresh_time || '-';
+            } catch (err) {
+                setStatus('supabaseStatus', 'غير متصل');
+                setStatus('redisStatus', 'غير متصل');
+                document.getElementById('systemOverall').innerText = 'غير متصل بالخادم';
+            }
+
+            if (pulseData && pulseData.health_details && pulseData.health_details.external_api_state) {
+                const apiState = pulseData.health_details.external_api_state;
+                setStatus('binanceStatus', apiState.binance === 'online' || apiState.binance === 'ok' ? 'متصل' : 'غير متصل');
+                setStatus('tradingviewStatus', apiState.tradingview === 'online' || apiState.tradingview === 'ok' ? 'متصل' : 'غير متصل');
+            } else {
+                setStatus('binanceStatus', 'غير متاح');
+                setStatus('tradingviewStatus', 'غير متاح');
+            }
+
+            const telegramNote = localStorage.getItem('telegram_chat_id') ? 'مربوط' : 'غير مهيأ';
+            const tokenAvailable = !!localStorage.getItem('token');
+            setStatus('telegramStatus', tokenAvailable ? telegramNote : 'تسجيل دخول مطلوب');
+        }
+
+        function toggleInfo() {
+            alert('تعتمد حالة الخدمات على اتصال الخادم المحلي وحالة النقاط النهائية المهيأة. إذا لم تتوفر بيانات كاملة، فتأكد من تسجيل الدخول ومراجعة تكوين API.');
+        }
+
+        document.addEventListener('DOMContentLoaded', refreshServiceHealth);
+    </script>
+</body>
+</html>
     </div>
 </body>
 </html>

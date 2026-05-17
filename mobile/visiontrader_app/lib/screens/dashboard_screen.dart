@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import '../widgets/common_widgets.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -11,12 +12,22 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingStats = true;
   bool _isLoadingAlerts = true;
+  bool _isAdmin = false;
   List<Map<String, dynamic>> _alerts = [];
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _loadAdminStatus();
+  }
+
+  Future<void> _loadAdminStatus() async {
+    final auth = AuthService();
+    final isAdmin = await auth.isAdmin();
+    if (mounted) {
+      setState(() => _isAdmin = isAdmin);
+    }
   }
 
   Future<void> _loadData() async {
@@ -41,13 +52,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const DrawerHeader(
             child: Text(
               'VisionTrader',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold),
             ),
           ),
-          _sidebarItem(context, Icons.analytics, 'تحليل جديد', '/upload'),
+          _sidebarItem(context, Icons.home, 'الرئيسية', '/dashboard'),
+          _sidebarItem(context, Icons.upload_file, 'تحليل جديد', '/upload'),
           _sidebarItem(context, Icons.history, 'سجل', '/history'),
-          _sidebarItem(context, Icons.calendar_today, 'تقويم', '/calendar'),
+          _sidebarItem(context, Icons.question_answer, 'اسأل AI', '/ask_ai'),
+          _sidebarItem(
+              context, Icons.bolt, 'مصنع الاستراتيجيات', '/strategy_factory'),
+          _sidebarItem(context, Icons.sports_martial_arts,
+              'معركة الاستراتيجيات', '/strategy_battle'),
+          _sidebarItem(context, Icons.map, 'خريطة الحرارة', '/heatmap'),
+          _sidebarItem(context, Icons.school, 'الأكاديمية', '/academy'),
+          _sidebarItem(context, Icons.health_and_safety, 'صحة الخدمات',
+              '/service_health'),
           _sidebarItem(context, Icons.settings, 'إعدادات', '/settings'),
+          if (_isAdmin)
+            _sidebarItem(
+                context, Icons.admin_panel_settings, 'لوحة الأدمن', '/admin'),
           _sidebarItem(context, Icons.science, 'Backtest', '/backtest'),
         ],
       ),
@@ -85,7 +111,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: Colors.amber.withOpacity(0.2),
               child: const Text(
                 'أخبار',
-                style: TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.amber,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
               ),
             ),
             Expanded(
@@ -95,7 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     _tickerItem(Icons.trending_up, 'BTCUSDT: شراء بثقة 95%'),
                     _tickerItem(Icons.calendar_today, 'أحداث اقتصادية قادمة'),
-                    _tickerItem(Icons.water, 'آخر صفقة حوت: 500k$'),
+                    _tickerItem(Icons.water, 'آخر صفقة حوت: 500k\$'),
                     _tickerItem(Icons.trending_down, 'EURUSD: بيع بثقة 78%'),
                   ],
                 ),
@@ -127,7 +156,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           const Text(
             'إحصائيات سريعة',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
@@ -170,7 +200,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           const Text(
             'التنبيهات',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           if (_isLoadingAlerts)
@@ -191,7 +222,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border(
                         left: BorderSide(
-                          color: alert['recommendation'] == 'شراء' ? Colors.green : Colors.red,
+                          color: alert['recommendation'] == 'شراء'
+                              ? Colors.green
+                              : Colors.red,
                           width: 3,
                         ),
                       ),
@@ -199,8 +232,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          alert['recommendation'] == 'شراء' ? Icons.arrow_upward : Icons.arrow_downward,
-                          color: alert['recommendation'] == 'شراء' ? Colors.green : Colors.red,
+                          alert['recommendation'] == 'شراء'
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
+                          color: alert['recommendation'] == 'شراء'
+                              ? Colors.green
+                              : Colors.red,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -209,11 +246,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               Text(
                                 '${alert['market']}: ${alert['recommendation']} قوي',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 'ثقة ${alert['confidence']}%',
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 12),
                               ),
                             ],
                           ),

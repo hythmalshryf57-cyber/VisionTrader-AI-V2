@@ -11,6 +11,7 @@ from .deepseek_r1_service import DeepSeekR1Service
 from .calendar_service import CalendarService
 from .data_adapter import DataAdapter
 from .ai_core import ai_core_service
+import models
 
 logger = logging.getLogger(__name__)
 
@@ -247,12 +248,19 @@ class EnvironmentFilter:
 
     def __init__(self):
         self.calendar_service = CalendarService()
+        # internal brain can provide historical/session stats such as win_rate
+        self.internal_brain = InternalBrain()
 
     def check_environment(self, market: str) -> Dict:
-        """يفحص البيئة السوقية"""
-        issues = []
+        """يفحص البيئة السوقية باستخدام توقيت GMT (UTC) ويُرجع أحد النتائج:
+        'proceed', 'proceed_warn', 'suspend'
+        - يستخدم أحداث التقويم بتوقيت UTC
+        - يتحقق من يوم الأسبوع (اثنين صباحًا، جمعة مساءً => تحذير)
+        - يتحقق من معدل الفوز للزوج في الجلسة الحالية ويُصدر تحذير إذا كان < 40%
+        """
+        issues: List[str] = []
 
-        # فحص التقويم الاقتصادي
+        # فحص التقويم الاقتصادي (نفترض أن التواريخ تُرجع/تُقارن بالـ UTC)
         upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
         high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
 
@@ -265,22 +273,82 @@ class EnvironmentFilter:
             elif time_until < timedelta(hours=1):
                 issues.append("High impact news within 1 hour")
 
-        # فحص وقت التداول
-        current_hour = datetime.now().hour
-        if current_hour < 8 or current_hour > 20:  # خارج ساعات التداول الرئيسية
-            issues.append("Outside major trading hours")
+        # توقيت الجلسة اعتمادًا على GMT/UTC
+        utc_now = datetime.utcnow()
+        utc_hour = utc_now.hour
+        weekday = utc_now.weekday()  # Monday=0 .. Sunday=6
 
-        # فحص التقلبات (placeholder - يمكن إضافة فحص حقيقي)
-        # if high_volatility_condition:
-        #     issues.append("High volatility detected")
+        # جلسات تقريبية حسب UTC ساعات
+        if 0 <= utc_hour < 8:
+            session = 'asia'
+        elif 7 <= utc_hour < 16:
+            session = 'europe'
+        else:
+            session = 'america'
+
+        # أيام الأسبوع خاصة: الاثنين صباحًا و الجمعة مساءً => تحذير
+        if weekday == 0 and utc_hour < 12:
+            issues.append('Monday morning session - caution')
+        if weekday == 4 and utc_hour >= 18:
+            issues.append('Friday evening session - caution')
+
+        # فحص أداء الزوج في الجلسة الحالية (إذا كانت الخاصية متاحة في internal_brain)
+        try:
+            win_rate = None
+            if hasattr(self.internal_brain, 'get_pair_win_rate'):
+                win_rate = self.internal_brain.get_pair_win_rate(market.upper(), session)
+            elif hasattr(self.internal_brain, 'pair_win_rate'):
+                win_rate = getattr(self.internal_brain, 'pair_win_rate')(market.upper(), session)
+
+            if isinstance(win_rate, (int, float)):
+                if win_rate < 40:
+                    issues.append(f'Low session win_rate {win_rate}% for {market} in {session}')
+        except Exception:
+            # إذا فشل الحصول على الإحصائيات، نتابع بدونها
+            pass
+
+        # الخروج بثلاث حالات
+        if any('High impact' in i for i in issues):
+            recommendation = 'suspend'
+        elif issues:
+            recommendation = 'proceed_warn'
+        else:
+            recommendation = 'proceed'
 
         return {
-            "stable": len(issues) == 0,
-            "issues": issues,
-            "recommendation": "suspend" if issues else "proceed"
+            'recommendation': recommendation,
+            'issues': issues,
+            'utc_now': utc_now.isoformat(),
+            'session': session
         }
 
 class StrategyClusterBase:
+    def _is_strategy_applicable(self, strategy, market: str) -> bool:
+        """فلتر بسيط: استراتيجيات المخصصة للعمل مع crypto/forex لا تُستخدم على أنماط سوقية مختلفة"""
+        try:
+            m = market.upper()
+            is_crypto_market = any(suf in m for suf in ('USDT', 'BTC', 'ETH', 'BNB', 'SOL', 'ADA'))
+            is_forex_market = any(sym in m for sym in ('USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF')) and not is_crypto_market
+
+            # If strategy declares attributes, prefer them
+            if hasattr(strategy, 'crypto_only') and getattr(strategy, 'crypto_only'):
+                return is_crypto_market
+            if hasattr(strategy, 'forex_only') and getattr(strategy, 'forex_only'):
+                return is_forex_market
+
+            # Check module or class name hints
+            mod = getattr(strategy.__class__, '__module__', '') or ''
+            name = strategy.__class__.__name__.lower()
+            modname = mod.lower()
+            if 'crypto' in name or 'crypto' in modname or 'chain' in modname:
+                return is_crypto_market
+            if 'forex' in name or 'fx' in modname or 'currency' in modname:
+                return is_forex_market
+
+            # otherwise assume applicable
+            return True
+        except Exception:
+            return True
     def _load_strategies(self, strategy_names: List[str]) -> List:
         loaded = []
         for name in strategy_names:
@@ -398,6 +466,9 @@ class PowerCluster(StrategyClusterBase):
         details = []
 
         for strategy in self.strategies:
+            # تطبيق فلتر نوع السوق (crypto vs forex)
+            if not self._is_strategy_applicable(strategy, market):
+                continue
             entry = self._analyze_strategy(strategy, chart_data, strategy_weights)
             vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
             votes[vote] += entry['weight']
@@ -411,15 +482,21 @@ class PowerCluster(StrategyClusterBase):
         sell_score = votes["بيع"] / total_weight
         neutral_score = votes["محايد"] / total_weight
 
-        if buy_score > sell_score and buy_score > neutral_score:
-            direction = "شراء"
-            confidence = int(buy_score * 100)
-        elif sell_score > buy_score and sell_score > neutral_score:
-            direction = "بيع"
-            confidence = int(sell_score * 100)
-        else:
+        # عتبة إعلان اتجاه العنقود: 60%
+        max_score = max(buy_score, sell_score, neutral_score)
+        if max_score < 0.6:
             direction = "محايد"
-            confidence = int(neutral_score * 100)
+            confidence = int(max_score * 100)
+        else:
+            if buy_score == max_score:
+                direction = "شراء"
+                confidence = int(buy_score * 100)
+            elif sell_score == max_score:
+                direction = "بيع"
+                confidence = int(sell_score * 100)
+            else:
+                direction = "محايد"
+                confidence = int(neutral_score * 100)
 
         return {
             "direction": direction,
@@ -453,6 +530,8 @@ class GeometricCluster(StrategyClusterBase):
         stops: List[Any] = []
 
         for strategy in self.strategies:
+            if not self._is_strategy_applicable(strategy, market):
+                continue
             entry = self._analyze_strategy(strategy, chart_data, strategy_weights)
             vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
             votes[vote] += entry['weight']
@@ -473,15 +552,20 @@ class GeometricCluster(StrategyClusterBase):
         sell_score = votes["بيع"] / total_weight
         neutral_score = votes["محايد"] / total_weight
 
-        if buy_score > sell_score and buy_score > neutral_score:
-            direction = "شراء"
-            confidence = int(buy_score * 100)
-        elif sell_score > buy_score and sell_score > neutral_score:
-            direction = "بيع"
-            confidence = int(sell_score * 100)
-        else:
+        max_score = max(buy_score, sell_score, neutral_score)
+        if max_score < 0.6:
             direction = "محايد"
-            confidence = int(neutral_score * 100)
+            confidence = int(max_score * 100)
+        else:
+            if buy_score == max_score:
+                direction = "شراء"
+                confidence = int(buy_score * 100)
+            elif sell_score == max_score:
+                direction = "بيع"
+                confidence = int(sell_score * 100)
+            else:
+                direction = "محايد"
+                confidence = int(neutral_score * 100)
 
         return {
             "direction": direction,
@@ -516,6 +600,8 @@ class MomentumCluster(StrategyClusterBase):
         timing_signals: List[Any] = []
 
         for strategy in self.strategies:
+            if not self._is_strategy_applicable(strategy, market):
+                continue
             entry = self._analyze_strategy(strategy, chart_data, strategy_weights)
             vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
             votes[vote] += entry['weight']
@@ -532,15 +618,20 @@ class MomentumCluster(StrategyClusterBase):
         sell_score = votes["بيع"] / total_weight
         neutral_score = votes["محايد"] / total_weight
 
-        if buy_score > sell_score and buy_score > neutral_score:
-            direction = "شراء"
-            confidence = int(buy_score * 100)
-        elif sell_score > buy_score and sell_score > neutral_score:
-            direction = "بيع"
-            confidence = int(sell_score * 100)
-        else:
+        max_score = max(buy_score, sell_score, neutral_score)
+        if max_score < 0.6:
             direction = "محايد"
-            confidence = int(neutral_score * 100)
+            confidence = int(max_score * 100)
+        else:
+            if buy_score == max_score:
+                direction = "شراء"
+                confidence = int(buy_score * 100)
+            elif sell_score == max_score:
+                direction = "بيع"
+                confidence = int(sell_score * 100)
+            else:
+                direction = "محايد"
+                confidence = int(neutral_score * 100)
 
         return {
             "direction": direction,
@@ -605,6 +696,19 @@ class InternalBrainJudge:
         unique_votes = set(valid_votes)
         average_confidence = sum(confidences) / max(len(confidences), 1)
 
+        # Give priority to power cluster when it is clearly stronger
+        power_dir = cluster_results['power']['direction']
+        power_conf = cluster_results['power']['confidence']
+        other_conf = max(cluster_results['geometric']['confidence'], cluster_results['momentum']['confidence'])
+        if power_dir in ('شراء', 'بيع') and power_conf > other_conf + 10:
+            return {
+                'approved': True,
+                'lean': True,
+                'preferred_cluster': 'power',
+                'confidence_boost': min(12, int((power_conf - other_conf) * 0.2)),
+                'notes': f'Internal judge leans toward power cluster ({power_dir}) with priority.'
+            }
+
         if len(unique_votes) == 1 and valid_votes:
             return {
                 'approved': True,
@@ -650,9 +754,10 @@ class DecisionMatrix:
         momentum_weight = 0.3
 
         # حساب النتيجة المرجحة
-        power_score = self._direction_to_score(cluster_results['power']['direction']) * cluster_results['power']['confidence'] / 100.0
-        geometric_score = self._direction_to_score(cluster_results['geometric']['direction']) * cluster_results['geometric']['confidence'] / 100.0
-        momentum_score = self._direction_to_score(cluster_results['momentum']['direction']) * cluster_results['momentum']['confidence'] / 100.0
+        # normalize scores to -1..1 range before weighting
+        power_score = (self._direction_to_score(cluster_results['power']['direction']) * cluster_results['power']['confidence'] / 100.0) / 100.0
+        geometric_score = (self._direction_to_score(cluster_results['geometric']['direction']) * cluster_results['geometric']['confidence'] / 100.0) / 100.0
+        momentum_score = (self._direction_to_score(cluster_results['momentum']['direction']) * cluster_results['momentum']['confidence'] / 100.0) / 100.0
 
         final_score = (power_score * power_weight) + (geometric_score * geometric_weight) + (momentum_score * momentum_weight)
 
@@ -660,25 +765,25 @@ class DecisionMatrix:
         confidence_boost = judge_result.get("confidence_boost", 0)
         final_score += confidence_boost / 100.0
 
-        # تحديد التوصية النهائية
-        if final_score > 75:
+        # تحديد التوصية النهائية باستخدام thresholds الجديدة 0.35/0.15
+        if final_score > 0.35:
             recommendation = "شراء"
             strength = "قوي"
-        elif final_score > 50:
+        elif final_score > 0.15:
             recommendation = "شراء"
             strength = "حذر"
-        elif final_score > -50:
+        elif final_score > -0.15:
             recommendation = "انتظار"
             strength = "محايد"
-        elif final_score > -75:
+        elif final_score > -0.35:
             recommendation = "بيع"
             strength = "حذر"
         else:
             recommendation = "بيع"
             strength = "قوي"
 
-        # حساب الثقة النهائية
-        confidence = min(100, abs(final_score))
+        # حساب الثقة النهائية مع حد أدنى 40% وحد أقصى 95%
+        confidence = int(min(95, max(40, abs(final_score) * 100)))
 
         return {
             "recommendation": recommendation,
@@ -712,6 +817,7 @@ class VotingEngine:
         self.brain_judge = InternalBrainJudge()
         self.decision_matrix = DecisionMatrix()
         self.internal_brain = InternalBrain()
+        self.calendar_service = CalendarService()
         self.data_adapter = DataAdapter()
 
     def analyze(self, visual_context: List[Dict], market: str = "XAUUSD", user_id: Optional[int] = None) -> Dict:
@@ -730,15 +836,16 @@ class VotingEngine:
                 db.close()
 
         env_check = self.environment_filter.check_environment(market)
-        if not env_check["stable"]:
+        # handle suspend immediately; proceed_warn allows continuing but with issues flagged
+        if env_check.get('recommendation') == 'suspend':
             return {
                 "recommendation": "تعليق",
                 "confidence": 0,
                 "reason": "البيئة السوقية غير مناسبة",
-                "issues": env_check["issues"],
+                "issues": env_check.get('issues', []),
                 "environment_filter": env_check,
                 "market": market,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.utcnow().isoformat()
             }
 
         unified_data = self.data_adapter.normalize_input(visual_context, market)
@@ -771,28 +878,43 @@ class VotingEngine:
 
         # فحص الشروط للتوصية عالية الدقة
         confidence = ai_analysis["confidence"]
-        if confidence < 80:
+        if confidence < 60:
             return {
                 "recommendation": "لا توجد فرصة واضحة حالياً",
                 "confidence": confidence,
-                "reason": "الثقة أقل من 80%",
+                "reason": "الثقة أقل من 60%",
                 "market": market,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.utcnow().isoformat()
             }
 
-        # عد الاستراتيجيات المتفقة
-        agreeing_strategies = 0
+        # عد الاستراتيجيات المتفقة كنسبة مئوية بدلاً من حد ثابت
+        agreeing_count = 0
+        total_count = 0
         for cluster in cluster_results.values():
-            if isinstance(cluster, dict) and cluster.get("direction") == ai_analysis["recommendation"]:
-                agreeing_strategies += len(cluster.get("details", []))
+            if isinstance(cluster, dict):
+                for d in cluster.get('details', []):
+                    total_count += 1
+                    if d.get('vote') == ai_analysis.get('recommendation'):
+                        agreeing_count += 1
 
-        if agreeing_strategies < 3:
+        if total_count == 0:
             return {
                 "recommendation": "لا توجد فرصة واضحة حالياً",
                 "confidence": confidence,
-                "reason": f"فقط {agreeing_strategies} استراتيجيات توافق",
+                "reason": "لا توجد استراتيجيات صالحة للتقييم",
                 "market": market,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+        agreeing_ratio = agreeing_count / total_count
+        # نطلب على الأقل 60% من الاستراتيجيات أن توافق
+        if agreeing_ratio < 0.6:
+            return {
+                "recommendation": "لا توجد فرصة واضحة حالياً",
+                "confidence": confidence,
+                "reason": f"نسبة الاتفاق منخفضة: {agreeing_ratio:.2f}",
+                "market": market,
+                "timestamp": datetime.utcnow().isoformat()
             }
 
         # فحص الأخبار عالية التأثير

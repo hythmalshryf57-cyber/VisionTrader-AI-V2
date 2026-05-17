@@ -79,10 +79,10 @@ class FeatureVector:
 @dataclass
 class PatternMemory:
     """ذاكرة الأنماط"""
-    patterns: List[Dict]
-    outcomes: List[float]
-    weights: List[float]
-    age: List[int]
+    patterns: List[Dict] = field(default_factory=list)
+    outcomes: List[float] = field(default_factory=list)
+    weights: List[float] = field(default_factory=list)
+    age: List[int] = field(default_factory=list)
     max_size: int = 500
     
     def add(self, pattern: Dict, outcome: float, weight: float):

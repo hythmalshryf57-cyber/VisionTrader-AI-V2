@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 class Token(BaseModel):
@@ -25,7 +26,10 @@ class UserCreate(BaseModel):
     invite_code: Optional[str] = None
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except UnknownHashError:
+        return False
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -128,7 +132,20 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
-    
+
+    # If the stored hash uses an older/other scheme, re-hash with the preferred scheme
+    try:
+        current_scheme = pwd_context.identify(user.hashed_password)
+    except Exception:
+        current_scheme = None
+    if current_scheme != "pbkdf2_sha256":
+        try:
+            user.hashed_password = get_password_hash(payload.password)
+            db.add(user)
+            db.commit()
+        except Exception:
+            db.rollback()
+
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 

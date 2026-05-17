@@ -14,6 +14,18 @@ except Exception:
     chromadb = None
     Settings = None
 
+# optional integration with an external MemoryModule providing `recall` API
+try:
+    try:
+        from memory_module import MemoryModule
+    except Exception:
+        try:
+            from .memory_module import MemoryModule
+        except Exception:
+            MemoryModule = None
+except Exception:
+    MemoryModule = None
+
 VECTOR_DIM = 128
 DEFAULT_COLLECTION_NAME = "visiontrader_memory"
 
@@ -55,6 +67,14 @@ class VectorMemoryService:
         self.collection = None
         self.memory_cache: List[Dict[str, Any]] = []
         self._init_storage()
+        # link to external MemoryModule.recall if available
+        self.memory_module_recall = None
+        try:
+            if MemoryModule is not None and hasattr(MemoryModule, 'recall'):
+                # recall may be a static function or bound method
+                self.memory_module_recall = getattr(MemoryModule, 'recall')
+        except Exception:
+            self.memory_module_recall = None
 
     def _init_storage(self):
         if chromadb is None or Settings is None:
@@ -115,6 +135,25 @@ class VectorMemoryService:
     def find_similar(self, visual_description: str, top_k: int = 3, db: Optional[SessionLocal] = None) -> List[Dict[str, Any]]:
         if not visual_description:
             return []
+        # first try high-quality recall from MemoryModule if available
+        if self.memory_module_recall:
+            try:
+                recall_results = self.memory_module_recall(visual_description, top_k=top_k)
+                if recall_results:
+                    matches = []
+                    for item in recall_results[:top_k]:
+                        matches.append({
+                            "analysis_id": str(item.get("analysis_id") or item.get("id")),
+                            "market": item.get("market"),
+                            "result": item.get("result"),
+                            "created_at": item.get("created_at"),
+                            "score": float(item.get("score") or 0.0),
+                            "description": item.get("description") or item.get("visual_description")
+                        })
+                    return matches
+            except Exception:
+                # fall back to built-in stores on any failure
+                traceback.print_exc()
 
         if self.use_chroma and self.collection is not None:
             try:

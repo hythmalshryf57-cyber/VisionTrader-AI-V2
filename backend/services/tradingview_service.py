@@ -26,17 +26,15 @@ class TradingViewService:
                 },
                 "source": "fallback"
             }
-
         payload = {
             "image_base64": base64.b64encode(image_bytes).decode('utf-8'),
-            "instructions": "حلل لقطة شاشة TradingView وقدم توصية سوقية، مستويات دعم ومقاومة، واتجاه عام." 
+            "instructions": "حلل لقطة شاشة TradingView وقدم توصية سوقية، مستويات دعم ومقاومة، واتجاه عام."
         }
-        headers = {
-            "Authorization": f"Bearer {settings.GEMINI_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # Use API key as query parameter to match authentication method requested
+        url = f"{self.GEMINI_ENDPOINT}?key={settings.GEMINI_API_KEY}"
+        headers = {"Content-Type": "application/json"}
         try:
-            response = requests.post(self.GEMINI_ENDPOINT, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
             response.raise_for_status()
             return {"analysis": response.json(), "source": "gemini"}
         except Exception as e:
@@ -44,7 +42,7 @@ class TradingViewService:
                 "analysis": {
                     "recommendation": "محايد",
                     "confidence": 40,
-                    "note": f"فشل الاتصال بـ Gemini: {e}. تم استخدام تحليل احتياطي." 
+                    "note": f"فشل الاتصال بـ Gemini: {e}. تم استخدام تحليل احتياطي."
                 },
                 "source": "fallback"
             }
@@ -66,12 +64,10 @@ class TradingViewService:
             "image_base64": base64.b64encode(image_bytes).decode('utf-8'),
             "instructions": "حلل هذه الصورة للشارت واستخرج: الزوج التجاري (مثل XAU/USD, EUR/USD), الفريم الزمني (مثل 1H, 4H, Daily). أعد الإجابة بتنسيق JSON فقط."
         }
-        headers = {
-            "Authorization": f"Bearer {settings.GEMINI_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        url = f"{self.GEMINI_ENDPOINT}?key={settings.GEMINI_API_KEY}"
+        headers = {"Content-Type": "application/json"}
         try:
-            response = requests.post(self.GEMINI_ENDPOINT, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
             response.raise_for_status()
             result = response.json()
             # Assume result has pair, timeframe, confidence

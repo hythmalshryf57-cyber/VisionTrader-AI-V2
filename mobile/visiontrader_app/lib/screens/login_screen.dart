@@ -30,7 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _inviteController.text,
       );
       if (res['token'] != null) {
-        await auth.login(res['token']);
+        final bool isAdminFlag =
+            res['is_admin'] == true || res['admin'] == true;
+        await auth.login(res['token'], isAdmin: isAdminFlag);
         Navigator.pushReplacementNamed(context, '/dashboard');
       } else {
         setState(() => _error = res['detail'] ?? 'Login failed');

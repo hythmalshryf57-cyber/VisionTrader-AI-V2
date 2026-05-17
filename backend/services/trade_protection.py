@@ -23,7 +23,13 @@ class TradeProtectionService:
         self.performance_tracker = PerformanceTracker()
 
     def _get_user_preferences(self, db, user_id: int) -> Optional[models.UserPreferences]:
-        return db.query(models.UserPreferences).filter(models.UserPreferences.user_id == user_id).first()
+        prefs = db.query(models.UserPreferences).filter(models.UserPreferences.user_id == user_id).first()
+        if prefs is None:
+            prefs = models.UserPreferences(user_id=user_id)
+            db.add(prefs)
+            db.commit()
+            db.refresh(prefs)
+        return prefs
 
     def _end_of_day(self) -> datetime:
         now = datetime.utcnow()

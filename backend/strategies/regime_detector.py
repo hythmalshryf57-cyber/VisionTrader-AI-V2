@@ -784,6 +784,48 @@ class StrategyOrchestrator:
         return 1.0
 
 
+class TransitionProbabilityAnalyzer:
+    """محلل احتمالات الانتقال بين أنظمة السوق."""
+
+    def analyze(self, regime_history: List[MarketRegime], transitions: List[RegimeTransition]) -> Dict:
+        if not transitions:
+            next_regime = regime_history[-1].regime_type if regime_history else None
+            return {
+                "most_likely_next": next_regime,
+                "probabilities": {str(next_regime): 1.0} if next_regime else {},
+            }
+
+        latest_transition = transitions[-1]
+        probabilities = {}
+        for transition in transitions:
+            key = str(transition.to_regime)
+            probabilities[key] = probabilities.get(key, 0.0) + 1.0
+
+        total = sum(probabilities.values())
+        probabilities = {k: v / total for k, v in probabilities.items()}
+
+        return {
+            "most_likely_next": latest_transition.to_regime,
+            "probabilities": probabilities,
+        }
+
+
+class StrategyAdaptationEngine:
+    """محرك تكييف بسيط لاستراتيجية كشف النظام."""
+
+    def analyze(self, regime: MarketRegime, transition_data: Dict) -> Dict:
+        warnings = []
+        if transition_data.get("probabilities"):
+            probs = transition_data["probabilities"]
+            if any(v < 0.1 for v in probs.values()):
+                warnings.append("احتمال منخفض لتحول واضح - احتياط.")
+
+        return {
+            "adaptation_recommendations": [],
+            "warnings": warnings,
+        }
+
+
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║           الدرجة النهائية: استراتيجية كشف النظام الموحدة (قائد الأوركسترا) ║
 # ╚══════════════════════════════════════════════════════════════════════════╝

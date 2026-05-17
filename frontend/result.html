@@ -176,9 +176,10 @@
             <button class="btn" id="tradeLossBtn" style="flex: 1; background: #e53e3e; color: white; border-radius: 10px; padding: 12px; font-weight: bold;">الصفقة فشلت</button>
         </div>
 
-        <div style="margin-top: 20px; display: flex; gap: 15px;">
-            <button class="btn btn-primary" style="flex: 1;"><i class="fas fa-share-alt"></i> مشاركة التحليل</button>
-            <button class="btn btn-ghost" style="flex: 1;" onclick="window.location.href='dashboard.html'"><i class="fas fa-home"></i> العودة للرئيسية</button>
+        <div style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+            <button class="btn btn-outline" style="flex: 1; min-width: 160px;" onclick="downloadResultPdf()"><i class="fas fa-file-pdf"></i> حفظ PDF</button>
+            <button class="btn btn-primary" style="flex: 1; min-width: 160px;" onclick="shareAnalysis()"><i class="fas fa-share-alt"></i> مشاركة التحليل</button>
+            <button class="btn btn-ghost" style="flex: 1; min-width: 160px;" onclick="window.location.href='dashboard.html'"><i class="fas fa-home"></i> العودة للرئيسية</button>
         </div>
     </div>
 
@@ -406,6 +407,24 @@
                 alert('تم تسجيل نتيجة الصفقة بنجاح.');
             } catch (err) {
                 alert('فشل تسجيل النتيجة: ' + err.message);
+            }
+        }
+
+        function downloadResultPdf() {
+            window.print();
+        }
+
+        function shareAnalysis() {
+            const summary = document.getElementById('analysisSummary')?.innerText || 'تحليل السوق من VisionTrader AI';
+            if (navigator.share) {
+                navigator.share({ title: 'VisionTrader AI Analysis', text: summary, url: window.location.href })
+                    .catch(() => alert('فشل مشاركة التحليل.'));
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(summary)
+                    .then(() => alert('تم نسخ ملخص التحليل إلى الحافظة.'))
+                    .catch(() => alert('فشل نسخ التحليل.')); 
+            } else {
+                alert('هذه الميزة غير مدعومة في متصفحك.');
             }
         }
     </script>

@@ -19,9 +19,21 @@ logger = logging.getLogger(__name__)
 class InternalBrain:
     def __init__(self):
         self.default_weight = 1.0
-        self.min_weight = 0.5
-        self.max_weight = 2.0
+        # updated bounds per request
+        self.min_weight = 0.3
+        self.max_weight = 3.0
         self.performance_tracker = PerformanceTracker()
+        # studied default weights; crypto default is lower for Forex context
+        self.default_weight_map = {
+            'ICT': 1.5,
+            'VSA': 1.3,
+            'PriceAction': 1.3,
+            'RSI': 1.0,
+            'MACD': 1.0,
+            'RSI/MACD': 1.0,
+            'Elliott': 0.8,
+            'crypto': 0.5,
+        }
 
     def _get_db_session(self) -> Session:
         return SessionLocal()
@@ -49,6 +61,10 @@ class InternalBrain:
                 penalty = pattern_penalties.get(record.strategy_name, 1.0)
                 scaled_score = score * session_multiplier * penalty
                 weights[record.strategy_name] = round(max(self.min_weight, min(self.max_weight, scaled_score)), 3)
+            # ensure studied defaults are present when no historical record exists
+            for name, val in self.default_weight_map.items():
+                if name not in weights:
+                    weights[name] = round(max(self.min_weight, min(self.max_weight, float(val))), 3)
         except Exception as e:
             logger.exception(f"Unable to load strategy weights: {e}")
         finally:
@@ -103,6 +119,12 @@ class InternalBrain:
             )
             db.add(experience)
             db.commit()
+            # call weight updater immediately after logging the trade experience
+            try:
+                # don't raise if update_weights fails; it's best-effort
+                self.update_weights(user_id=user_id)
+            except Exception:
+                logger.exception("update_weights failed after recording trade experience")
         except Exception as e:
             logger.exception(f"Failed to record trade experience: {e}")
             db.rollback()
@@ -111,7 +133,8 @@ class InternalBrain:
 
     def _compute_weight(self, record: StrategyPerformance) -> float:
         if record.wins + record.losses == 0:
-            return self.default_weight
+            # if no history, return a studied default when available
+            return self.default_weight_map.get(record.strategy_name, self.default_weight)
 
         success_ratio = record.wins / max(record.wins + record.losses, 1)
         profit_factor = 1.0 + min(0.3, max(-0.3, record.total_profit / max(abs(record.total_profit), 1.0) * 0.15))
@@ -194,7 +217,66 @@ class InternalBrain:
             except Exception as e:
                 logger.exception(f"Failed to learn from history item {result}: {e}")
 
+    def update_weights(self, user_id: Optional[int] = None, lookback_days: int = 90, min_trades: int = 20) -> Dict[str, object]:
+        """Recompute strategy performance weights from recent TradeExperience entries.
+        This will only apply updates for strategies with at least `min_trades` observations.
+        Called automatically after each logged trade (best-effort).
+        """
+        db = self._get_db_session()
+        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        strategy_stats: Dict[str, Dict[str, float]] = {}
+        try:
+            query = db.query(models.TradeExperience).filter(models.TradeExperience.created_at >= cutoff)
+            if user_id is not None:
+                query = query.filter(models.TradeExperience.user_id == user_id)
+            experiences = query.all()
+
+            for exp in experiences:
+                strategy_names = [name.strip() for name in (exp.strategy_names or "").split(",") if name.strip()]
+                result = str(exp.result or "").strip().lower()
+                for name in strategy_names:
+                    stats = strategy_stats.setdefault(name, {"wins": 0, "losses": 0, "profit": 0.0, "trades": 0})
+                    stats["trades"] += 1
+                    if result.startswith("win") or result.startswith("رابح") or result.startswith("ربح"):
+                        stats["wins"] += 1
+                        stats["profit"] += float(exp.profit_loss or 0.0)
+                    elif result.startswith("loss") or result.startswith("خاسر") or result.startswith("خسارة"):
+                        stats["losses"] += 1
+                        stats["profit"] -= abs(float(exp.profit_loss or 0.0))
+
+            updated = []
+            for name, stats in strategy_stats.items():
+                if stats["trades"] < min_trades:
+                    continue
+                record = db.query(StrategyPerformance).filter_by(strategy_name=name).first()
+                if not record:
+                    record = StrategyPerformance(strategy_name=name)
+                    db.add(record)
+
+                record.wins = int(stats["wins"])
+                record.losses = int(stats["losses"])
+                record.total_profit = round(float(stats["profit"]), 2)
+                record.last_updated = datetime.utcnow()
+                updated.append({
+                    "strategy_name": name,
+                    "trades": stats["trades"],
+                    "win_rate": round((float(stats["wins"]) / max(stats["trades"], 1)) * 100.0, 2),
+                    "total_profit": round(record.total_profit, 2),
+                })
+
+            db.commit()
+            return {"updated_strategies": updated, "strategy_count": len(updated)}
+        except Exception as e:
+            logger.exception(f"Failed to update weights: {e}")
+            db.rollback()
+            return {"updated_strategies": [], "strategy_count": 0, "error": str(e)}
+        finally:
+            db.close()
+
     def auto_update_strategy_performance(self, lookback_days: int = 30, min_trades: int = 5) -> Dict[str, object]:
+        # Respect new default: don't learn before 20 trades unless explicitly overridden
+        if min_trades < 20:
+            min_trades = 20
         db = self._get_db_session()
         cutoff = datetime.utcnow() - timedelta(days=lookback_days)
         strategy_stats: Dict[str, Dict[str, float]] = {}

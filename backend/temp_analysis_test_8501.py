@@ -1,0 +1,43 @@
+import urllib.request
+import urllib.error
+import json
+
+origin = 'http://127.0.0.1:8501'
+try:
+    data = json.dumps({'email': 'test@test.com', 'password': 'Test1234!'}).encode('utf-8')
+    req = urllib.request.Request(origin + '/api/auth/login', data=data, headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        token = json.loads(r.read().decode())['access_token']
+        print('LOGIN_OK', token[:10])
+except urllib.error.HTTPError as e:
+    print('LOGIN_HTTP', e.code)
+    try:
+        print(e.read().decode())
+    except Exception:
+        pass
+    raise
+except Exception as e:
+    print('LOGIN_ERR', e)
+    raise
+
+try:
+    payload = {
+        'market': 'TEST_MARKET',
+        'images': [{'name': 'test.png', 'data': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='}],
+        'visual_description': 'test'
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(origin + '/api/analysis/process', data=data, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        print('ANALYSIS_STATUS', r.status)
+        print(r.read().decode())
+except urllib.error.HTTPError as e:
+    print('ANALYSIS_HTTP', e.code)
+    try:
+        print(e.read().decode())
+    except Exception:
+        pass
+    raise
+except Exception as e:
+    print('ANALYSIS_ERR', e)
+    raise

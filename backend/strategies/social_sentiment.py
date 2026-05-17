@@ -301,23 +301,11 @@ class SocialDataCollector:
     
     def _init_social_service(self):
         """
-        محاولة استيراد خدمة البيانات الاجتماعية الحقيقية
+        تجنب الحلقة الاستدعائية بين الاستراتيجية وخدمة المشاعر الاجتماعية.
+        يتم تعطيل الاستيراد الحقيقي هنا لتجنب استدعاء متكرر.
         """
-        try:
-            module = sys.modules.get("services.social_sentiment")
-            if module is None:
-                module = importlib.import_module("services.social_sentiment")
-            SocialSentimentService = getattr(module, "SocialSentimentService", None)
-            if SocialSentimentService is None:
-                raise ImportError("SocialSentimentService not found in services.social_sentiment")
-            self.social_service = SocialSentimentService()
-            logger.info("✅ تم ربط SocialSentimentService الحقيقي")
-        except ImportError:
-            logger.warning("⚠️ SocialSentimentService غير متاح. استخدام وضع المحاكاة.")
-            self.social_service = None
-        except Exception as e:
-            logger.error(f"❌ خطأ في تهيئة SocialSentimentService: {e}")
-            self.social_service = None
+        self.social_service = None
+        logger.warning("⚠️ تم تعطيل SocialSentimentService لتجنب حلقة الاستيراد. سيتم استخدام تحليل محاكاة افتراضي.")
     
     def fetch_social_data(self, symbol: str = "BTCUSD", force_refresh: bool = False) -> List[SocialPost]:
         """

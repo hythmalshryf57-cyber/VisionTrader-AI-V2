@@ -120,6 +120,28 @@ if engine.url.drivername.startswith("sqlite"):
                 columns = [col["name"] for col in inspector.get_columns("trade_experience")]
                 if "analysis_id" not in columns:
                     conn.execute(text("ALTER TABLE trade_experience ADD COLUMN analysis_id INTEGER"))
+            if "user_preferences" in tables:
+                columns = [col["name"] for col in inspector.get_columns("user_preferences")]
+                sqlite_migrations = {
+                    "trading_mode": "ALTER TABLE user_preferences ADD COLUMN trading_mode TEXT DEFAULT 'day'",
+                    "capital": "ALTER TABLE user_preferences ADD COLUMN capital FLOAT DEFAULT 10000.0",
+                    "account_balance": "ALTER TABLE user_preferences ADD COLUMN account_balance FLOAT DEFAULT 10000.0",
+                    "risk_percentage": "ALTER TABLE user_preferences ADD COLUMN risk_percentage FLOAT DEFAULT 1.0",
+                    "favorite_strategies": "ALTER TABLE user_preferences ADD COLUMN favorite_strategies TEXT DEFAULT '[]'",
+                    "watchlist": "ALTER TABLE user_preferences ADD COLUMN watchlist TEXT DEFAULT '[]'",
+                    "analysis_locked_until": "ALTER TABLE user_preferences ADD COLUMN analysis_locked_until DATETIME",
+                    "trading_locked_until": "ALTER TABLE user_preferences ADD COLUMN trading_locked_until DATETIME",
+                    "daily_profit_target_percent": "ALTER TABLE user_preferences ADD COLUMN daily_profit_target_percent FLOAT DEFAULT 30.0",
+                    "daily_loss_limit_percent": "ALTER TABLE user_preferences ADD COLUMN daily_loss_limit_percent FLOAT DEFAULT 10.0",
+                    "trading_locked_today": "ALTER TABLE user_preferences ADD COLUMN trading_locked_today BOOLEAN DEFAULT 0",
+                    "lock_reason": "ALTER TABLE user_preferences ADD COLUMN lock_reason TEXT",
+                    "notification_markets": "ALTER TABLE user_preferences ADD COLUMN notification_markets TEXT DEFAULT '[\"XAUUSD\", \"EURUSD\", \"GBPUSD\"]'",
+                    "enable_smart_notifications": "ALTER TABLE user_preferences ADD COLUMN enable_smart_notifications BOOLEAN DEFAULT 1",
+                    "custom_indicators": "ALTER TABLE user_preferences ADD COLUMN custom_indicators TEXT DEFAULT '[]'"
+                }
+                for column_name, alter_sql in sqlite_migrations.items():
+                    if column_name not in columns:
+                        conn.execute(text(alter_sql))
             conn.commit()
     except Exception as exc:
         print(f"SQLite schema migration skipped: {exc}")
@@ -408,6 +430,11 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
         "images": images,
         "image_path": saved_path
     }]
+
+    if payload.get("chart_data"):
+        visual_context.append({
+            "chart_data": payload.get("chart_data")
+        })
 
     memory_matches = vector_memory.find_similar(visual_description, top_k=3, db=db)
     memory_insight = vector_memory.get_insight(visual_description, db=db)
@@ -1288,12 +1315,13 @@ def get_system_personality():
 def submit_system_feedback(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
     """المستخدم يصحح للنظام"""
     trade_id = payload.get("trade_id")
+    analysis_id = payload.get("analysis_id")
     correction = payload.get("correction", "").strip()
 
-    if not trade_id or not correction:
-        raise HTTPException(status_code=400, detail="trade_id and correction are required")
+    if not correction or (not trade_id and not analysis_id):
+        raise HTTPException(status_code=400, detail="trade_id or analysis_id and correction are required")
 
-    result = ai_core_service.learn_from_feedback(trade_id, correction)
+    result = ai_core_service.learn_from_feedback(trade_id=trade_id, analysis_id=analysis_id, correction=correction)
     return result
 
 @app.post("/api/system/tune-weights")
@@ -1429,19 +1457,28 @@ def delete_price_alert(payload: dict, current_user: models.User = Depends(auth.g
 
 @app.post("/api/journal/quick-entry")
 def quick_journal_entry(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    def parse_float(value, default=None):
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
     protection = trade_protection_service.check_protection(current_user.id)
     if protection.get("trading_locked"):
         raise HTTPException(status_code=403, detail=protection.get("trading_message") or "التداول مغلق مؤقتاً.")
 
     try:
+        recommendation = payload.get("recommendation") or payload.get("direction") or ""
         result = market_protection_service.quick_trade_entry(
             user_id=current_user.id,
             market=payload.get("market"),
-            recommendation=payload.get("recommendation", ""),
-            entry_price=float(payload.get("entry_price")),
-            stop_loss=payload.get("stop_loss"),
-            take_profit=payload.get("take_profit"),
-            expected_price=payload.get("expected_price"),
+            recommendation=recommendation,
+            entry_price=parse_float(payload.get("entry_price") or payload.get("entry"), 0.0),
+            stop_loss=parse_float(payload.get("stop_loss"), None),
+            take_profit=parse_float(payload.get("take_profit"), None),
+            expected_price=parse_float(payload.get("expected_price"), None),
             notes=payload.get("notes")
         )
     except Exception as e:
@@ -1450,6 +1487,12 @@ def quick_journal_entry(payload: dict, current_user: models.User = Depends(auth.
 
 @app.get("/api/sentiment/scan")
 async def sentiment_scan(symbol: str, current_user: models.User = Depends(auth.get_current_user)):
+    if social_sentiment_service is None:
+        return {
+            "symbol": symbol,
+            "sentiment": "unavailable",
+            "detail": "Social sentiment service is disabled in this deployment."
+        }
     return social_sentiment_service.analyze(symbol)
 
 @app.get("/api/psychology/report")
@@ -1627,7 +1670,10 @@ def ai_trade_assistant(payload: dict, db: Session = Depends(get_db), current_use
     memory_insight = vector_memory.get_insight(question, db=db)
 
     # Get news sentiment
-    news_sentiment = social_sentiment_service.analyze("XAUUSD")  # Default to gold
+    if social_sentiment_service is not None:
+        news_sentiment = social_sentiment_service.analyze("XAUUSD")  # Default to gold
+    else:
+        news_sentiment = "لا تتوفر بيانات تحليل الأخبار حالياً"
 
     # Combine into prompt for AI
     prompt = f"""

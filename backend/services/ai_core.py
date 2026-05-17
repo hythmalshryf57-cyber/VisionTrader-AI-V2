@@ -16,14 +16,14 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import OneHotEncoder
 
 try:
-    from backend.database import SessionLocal
-    import backend.models as models
-    from backend.strategies.adaptive_ai import MarketRegimeDetector
+    from database import SessionLocal
+    import models
+    from strategies.adaptive_ai import MarketRegimeDetector
 except ImportError:
     try:
-        from database import SessionLocal
+        from backend.database import SessionLocal
         import models
-        from strategies.adaptive_ai import MarketRegimeDetector
+        from backend.strategies.adaptive_ai import MarketRegimeDetector
     except ImportError:
         from database import SessionLocal
         import models
@@ -440,7 +440,20 @@ class MemoryModule:
             scored = []
             for exp in experiences:
                 past_signature = self._parse_signature(exp.pattern_signature)
-                similarity = self._signature_similarity(current_signature, past_signature)
+                # compute contextual signature similarity
+                sig_sim = self._signature_similarity(current_signature, past_signature)
+                # compute visual similarity via vector memory when available
+                visual_sim = 0.0
+                try:
+                    desc = exp.chart_features if isinstance(exp.chart_features, str) else (exp.pattern_signature or '')
+                    vmatches = vector_memory.find_similar(desc or '', top_k=1, db=db)
+                    if vmatches:
+                        visual_sim = float(vmatches[0].get('score') or 0.0)
+                except Exception:
+                    visual_sim = 0.0
+
+                # mix visual and contextual similarity (50/50)
+                similarity = round((sig_sim + visual_sim) / 2.0, 3)
                 scored.append((similarity, exp))
 
             scored.sort(key=lambda item: item[0], reverse=True)
@@ -550,6 +563,10 @@ class MemoryModule:
         pass
 
     def _build_signature(self, percepts: Dict[str, Any]) -> Dict[str, Any]:
+        # include session, weekday, and presence of news in signature
+        session = percepts.get('session') or percepts.get('market_session') or 'unknown'
+        weekday = datetime.utcnow().weekday()
+        has_news = bool(percepts.get('news_sentiment'))
         return {
             "trend": percepts.get("trend"),
             "price_momentum": percepts.get("price_momentum"),
@@ -558,6 +575,9 @@ class MemoryModule:
             "resistance_count": percepts.get("resistance_count"),
             "pattern_count": len(percepts.get("patterns", [])),
             "cluster_difference": percepts.get("signal_balance", {}).get("difference", 0.0),
+            "session": session,
+            "weekday": weekday,
+            "has_news": has_news,
         }
 
     def _parse_signature(self, encoded: Optional[str]) -> Dict[str, Any]:
@@ -612,6 +632,14 @@ class ReasoningModule:
 
         if percepts.get("multi_tf_confluence"):
             evidence.append(f"مستوى توافق الأطر الزمنية: {percepts.get('multi_tf_confluence')}")
+
+        # include cluster bias / consensus as part of evidence
+        if cluster_bias:
+            try:
+                bias_summary = ", ".join([f"{k}:{v}" for k, v in cluster_bias.items()])
+                evidence.append(f"انحياز العناقيد الحالي: {bias_summary}")
+            except Exception:
+                evidence.append("انحياز العناقيد متاح ولكنه لم يتم تلخيصه")
 
         if memory.get("strength", 0) > 0.6:
             top = memory.get("matches", [])[0]
@@ -671,11 +699,13 @@ class DecisionModule:
 
         # Human-like weighting based on probabilistic learning and order flow context.
         confidence_base = win_probability * 100
-        confidence_base += min(12, abs(sentiment_score) * 20)
+        # reduce sentiment influence (previously larger): scale to ~0.10 effective weight
+        confidence_base += min(12, abs(sentiment_score) * 5.714)
         confidence_base += min(12, memory_strength * 20)
         confidence_base += min(10, signal_strength * 40)
 
-        if trap_risk and abs(win_probability - 0.5) < 0.12:
+        # use wider waiting threshold (20%) for ambiguous model probabilities
+        if trap_risk and abs(win_probability - 0.5) < 0.20:
             direction = "انتظار"
             reasoning.setdefault("evidence", []).append(
                 "يُظهر تدفق الأوامر احتمال وجود فخ أو كسر زائف لذلك يُفضل الانتظار حتى يتضح الاتجاه.")
@@ -695,7 +725,7 @@ class DecisionModule:
         if conflict_resolution and conflict_resolution.get("recommendation") in ("شراء", "بيع"):
             if conflict_resolution.get("resolution_reason"):
                 reasoning.setdefault("evidence", []).append(conflict_resolution["resolution_reason"])
-            if conflict_resolution.get("recommendation") != direction and abs(win_probability - 0.5) < 0.15:
+            if conflict_resolution.get("recommendation") != direction and abs(win_probability - 0.5) < 0.20:
                 direction = conflict_resolution["recommendation"]
                 reasoning.setdefault("evidence", []).append(
                     "تم اختيار توصية حل النزاع لأن توقع النموذج لم يكن حاسماً بما فيه الكفاية.")
@@ -1207,13 +1237,15 @@ class AIService:
 
             # Adjust weights
             old_weights = self.cluster_weights.copy()
-            adjustment_factor = 0.05  # 5% adjustment
+            # small increase for good clusters, larger reduction for poor clusters
+            increase_factor = 0.05  # +5% for good
+            decrease_factor = 0.30  # -30% for poor (per requirement)
 
             for cluster, win_rate in cluster_win_rates.items():
                 if win_rate > 0.65:  # Good performance
-                    self.cluster_weights[cluster] = min(0.50, self.cluster_weights[cluster] * (1 + adjustment_factor))
-                elif win_rate < 0.45:  # Poor performance
-                    self.cluster_weights[cluster] = max(0.20, self.cluster_weights[cluster] * (1 - adjustment_factor))
+                    self.cluster_weights[cluster] = min(0.50, self.cluster_weights[cluster] * (1 + increase_factor))
+                elif win_rate < 0.45:  # Poor performance -> reduce 30%
+                    self.cluster_weights[cluster] = max(0.20, self.cluster_weights[cluster] * (1 - decrease_factor))
 
             # Normalize to ensure sum = 1.0
             total_weight = sum(self.cluster_weights.values())
@@ -1558,7 +1590,7 @@ class AIService:
             volatility = self._estimate_volatility(market_data)
             liquidity_score = min(1.0, open_interest / max(open_interest, 1.0)) if open_interest > 0 else 0.0
             confidence_score = min(1.0, max(0.0, 0.5 + news_score * 0.25 + liquidity_score * 0.25 + (1.0 - volatility) * 0.25))
-            score = (news_score * 0.35) + (liquidity_score * 0.35) + ((1.0 - volatility) * 0.30)
+            score = (news_score * 0.10) + (liquidity_score * 0.45) + ((1.0 - volatility) * 0.45)
             comparisons.append({
                 "market": market,
                 "symbol": symbol,
@@ -1631,6 +1663,71 @@ class AIService:
             logger.exception(f"Failed to fetch news sentiment for {symbol}: {e}")
             return {"symbol": symbol, "available": False, "sentiment_score": 0.0, "recommendation": "محايد", "message": "تعذر الحصول على بيانات الأخبار."}
 
+    def _verify_chart_identity(self, chart_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Basic Gemini-style checks to verify that the input represents a valid chart image.
+        Returns a dict with keys: is_chart, pair, timeframe, clarity_score, messages
+        """
+        result = {
+            'is_chart': True,
+            'pair': None,
+            'timeframe': None,
+            'clarity_score': 1.0,
+            'messages': []
+        }
+        try:
+            # Check for image indications
+            sources = chart_data.get('source_types', []) if isinstance(chart_data, dict) else []
+            image_paths = chart_data.get('image_paths', []) if isinstance(chart_data, dict) else []
+            if not sources and not image_paths and not chart_data.get('closes'):
+                result['is_chart'] = False
+                result['messages'].append('لا توجد صورة شارت أو بيانات OHLC ملحوظة.')
+
+            # Attempt to infer pair from raw_text
+            raw = ' '.join(chart_data.get('raw_text', [])) if isinstance(chart_data, dict) else ''
+            pair_match = re.search(r'([A-Z]{3,5}[/]?[A-Z]{3,5}|[A-Z]{6,7})', raw)
+            if pair_match:
+                result['pair'] = pair_match.group(0)
+            else:
+                # fallback to market field
+                if chart_data.get('market'):
+                    result['pair'] = chart_data.get('market')
+
+            # timeframe
+            for key in ('timeframe', 'tf', 'interval'):
+                if chart_data.get(key):
+                    result['timeframe'] = chart_data.get(key)
+                    break
+            if not result['timeframe']:
+                tf_search = re.search(r'\b(1m|5m|15m|30m|1h|4h|1d|1w|daily|weekly)\b', raw, flags=re.I)
+                if tf_search:
+                    result['timeframe'] = tf_search.group(0)
+
+            # clarity: prefer explicit clarity_score, otherwise infer from number of bars
+            clarity = chart_data.get('clarity_score') if isinstance(chart_data, dict) else None
+            if clarity is not None:
+                try:
+                    result['clarity_score'] = float(clarity)
+                except Exception:
+                    pass
+            else:
+                closes = chart_data.get('closes') if isinstance(chart_data, dict) else None
+                if closes and len(closes) >= 8:
+                    result['clarity_score'] = 1.0
+                elif closes and len(closes) >= 3:
+                    result['clarity_score'] = 0.6
+                else:
+                    result['clarity_score'] = 0.2
+
+            if result['clarity_score'] < 0.4:
+                result['messages'].append('الصورة أو بيانات الشارت غير واضحة بما يكفي.')
+
+        except Exception as e:
+            logger.exception(f"Chart identity verification failed: {e}")
+            result['is_chart'] = False
+            result['messages'].append('فشل التحقق من هوية الشارت.')
+
+        return result
+
     def evaluate(
         self,
         user_id: Optional[int],
@@ -1644,6 +1741,16 @@ class AIService:
             strategy_weights = self.internal_brain.get_strategy_weights(user_id=user_id)
 
         news_sentiment = self._fetch_news_sentiment(market)
+        # verify chart identity before heavy analysis (Gemini checks)
+        chart_identity = self._verify_chart_identity(chart_data)
+        if not chart_identity.get('is_chart', True):
+            # If not a valid chart image, return a low-confidence wait recommendation
+            return {
+                "recommendation": "انتظار",
+                "confidence": 10,
+                "explanation": "الصورة المرسلة لا تبدو كشارت صالح للتحليل.",
+                "chart_identity": chart_identity,
+            }
         percepts = self.perception.perceive(chart_data, cluster_results, strategy_weights, market)
         memory = self.memory.recall(user_id or 0, percepts)
         performance = self.performance_tracker.summarize_performance(user_id or 0, lookback_days=90)
@@ -1664,6 +1771,8 @@ class AIService:
         )
         reasoning = self.reasoning.reason(percepts, memory, news_sentiment)
         conflict_resolution = self.conflict_resolver.resolve(cluster_results, strategy_weights, news_sentiment, performance, percepts)
+        # preserve base direction from ML prediction; DecisionModule may adjust confidence only
+        base_direction = ml_prediction.get('prediction', 'انتظار')
         decision = self.decision.decide(
             percepts,
             memory,
@@ -1679,6 +1788,9 @@ class AIService:
             chart_data,
         )
 
+        # enforce evaluate to only modify confidence, not direction
+        decision['recommendation'] = base_direction
+
         return {
             "recommendation": decision["recommendation"],
             "confidence": decision["confidence"],
@@ -1691,6 +1803,7 @@ class AIService:
             "news_impact": news_impact,
             "multi_tf_confluence": confluence,
             "conflict_resolution": conflict_resolution,
+            "chart_identity": chart_identity,
             "market_persona": persona,
             "order_flow": orderflow,
             "ml_prediction": ml_prediction,
@@ -1768,7 +1881,8 @@ class AIService:
                 self.trade_counter = 0  # Reset counter
 
             # تحديث التعلم من التجربة
-            self.memory.learn_from_experience(user_id, {
+            # delegate to service-level learning hook
+            self.learn_from_experience(user_id, {
                 "market": market,
                 "recommendation": recommendation,
                 "outcome": outcome,
@@ -1781,6 +1895,26 @@ class AIService:
 
         except Exception as e:
             logger.exception(f"Failed to log trade experience: {e}")
+
+    def learn_from_experience(self, user_id: int, experience: Dict[str, Any]) -> None:
+        """Service-level hook to learn from a trade experience.
+        Delegates to memory and updates internal models/weights.
+        """
+        try:
+            # let MemoryModule adapt patterns
+            try:
+                self.memory.learn_from_experience(user_id, experience)
+            except Exception:
+                logger.exception("Memory learn_from_experience failed")
+
+            # update internal brain weights best-effort
+            try:
+                self.internal_brain.update_weights(user_id=user_id)
+            except Exception:
+                logger.exception("InternalBrain.update_weights failed during learn_from_experience")
+
+        except Exception as e:
+            logger.exception(f"AIService.learn_from_experience failed: {e}")
 
     def answer_question(self, question: str, context: str) -> str:
         """Answer user questions using AI reasoning"""
@@ -1849,64 +1983,107 @@ class AIService:
 
         return personality
 
-    def learn_from_feedback(self, trade_id: str, correction: str) -> Dict[str, Any]:
+    def learn_from_feedback(self, trade_id: Optional[int] = None, analysis_id: Optional[int] = None, correction: str = "") -> Dict[str, Any]:
         """Learn from user feedback and adjust system behavior."""
         try:
             db = SessionLocal()
+            feedback_source = None
+            analysis_record = None
+            journal_record = None
+            shadow_trade = None
+            user_id = None
+            market = None
+            recommendation = None
+            profit_loss = 0.0
+            session = None
+            chart_features = {}
+            news_sentiment = 0.0
+            strategy_names = []
 
-            # Find the trade
-            trade = db.query(models.JournalEntry).filter(models.JournalEntry.id == trade_id).first()
-            if not trade:
-                return {"status": "error", "message": "Trade not found"}
+            if analysis_id is not None:
+                analysis_record = db.query(models.Analysis).filter(models.Analysis.id == int(analysis_id)).first()
+                if not analysis_record:
+                    return {"status": "error", "message": "Analysis not found"}
+                feedback_source = "analysis"
+                user_id = analysis_record.user_id
+                market = analysis_record.market
+                try:
+                    analysis_data = json.loads(analysis_record.result_json or "{}")
+                except Exception:
+                    analysis_data = {}
+                recommendation = analysis_data.get("recommendation") or analysis_data.get("result") or ""
+                session = analysis_data.get("session")
+                news_sentiment = float(analysis_data.get("news_sentiment", 0.0) or 0.0)
+                chart_features = analysis_data.get("chart_features", {}) or {}
+                details = analysis_data.get("details", []) or []
+                strategy_names = [str(d.get("name", "")).strip() for d in details if d.get("name")]
 
-            # Analyze correction
+                try:
+                    analysis_data["feedback"] = correction
+                    analysis_record.result_json = json.dumps(analysis_data, ensure_ascii=False)
+                    db.add(analysis_record)
+                except Exception:
+                    pass
+            elif trade_id is not None:
+                shadow_trade = db.query(models.ShadowTrade).filter(models.ShadowTrade.id == int(trade_id)).first()
+                if shadow_trade:
+                    feedback_source = "shadow_trade"
+                    user_id = shadow_trade.user_id
+                    market = shadow_trade.market
+                    recommendation = getattr(shadow_trade, "recommendation", "")
+                    profit_loss = float(getattr(shadow_trade, "pnl", 0.0) or 0.0)
+                    session = getattr(shadow_trade, "session", None)
+                else:
+                    journal_record = db.query(models.JournalEntry).filter(models.JournalEntry.id == int(trade_id)).first()
+                    if not journal_record:
+                        return {"status": "error", "message": "Trade or analysis not found"}
+                    feedback_source = "journal"
+                    user_id = journal_record.user_id
+                    market = journal_record.market
+                    recommendation = journal_record.recommendation
+                    profit_loss = float(journal_record.profit_loss or 0.0)
+                    session = journal_record.session
+            else:
+                return {"status": "error", "message": "trade_id or analysis_id is required"}
+
             correction_lower = correction.lower()
             adjustment_type = "neutral"
-
             if any(word in correction_lower for word in ["خطأ", "غلط", "wrong", "false"]):
                 adjustment_type = "negative"
-                # Reduce confidence for similar patterns
                 self.judge_performance["confidence_threshold"] = min(80, self.judge_performance["confidence_threshold"] + 5)
             elif any(word in correction_lower for word in ["صحيح", "correct", "right"]):
                 adjustment_type = "positive"
-                # Increase confidence
                 self.judge_performance["confidence_threshold"] = max(40, self.judge_performance["confidence_threshold"] - 2)
 
-            # Store feedback in memory
             feedback_entry = models.TradeExperience(
-                user_id=trade.user_id,
-                market=trade.market,
-                direction=trade.recommendation,
-                entry_price=trade.entry_price,
-                exit_price=trade.exit_price,
-                pnl=trade.profit_loss,
+                analysis_id=analysis_record.id if analysis_record else None,
+                user_id=user_id,
+                market=market,
+                session=session,
+                recommendation=recommendation,
                 result="feedback_corrected",
-                strategies=trade.strategies,
-                lessons=f"تصحيح المستخدم: {correction}",
-                duration=trade.duration,
+                profit_loss=profit_loss,
+                strategy_names=",".join([s for s in strategy_names if s]),
+                chart_features=json.dumps(chart_features, ensure_ascii=False),
+                news_sentiment=news_sentiment,
+                notes=f"تصحيح المستخدم: {correction}",
+                created_at=datetime.utcnow(),
             )
             db.add(feedback_entry)
 
-            # Update strategy weights if needed
-            if trade.strategies:
-                strategies = trade.strategies.split(",")
-                for strategy in strategies:
-                    strategy = strategy.strip()
+            if strategy_names:
+                for strategy in strategy_names:
+                    if not strategy:
+                        continue
                     if adjustment_type == "negative":
-                        # Reduce weight for strategies that gave wrong advice
-                        current_weight = self.internal_brain.get_strategy_weights().get(strategy, 1.0)
-                        new_weight = max(0.5, current_weight * 0.9)
-                        self.internal_brain.update_strategy_weight(strategy, new_weight)
+                        self.internal_brain.update_strategy_performance(strategy_name=strategy, outcome="loss", profit=0.0)
                     elif adjustment_type == "positive":
-                        # Increase weight for correct strategies
-                        current_weight = self.internal_brain.get_strategy_weights().get(strategy, 1.0)
-                        new_weight = min(2.0, current_weight * 1.1)
-                        self.internal_brain.update_strategy_weight(strategy, new_weight)
+                        self.internal_brain.update_strategy_performance(strategy_name=strategy, outcome="win", profit=0.0)
 
             db.commit()
-
             return {
                 "status": "learned",
+                "source": feedback_source,
                 "adjustment_type": adjustment_type,
                 "confidence_threshold": self.judge_performance["confidence_threshold"],
                 "message": f"تم تعلم الدرس من التصحيح: {correction[:100]}..."

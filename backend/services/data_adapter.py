@@ -70,6 +70,17 @@ class DataAdapter:
             if 'chart_data' in entry and isinstance(entry['chart_data'], dict):
                 self._merge_series(chart_data, entry['chart_data'])
                 chart_data['source_types'].append('chart_data')
+
+        # Debug: log merged series sizes and source types for troubleshooting
+        try:
+            logger.info("DataAdapter merged sizes -> closes=%d, opens=%d, highs=%d, lows=%d, volumes=%d, timestamps=%d", \
+                        len(chart_data['closes']), len(chart_data['opens']), len(chart_data['highs']), \
+                        len(chart_data['lows']), len(chart_data['volumes']), len(chart_data['timestamps']))
+            logger.info("DataAdapter source_types=%s support=%s resistance=%s patterns=%s trend=%s", \
+                        chart_data.get('source_types'), chart_data.get('support_levels'), chart_data.get('resistance_levels'), \
+                        chart_data.get('candle_patterns'), chart_data.get('trend'))
+        except Exception:
+            logger.exception("Failed to log DataAdapter debug info")
             if 'candles' in entry and isinstance(entry['candles'], list):
                 self._merge_candles(chart_data, entry['candles'])
                 chart_data['source_types'].append('candles')
@@ -89,10 +100,27 @@ class DataAdapter:
         self._compute_swings(chart_data)
         self._normalize_levels(chart_data)
 
-        quality_score = self._evaluate_quality(chart_data)
-        valid = len(chart_data['closes']) >= 2 and quality_score >= 0.3
+        # verify timeframe consistency across provided image/context sources
+        tf_ok, tf_issues = self._check_timeframes(visual_context)
+        if not tf_ok:
+            issues.extend(tf_issues)
+        chart_data['timeframe_consistent'] = tf_ok
 
-        if not valid:
+        quality_score = self._evaluate_quality(chart_data)
+        multiplier = self._quality_multiplier(quality_score)
+        chart_data['quality_score'] = quality_score
+        chart_data['quality_multiplier'] = multiplier
+
+        # apply multiplier to any derived strength/confidence fields
+        if chart_data.get('trend_strength') is None:
+            chart_data['trend_strength'] = min(1.0, float(len(chart_data['closes'])) / 100.0)
+        chart_data['trend_strength'] = round(chart_data['trend_strength'] * multiplier, 3)
+
+        # final validity: if multiplier is zero, stop; otherwise require at least two bars
+        valid = len(chart_data['closes']) >= 2 and multiplier > 0.0
+        if multiplier == 0.0:
+            issues.append('Data quality below acceptable threshold: processing stopped.')
+        if not valid and multiplier > 0.0:
             issues.append('Data adapter could not build a valid OHLCV structure from the provided input.')
 
         return {
@@ -256,6 +284,42 @@ class DataAdapter:
         if chart_data['support_levels'] or chart_data['resistance_levels'] or chart_data['candle_patterns'] or chart_data['trend']:
             base += 0.2
         return min(1.0, base)
+
+    def _quality_multiplier(self, quality_score: float) -> float:
+        """Return multiplier based on quality bands:
+        >0.8 -> 1.0
+        0.6-0.8 -> 0.9 (reduce 10%)
+        0.5-0.6 -> 0.8 (reduce 20%)
+        <0.5 -> 0.0 (stop)
+        """
+        try:
+            q = float(quality_score)
+        except Exception:
+            return 0.0
+        if q > 0.8:
+            return 1.0
+        if 0.6 <= q <= 0.8:
+            return 0.9
+        if 0.5 <= q < 0.6:
+            return 0.8
+        return 0.0
+
+    def _check_timeframes(self, visual_context: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
+        """Ensure provided image/context timeframes are compatible.
+        Returns (is_consistent, issues)
+        """
+        tfs = set()
+        issues: List[str] = []
+        for entry in visual_context:
+            if not isinstance(entry, dict):
+                continue
+            for key in ('timeframe', 'interval', 'tf'):
+                if key in entry and entry[key]:
+                    tfs.add(str(entry[key]).lower())
+        if len(tfs) <= 1:
+            return True, []
+        issues.append(f"Mismatched timeframes in input sources: {', '.join(sorted(tfs))}")
+        return False, issues
 
     def _extract_numeric_values(self, text: str) -> List[float]:
         values = []

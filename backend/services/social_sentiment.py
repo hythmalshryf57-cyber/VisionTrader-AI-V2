@@ -1,16 +1,19 @@
 from typing import Dict, Any, List
 
 from .deep_market import DeepMarketScanner
-try:
-    from backend.strategies.social_sentiment import SocialSentimentStrategy
-except ImportError:
-    from strategies.social_sentiment import SocialSentimentStrategy
 
 
 class SocialSentimentService:
     def __init__(self):
         self.market_scanner = DeepMarketScanner()
-        self.strategy = SocialSentimentStrategy()
+        self.strategy = self._load_social_strategy()
+
+    def _load_social_strategy(self):
+        try:
+            from backend.strategies.social_sentiment import SocialSentimentStrategy
+        except ImportError:
+            from strategies.social_sentiment import SocialSentimentStrategy
+        return SocialSentimentStrategy()
 
     def _build_chart_data(self, klines: List[List[Any]]) -> Dict[str, List[float]]:
         opens = [float(item[1]) for item in klines]
