@@ -182,8 +182,18 @@ async def track_request_metrics(request: Request, call_next):
         raise
 
 # Mount Frontend
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
+candidate_frontend_paths = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend")),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend")),
+    os.path.abspath(os.path.join(os.getcwd(), "frontend")),
+    os.path.abspath(os.path.join(os.sep, "frontend")),
+]
+frontend_path = next((path for path in candidate_frontend_paths if os.path.isdir(path)), None)
+if frontend_path:
+    app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
+    print(f"Frontend mounted from: {frontend_path}")
+else:
+    print("WARNING: Frontend directory not found. /frontend static route disabled.")
 
 
 def _generate_report_for_user(db, user):

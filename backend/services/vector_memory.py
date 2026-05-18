@@ -82,7 +82,11 @@ class VectorMemoryService:
             return
 
         try:
-            self.client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb"))
+            try:
+                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb", anonymized_telemetry=False)
+            except TypeError:
+                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb")
+            self.client = chromadb.Client(settings)
             try:
                 self.collection = self.client.get_collection(name=DEFAULT_COLLECTION_NAME)
             except Exception:
