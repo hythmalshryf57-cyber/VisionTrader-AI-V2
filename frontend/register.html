@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="/manifest.json">
 
-    <title>تسجيل الدخول - VisionTrader AI</title>
+    <title>إنشاء حساب - VisionTrader AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
@@ -31,74 +31,67 @@
         .login-btn { width: 100%; padding: 14px; font-size: 1.05rem; margin-top: 8px; }
         .login-error { color: var(--danger); font-size: 0.85rem; margin-top: 12px; text-align: center; display: none; }
         .login-footer { text-align: center; margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .spinner-sm { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-left: 8px; }
+        .secondary-action { display: inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); text-decoration: none; }
     </style>
 </head>
 <body class="dark-theme">
     <div class="login-card">
         <div class="brand-logo">
-            <i class="fas fa-eye"></i>
-            <h2>VisionTrader AI</h2>
-            <p>منصة التحليل المؤسسي الذكي</p>
+            <i class="fas fa-user-plus"></i>
+            <h2>إنشاء حساب جديد</h2>
+            <p>سجل مباشرة بدون رمز دعوة</p>
         </div>
-        <form id="loginForm" onsubmit="return false;">
+        <form id="registerForm" onsubmit="return false;">
             <div class="form-group">
-                <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
-                <input type="email" id="email" placeholder="test@test.com" autocomplete="email" required>
+                <label for="registerEmail"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                <input type="email" id="registerEmail" placeholder="test@test.com" autocomplete="email" required>
             </div>
             <div class="form-group">
-                <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
-                <input type="password" id="password" placeholder="••••••" autocomplete="current-password" required>
+                <label for="registerPassword"><i class="fas fa-lock"></i> كلمة المرور</label>
+                <input type="password" id="registerPassword" placeholder="••••••" autocomplete="new-password" required>
             </div>
-            <button type="submit" class="btn btn-primary login-btn" id="loginBtn">
-                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+            <div class="form-group">
+                <label for="registerInvite"><i class="fas fa-key"></i> رمز الدعوة (اختياري)</label>
+                <input type="text" id="registerInvite" placeholder="إذا كان لديك رمز دعوة">
+            </div>
+            <button type="submit" class="btn btn-primary login-btn" id="registerBtn">
+                <i class="fas fa-user-check"></i> إنشاء حساب جديد
             </button>
-            <button type="button" class="btn btn-secondary" onclick="googleSignIn()">
-                <i class="fab fa-google"></i> تسجيل الدخول بـ Google
-            </button>
-            <div class="login-error" id="loginError"></div>
+            <div class="login-error" id="registerError"></div>
         </form>
         <div class="login-footer">
-            <a href="register.html" class="btn btn-secondary" style="display:inline-block; margin-bottom:12px;">إنشاء حساب جديد</a>
-            <br>
-            <a href="https://t.me/your_bot_username" target="_blank">الحصول على رمز الدعوة</a> | VisionTrader AI Pro &copy; 2026
+            <a class="secondary-action" href="login.html">العودة إلى تسجيل الدخول</a>
         </div>
     </div>
 
     <script src="js/api.js"></script>
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async () => {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const btn = document.getElementById('loginBtn');
-            const errEl = document.getElementById('loginError');
+        document.getElementById('registerForm').addEventListener('submit', async () => {
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const inviteCode = document.getElementById('registerInvite').value.trim();
+            const btn = document.getElementById('registerBtn');
+            const errEl = document.getElementById('registerError');
             errEl.style.display = 'none';
 
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-sm"></span> جاري الدخول...';
+            btn.innerHTML = '<span class="spinner-sm"></span> جاري الإنشاء...';
 
             try {
-                const res = await api.login(email, password);
+                const res = await api.register(email, password, inviteCode);
                 localStorage.setItem('token', res.access_token);
                 window.location.href = 'dashboard.html';
             } catch (err) {
-                errEl.textContent = err.message || 'فشل تسجيل الدخول';
+                errEl.textContent = err.message || 'فشل إنشاء الحساب';
                 errEl.style.display = 'block';
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل الدخول';
+                btn.innerHTML = '<i class="fas fa-user-check"></i> إنشاء حساب جديد';
             }
         });
 
-        // Auto-redirect if already logged in
         if (localStorage.getItem('token')) {
             window.location.href = 'dashboard.html';
-        }
-
-        function googleSignIn() {
-            alert('Google Sign-In قيد التطوير');
-            // Implement Google OAuth here
         }
     </script>
     <script>
