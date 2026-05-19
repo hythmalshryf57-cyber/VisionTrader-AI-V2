@@ -107,6 +107,68 @@ internal_brain_service = InternalBrain()
 # Create tables
 models.Base.metadata.create_all(bind=engine)
 
+# Ensure admin user exists by environment variables
+def ensure_admin_user():
+    admin_email = settings.ADMIN_EMAIL.strip().lower()
+    admin_password = settings.ADMIN_PASSWORD
+    if not admin_email or not admin_password:
+        return
+
+    db = SessionLocal()
+    try:
+        admin_user = db.query(models.User).filter(models.User.email == admin_email).first()
+        if admin_user:
+            updated = False
+            if not admin_user.is_admin:
+                admin_user.is_admin = True
+                updated = True
+            if not auth.verify_password(admin_password, admin_user.hashed_password):
+                admin_user.hashed_password = auth.get_password_hash(admin_password)
+                updated = True
+            if updated:
+                db.add(admin_user)
+                db.commit()
+        else:
+            trial_start = datetime.utcnow()
+            trial_end = trial_start + timedelta(days=3650)
+            new_admin = models.User(
+                email=admin_email,
+                hashed_password=auth.get_password_hash(admin_password),
+                invite_code=None,
+                ip_address=None,
+                is_active=True,
+                is_admin=True,
+                trial_start=trial_start,
+                trial_end=trial_end,
+                daily_analyses_count=0,
+                has_used_trial=True
+            )
+            db.add(new_admin)
+            db.commit()
+            db.refresh(new_admin)
+            default_prefs = models.UserPreferences(
+                user_id=new_admin.id,
+                theme='dark',
+                language='ar',
+                demo_mode=False,
+                demo_balance=1000000.0,
+                trading_mode='day',
+                capital=10000.0,
+                account_balance=10000.0,
+                risk_percentage=1.0,
+                favorite_strategies='[]',
+                watchlist='[]'
+            )
+            db.add(default_prefs)
+            db.commit()
+            print(f"Created admin user: {admin_email}")
+    except Exception as exc:
+        print(f"Admin user setup failed: {exc}")
+    finally:
+        db.close()
+
+ensure_admin_user()
+
 # Ensure SQLite migrations for known schema additions
 if engine.url.drivername.startswith("sqlite"):
     try:

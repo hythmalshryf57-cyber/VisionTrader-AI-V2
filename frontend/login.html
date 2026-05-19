@@ -70,6 +70,7 @@
     <script src="js/api.js"></script>
     <script>
         document.getElementById('loginForm').addEventListener('submit', async () => {
+            const adminEmail = 'hythmalshryf57@gmail.com';
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const btn = document.getElementById('loginBtn');
@@ -82,7 +83,8 @@
             try {
                 const res = await api.login(email, password);
                 localStorage.setItem('token', res.access_token);
-                window.location.href = 'dashboard.html';
+                const destination = email.toLowerCase() === adminEmail ? 'admin.html' : 'upload.html';
+                window.location.href = destination;
             } catch (err) {
                 errEl.textContent = err.message || 'فشل تسجيل الدخول';
                 errEl.style.display = 'block';

@@ -22,10 +22,12 @@ class Settings(BaseSettings):
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
     )
     CALENDAR_API_KEY: str = os.getenv("CALENDAR_API_KEY", "your-calendar-api-key-here")
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
     
     # Telegram Bot config
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "your-telegram-bot-token-here")
-    ADMIN_CHAT_ID: str = os.getenv("ADMIN_CHAT_ID", "your-admin-chat-id-here")
+    ADMIN_CHAT_ID: str = os.getenv("ADMIN_CHAT_ID", "6380833552")
     
     # MetaTrader 5 config
     MT5_LOGIN: int = int(os.getenv("MT5_LOGIN", "0"))

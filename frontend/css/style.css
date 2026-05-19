@@ -140,6 +140,9 @@ body {
 .btn-primary { background: var(--accent); color: white; box-shadow: 0 8px 28px rgba(79,70,229,0.3); }
 .btn-primary:hover { background: #4338ca; }
 
+.btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid rgba(255,255,255,0.08); }
+.btn-secondary:hover { opacity: 0.92; }
+
 .btn-ghost { background: var(--glass); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost:hover { background: rgba(255,255,255,0.08); }
 

@@ -95,7 +95,7 @@ def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
         hashed_password=hashed_password, 
         invite_code=user.invite_code,
         ip_address=request.client.host,
-        is_admin=(user.email == "admin@visiontrader.ai"),  # Assuming admin email
+        is_admin=(user.email.lower() == settings.ADMIN_EMAIL.lower() and settings.ADMIN_EMAIL),
         trial_start=trial_start,
         trial_end=trial_end,
         has_used_trial=True
@@ -145,6 +145,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             db.commit()
         except Exception:
             db.rollback()
+
+    if user.email.lower() == settings.ADMIN_EMAIL.lower() and settings.ADMIN_EMAIL:
+        if not user.is_admin:
+            user.is_admin = True
+            db.add(user)
+            db.commit()
 
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}

@@ -26,8 +26,12 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: ADMIN_CHAT_ID
-        sync: false
+        value: "6380833552"
       - key: OPENROUTER_API_KEY
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
         sync: false
       - key: CALENDAR_API_KEY
         sync: false

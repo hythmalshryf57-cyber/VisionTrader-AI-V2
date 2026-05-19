@@ -23,8 +23,22 @@
     </style>
 </head>
 <body class="dark-theme">
-    <div class="settings-container">
-        <h1>إعدادات المنصة</h1>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
+            <nav class="nav">
+                <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
+                <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+                <a href="ask-ai.html"><i class="fas fa-robot"></i> <span>المساعد الذكي</span></a>
+                <a href="settings.html" class="active"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+            </nav>
+            <div style="padding: 16px;">
+                <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
+            </div>
+        </aside>
+        <main class="main-content">
+            <div class="settings-container">
+                <h1>إعدادات المنصة</h1>
         <p style="color: #888; margin-bottom: 30px;">خصص تجربتك في VisionTrader AI بما يناسب احتياجاتك</p>
 
         <!-- UI Settings -->
@@ -233,5 +247,7 @@
             });
         }
     </script>
+        </main>
+    </div>
 </body>
 </html>

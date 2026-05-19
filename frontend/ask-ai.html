@@ -23,7 +23,21 @@
     </style>
 </head>
 <body class="dark-theme">
-    <div class="chat-container">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
+            <nav class="nav">
+                <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
+                <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+                <a href="ask-ai.html" class="active"><i class="fas fa-robot"></i> <span>المساعد الذكي</span></a>
+                <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+            </nav>
+            <div style="padding: 16px;">
+                <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
+            </div>
+        </aside>
+        <main class="main-content">
+            <div class="chat-container">
         <div class="chat-messages" id="chatMessages">
             <div class="message ai-msg">
                 أهلاً بك في **Mentor AI**! أنا مدعوم بنموذج DeepSeek R1. كيف يمكنني مساعدتك في تحليلاتك اليوم؟ يمكنك سؤالي عن أي سوق أو رفع صورة شارت.
@@ -73,5 +87,7 @@
             });
         }
     </script>
+        </main>
+    </div>
 </body>
 </html>

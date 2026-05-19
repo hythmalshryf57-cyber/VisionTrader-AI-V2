@@ -32,8 +32,22 @@
     </style>
 </head>
 <body class="dark-theme">
-    <div class="result-glass">
-        <div class="main-signal">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
+            <nav class="nav">
+                <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
+                <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+                <a href="ask-ai.html"><i class="fas fa-robot"></i> <span>المساعد الذكي</span></a>
+                <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+            </nav>
+            <div style="padding: 16px;">
+                <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
+            </div>
+        </aside>
+        <main class="main-content">
+            <div class="result-glass">
+                <div class="main-signal">
             <span style="color: #888; font-size: 0.9rem;">التوصية النهائية لـ <span id="marketName">XAUUSD</span></span>
             <div class="signal-badge tech-title" id="signalBadge">جاري التحميل...</div>
             <div style="font-size: 1.2rem; margin-top: 10px;">ثقة النظام: <span style="color: #00ff88;" id="confidenceScore">0%</span></div>
@@ -437,5 +451,7 @@
             });
         }
     </script>
+        </main>
+    </div>
 </body>
 </html>
