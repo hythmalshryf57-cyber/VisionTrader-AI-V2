@@ -9,7 +9,7 @@ import csv
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -1848,7 +1848,7 @@ async def root():
     frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "login.html")
     if os.path.exists(frontend_path):
         return FileResponse(frontend_path)
-    return {"message": "VisionTrader AI"}
+    return RedirectResponse(url="/frontend/login.html")
 
 if __name__ == "__main__":
 
