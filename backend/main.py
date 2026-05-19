@@ -1910,7 +1910,7 @@ async def root():
     frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "login.html")
     if os.path.exists(frontend_path):
         return FileResponse(frontend_path)
-    return RedirectResponse(url="/frontend/login.html")
+    return RedirectResponse(url="/login.html")
 
 if __name__ == "__main__":
 
