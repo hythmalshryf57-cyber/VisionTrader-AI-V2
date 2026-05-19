@@ -1851,6 +1851,7 @@ async def root():
     return {"message": "VisionTrader AI"}
 
 if __name__ == "__main__":
+
     import uvicorn
     # Start Telegram bot in background if available
     if TELEGRAM_BOT_AVAILABLE and dp is not None:
