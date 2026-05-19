@@ -384,3 +384,57 @@ input:focus, select:focus { border-color: var(--accent-blue); }
 /* Make media like images and videos scale nicely on small screens */
 img, video { max-width: 100%; height: auto; }
 
+/* كرت تسجيل الدخول - زجاجي متوهج */
+.login-card {
+    background: var(--card-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 40px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 242, 254, 0.1);
+    transition: all 0.3s ease;
+}
+
+.login-card:hover {
+    border-color: var(--neon-aqua);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 242, 254, 0.2);
+}
+
+/* حقل إدخال - زجاجي */
+.cosmic-input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #fff;
+    font-size: 16px;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+.cosmic-input:focus {
+    outline: none;
+    border-color: var(--neon-aqua);
+    background: rgba(0, 242, 254, 0.05);
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+}
+
+/* زر تسجيل دخول - نيون */
+.btn-cosmic {
+    background: linear-gradient(45deg, var(--neon-cyan), var(--neon-aqua));
+    color: #02060d;
+    font-weight: 700;
+    padding: 14px 32px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-cosmic:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.5);
+}
+
