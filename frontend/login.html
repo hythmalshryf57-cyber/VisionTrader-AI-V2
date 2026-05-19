@@ -92,6 +92,10 @@
             }
         });
 
+        // Clear any stale auth tokens before checking login state
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
         // Auto-redirect if already logged in
         if (localStorage.getItem('token')) {
             window.location.href = 'dashboard.html';
