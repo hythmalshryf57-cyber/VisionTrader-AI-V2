@@ -15,6 +15,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from database import get_db, engine, SessionLocal
 from supabase_client import supabase_client, SUPABASE_CONFIGURED
+from config import settings
 import models
 import auth
 from auth import router as auth_router
@@ -1904,13 +1905,17 @@ async def retrieve_sensitive(db: Session = Depends(get_db), current_user: models
     except:
         return {"error": "Failed to decrypt"}
 
-# Serve login page at root if available
-@app.get("/")
+# Serve index or login page at root if available
+@app.get("/", include_in_schema=False)
 async def root():
-    frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "login.html")
-    if os.path.exists(frontend_path):
-        return FileResponse(frontend_path)
-    return RedirectResponse(url="/login.html")
+    if frontend_path:
+        index_path = os.path.join(frontend_path, "index.html")
+        login_path = os.path.join(frontend_path, "login.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        if os.path.exists(login_path):
+            return FileResponse(login_path)
+    raise HTTPException(status_code=404, detail="Not Found")
 
 if __name__ == "__main__":
 
