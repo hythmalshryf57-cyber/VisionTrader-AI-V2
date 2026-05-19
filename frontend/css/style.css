@@ -352,3 +352,35 @@ input:focus, select:focus { border-color: var(--accent-blue); }
     .sidebar { position: fixed; transform: translateX(100%); }
     .sidebar.open { transform: translateX(0); }
 }
+
+/* Mobile responsive additions */
+@media (max-width: 768px) {
+  .app-layout { flex-direction: column; }
+  .sidebar { position: fixed; width: 220px; height: 100%; transform: translateX(-100%); left: 0; top: 0; z-index: 2000; }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar.collapsed { width: 64px; }
+  .main-content { padding: 16px; margin-top: 60px; }
+  .brand { padding: 16px; font-size: 1.25rem; }
+  .card, .memory-card { padding: 16px; border-radius: 12px; }
+  .news-ticker { margin: 12px 0; padding: 10px; }
+  .upload-container { padding: 0 12px; max-width: 100%; }
+  .preview-container { max-width: 100%; }
+  .nav a { padding: 10px 12px; font-size: 0.95rem; }
+  .ticker-item { min-width: 180px; }
+}
+
+@media (max-width: 480px) {
+  .sidebar { width: 200px; }
+  .brand { font-size: 1rem; padding: 12px; }
+  .btn { padding: 10px 14px; font-size: 0.95rem; border-radius: 10px; }
+  .ticker-item { min-width: 140px; font-size: 0.9rem; }
+  body { font-size: 14px; }
+  .card, .memory-card { padding: 12px; border-radius: 10px; }
+  .sidebar.collapsed { width: 56px; }
+  .main-content { padding: 12px; }
+  .upload-container { gap: 12px; }
+}
+
+/* Make media like images and videos scale nicely on small screens */
+img, video { max-width: 100%; height: auto; }
+
