@@ -9,6 +9,7 @@ import csv
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -1840,6 +1841,14 @@ async def retrieve_sensitive(db: Session = Depends(get_db), current_user: models
         return {"data": decrypted}
     except:
         return {"error": "Failed to decrypt"}
+
+# Serve login page at root if available
+@app.get("/")
+async def root():
+    frontend_path = os.path.join(os.path.dirname(__file__), "frontend", "login.html")
+    if os.path.exists(frontend_path):
+        return FileResponse(frontend_path)
+    return {"message": "VisionTrader AI"}
 
 if __name__ == "__main__":
     import uvicorn
