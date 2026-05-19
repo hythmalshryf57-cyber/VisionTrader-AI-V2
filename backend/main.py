@@ -191,7 +191,7 @@ candidate_frontend_paths = [
 ]
 frontend_path = next((path for path in candidate_frontend_paths if os.path.isdir(path)), None)
 if frontend_path:
-    app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend")
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
     print(f"Frontend mounted from: {frontend_path}")
 else:
     print("WARNING: Frontend directory not found. /frontend static route disabled.")
