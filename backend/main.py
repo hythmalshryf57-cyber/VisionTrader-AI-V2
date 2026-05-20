@@ -245,7 +245,7 @@ async def track_request_metrics(request: Request, call_next):
         SYSTEM_METRICS["last_error"] = f"{datetime.utcnow().isoformat()} - {type(exc).__name__}: {str(exc)}"
         raise
 
-# Mount Frontend
+# Mount Frontend later so API routes are registered before the static catch-all
 candidate_frontend_paths = [
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend")),
     os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend")),
@@ -254,8 +254,7 @@ candidate_frontend_paths = [
 ]
 frontend_path = next((path for path in candidate_frontend_paths if os.path.isdir(path)), None)
 if frontend_path:
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-    print(f"Frontend mounted from: {frontend_path}")
+    print(f"Frontend found at: {frontend_path}")
 else:
     print("WARNING: Frontend directory not found. /frontend static route disabled.")
 
@@ -1439,6 +1438,26 @@ def calendar_events(hours: int = 24, current_user: models.User = Depends(auth.ge
 def calendar_high_impact(minutes: int = 15, current_user: models.User = Depends(auth.get_current_user)):
     return calendar_service.get_high_impact_soon(minutes=minutes)
 
+@app.post("/api/backtest/run")
+def run_backtest(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
+    market = payload.get("market", "Unknown")
+    timeframe = payload.get("timeframe", "1d")
+    start_date = payload.get("start_date")
+    end_date = payload.get("end_date")
+    trades_count = max(0, int(abs(hash(market + timeframe + str(start_date) + str(end_date))) % 50))
+    win_rate = round(40 + (trades_count % 60) * 0.8, 1)
+    profit_loss = round((trades_count * (win_rate / 100.0) - trades_count * ((100 - win_rate) / 100.0)) * 10, 2)
+    return {
+        "market": market,
+        "timeframe": timeframe,
+        "start_date": start_date,
+        "end_date": end_date,
+        "trades_count": trades_count,
+        "win_rate": min(100.0, win_rate),
+        "profit_loss": profit_loss,
+        "note": "هذه نتائج اختبار تاريخي تجريبية. يمكن استبدالها بمنطق backtest واقعي لاحقاً."
+    }
+
 # --- New Features 2.0 ---
 @app.post("/api/voice/command")
 async def voice_command(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
@@ -1904,6 +1923,11 @@ async def retrieve_sensitive(db: Session = Depends(get_db), current_user: models
         return {"data": decrypted}
     except:
         return {"error": "Failed to decrypt"}
+
+# Mount frontend static files after API path registration to avoid swallowing /api routes
+if frontend_path:
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+    print(f"Frontend mounted from: {frontend_path}")
 
 # Serve index or login page at root if available
 @app.get("/", include_in_schema=False)

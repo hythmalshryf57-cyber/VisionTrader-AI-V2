@@ -39,9 +39,12 @@
                 <h1>سجل التحليلات الذكي</h1>
         <p style="color: #888; margin-bottom: 30px;">قارن توقعات الذكاء الاصطناعي بالنتائج الحقيقية لتحسين دقتك</p>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px; gap: 12px; flex-wrap:wrap;">
             <h2 style="margin:0;">سجل التحليلات الذكي</h2>
-            <button class="btn btn-ghost" id="exportCsvBtn" style="padding: 10px 18px; border-radius: 14px;">تصدير CSV</button>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <input id="historyFilterInput" type="text" placeholder="فلترة بالسوق أو التوصية" style="padding: 10px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); color: inherit; min-width: 220px;" oninput="applyHistoryFilter()" />
+                <button class="btn btn-ghost" id="exportCsvBtn" style="padding: 10px 18px; border-radius: 14px;">تصدير CSV</button>
+            </div>
         </div>
         <div class="history-card">
             <div class="history-item" style="font-weight: bold; color: #888; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;">
@@ -79,32 +82,47 @@
     </div>
     <script src="js/api.js"></script>
     <script>
+        let historyEntries = [];
+
         async function loadHistory() {
             const list = document.getElementById('historyList');
             list.innerHTML = '<div class="history-item" style="color:#bbb;"><div style="grid-column: span 6; text-align: center;">جاري تحميل سجل التحليلات...</div></div>';
             try {
                 const entries = await api.getJournal();
-                if (!Array.isArray(entries) || entries.length === 0) {
+                historyEntries = Array.isArray(entries) ? entries : [];
+                if (!historyEntries.length) {
                     list.innerHTML = '<div class="history-item" style="color:#bbb;"><div style="grid-column: span 6; text-align: center;">لا توجد بيانات في السجل بعد.</div></div>';
                     return;
                 }
+                renderHistory(historyEntries);
+            } catch (err) {
+                list.innerHTML = '<div class="history-item" style="color:#ff9999;"><div style="grid-column: span 6; text-align: center;">فشل تحميل السجل. تحقق من تسجيل الدخول وحاول مرة أخرى.</div></div>';
+                console.error('Failed to load history', err);
+            }
+        }
 
-                list.innerHTML = entries.map(entry => {
-                    const result = entry.result || '';
-                    const normalizedResult = result.toLowerCase();
-                    const isWin = normalizedResult.includes('win') || normalizedResult.includes('رابح') || normalizedResult.includes('ربح');
-                    const isLoss = normalizedResult.includes('loss') || normalizedResult.includes('خاسر') || normalizedResult.includes('خسارة');
-                    const pnl = Number(entry.profit_loss || 0).toFixed(2);
-                    const pnlSign = pnl >= 0 ? '+' : '';
-                    const pnlColor = isWin ? '#00ff88' : (isLoss ? '#ff4d4d' : '#ddd');
-                    const resultLabel = isWin ? `✅ ${pnlSign}$${pnl}` : (isLoss ? `❌ ${pnlSign}$${pnl}` : `⏳ $${pnl}`);
-                    const verdict = isWin ? 'رابحة' : (isLoss ? 'خاسرة' : 'معلقة');
-                    const recommendationColor = (entry.recommendation || '').includes('شراء') ? '#00ff88' : '#ff4d4d';
-                    const dateValue = entry.date || entry.created_at || '';
-                    const formattedDate = dateValue ? new Date(dateValue).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-';
-                    const accuracy = (isWin || isLoss) ? '100%' : '0%';
-                    const confidence = entry.confidence !== undefined && entry.confidence !== null ? `${entry.confidence}%` : '-';
-                    return `
+        function renderHistory(entries) {
+            const list = document.getElementById('historyList');
+            if (!entries.length) {
+                list.innerHTML = '<div class="history-item" style="color:#bbb;"><div style="grid-column: span 6; text-align: center;">لا توجد نتائج مطابقة للفلترة.</div></div>';
+                return;
+            }
+            list.innerHTML = entries.map(entry => {
+                const result = entry.result || '';
+                const normalizedResult = result.toLowerCase();
+                const isWin = normalizedResult.includes('win') || normalizedResult.includes('رابح') || normalizedResult.includes('ربح');
+                const isLoss = normalizedResult.includes('loss') || normalizedResult.includes('خاسر') || normalizedResult.includes('خسارة');
+                const pnl = Number(entry.profit_loss || 0).toFixed(2);
+                const pnlSign = pnl >= 0 ? '+' : '';
+                const pnlColor = isWin ? '#00ff88' : (isLoss ? '#ff4d4d' : '#ddd');
+                const resultLabel = isWin ? `✅ ${pnlSign}$${pnl}` : (isLoss ? `❌ ${pnlSign}$${pnl}` : `⏳ $${pnl}`);
+                const verdict = isWin ? 'رابحة' : (isLoss ? 'خاسرة' : 'معلقة');
+                const recommendationColor = (entry.recommendation || '').includes('شراء') ? '#00ff88' : '#ff4d4d';
+                const dateValue = entry.date || entry.created_at || '';
+                const formattedDate = dateValue ? new Date(dateValue).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '-';
+                const accuracy = (isWin || isLoss) ? '100%' : '0%';
+                const confidence = entry.confidence !== undefined && entry.confidence !== null ? `${entry.confidence}%` : '-';
+                return `
                         <div class="history-item">
                             <div><b>${entry.market || '-'}</b><br><small>${formattedDate}</small></div>
                             <div style="color: ${recommendationColor};">${entry.recommendation || '-'}</div>
@@ -119,12 +137,24 @@
                                 <button class="outcome-btn ${isLoss ? 'active-loss' : ''}">Loss</button>
                             </div>
                         </div>`;
-                }).join('');
-            } catch (err) {
-                list.innerHTML = '<div class="history-item" style="color:#ff9999;"><div style="grid-column: span 6; text-align: center;">فشل تحميل السجل. تحقق من تسجيل الدخول وحاول مرة أخرى.</div></div>';
-                console.error('Failed to load history', err);
-            }
+            }).join('');
         }
+
+        function applyHistoryFilter() {
+            const query = document.getElementById('historyFilterInput').value.trim().toLowerCase();
+            if (!query) {
+                renderHistory(historyEntries);
+                return;
+            }
+            const filtered = historyEntries.filter(entry => {
+                const market = (entry.market || '').toLowerCase();
+                const recommendation = (entry.recommendation || '').toLowerCase();
+                const result = (entry.result || '').toLowerCase();
+                return market.includes(query) || recommendation.includes(query) || result.includes(query);
+            });
+            renderHistory(filtered);
+        }
+
         loadHistory();
         document.getElementById('exportCsvBtn').addEventListener('click', async () => {
             try {

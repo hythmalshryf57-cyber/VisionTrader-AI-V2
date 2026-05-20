@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>الاختبار التاريخي</title>
+	<link rel="stylesheet" href="css/style.css">
+	<script src="js/api.js"></script>
+	<style>
+		body{ font-family: sans-serif; padding:20px }
+		.container{ max-width:900px; margin:0 auto }
+		h1{ margin-bottom:12px }
+		.form-row{ display:flex; gap:12px; align-items:center; margin-bottom:10px }
+		label{ min-width:110px }
+		select,input { padding:6px 8px }
+		button{ padding:8px 12px }
+		.results{ margin-top:18px; padding:14px; border:1px solid #e8e8e8; border-radius:6px; background:#fafafa }
+		.placeholder { text-align:center; color:#666; padding:34px }
+		.stat { display:inline-block; min-width:160px; padding:12px; margin:6px; border-radius:6px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:center }
+		.stat .num{ font-size:20px; font-weight:700 }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>الاختبار التاريخي</h1>
+
+		<div id="backtest-form">
+			<div class="form-row">
+				<label for="market">السوق</label>
+				<input id="market" placeholder="مثال: BTC/USDT" />
+				<label for="timeframe">الإطار الزمني</label>
+				<select id="timeframe">
+					<option>1m</option>
+					<option>5m</option>
+					<option>15m</option>
+					<option>1h</option>
+					<option>4h</option>
+					<option>1d</option>
+				</select>
+			</div>
+
+			<div class="form-row">
+				<label for="startDate">تاريخ البداية</label>
+				<input id="startDate" type="date" />
+				<label for="endDate">تاريخ النهاية</label>
+				<input id="endDate" type="date" />
+			</div>
+
+			<div class="form-row">
+				<button id="startBtn">بدء الاختبار</button>
+				<span id="status" style="color:#555;margin-right:8px"></span>
+			</div>
+		</div>
+
+		<div class="results" id="results">
+			<div class="placeholder" id="placeholder">مرحباً — لم يتم تشغيل اختبار بعد. املأ الحقول واضغط "بدء الاختبار".</div>
+			<div id="stats" style="display:none">
+				<div class="stat"><div>عدد الصفقات</div><div class="num" id="tradesCount">-</div></div>
+				<div class="stat"><div>نسبة النجاح</div><div class="num" id="winRate">-</div></div>
+				<div class="stat"><div>الربح / الخسارة</div><div class="num" id="pnl">-</div></div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		const startBtn = document.getElementById('startBtn');
+		const marketInput = document.getElementById('market');
+		const timeframe = document.getElementById('timeframe');
+		const startDate = document.getElementById('startDate');
+		const endDate = document.getElementById('endDate');
+		const statusSpan = document.getElementById('status');
+		const placeholder = document.getElementById('placeholder');
+		const stats = document.getElementById('stats');
+		const tradesCount = document.getElementById('tradesCount');
+		const winRate = document.getElementById('winRate');
+		const pnl = document.getElementById('pnl');
+
+		function showPlaceholder(text){ placeholder.textContent = text; placeholder.style.display='block'; stats.style.display='none' }
+		function showStats(obj){ placeholder.style.display='none'; stats.style.display='block'; tradesCount.textContent = obj.trades_count ?? '-'; winRate.textContent = (obj.win_rate!=null? obj.win_rate + '%':'-'); pnl.textContent = obj.profit_loss ?? '-'; }
+
+		startBtn.addEventListener('click', async ()=>{
+			const market = marketInput.value.trim();
+			const tf = timeframe.value;
+			const s = startDate.value;
+			const e = endDate.value;
+			if(!market || !s || !e){
+				statusSpan.textContent = 'الرجاء ملء الحقول المطلوبة';
+				setTimeout(()=> statusSpan.textContent='',2000);
+				return;
+			}
+			statusSpan.textContent = 'جارٍ التشغيل...';
+			try{
+				const body = { market, timeframe: tf, start_date: s, end_date: e };
+				const data = await api.request('POST', '/api/backtest/run', body, true);
+				showStats(data);
+				statusSpan.textContent = 'اكتمل الاختبار';
+			}catch(err){
+				console.error(err);
+				statusSpan.textContent = 'فشل تشغيل الاختبار';
+				showPlaceholder('حدث خطأ أثناء تشغيل الاختبار. تحقق من الخادم أو حاول لاحقاً.');
+			}
+			setTimeout(()=> statusSpan.textContent='',3000);
+		})
+	</script>
+</body>
+</html>
+

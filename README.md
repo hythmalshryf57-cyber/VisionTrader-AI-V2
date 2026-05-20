@@ -42,6 +42,8 @@
    - `DEEPSEEK_API_KEY`
    - `OPENROUTER_API_KEY`
    - `CALENDAR_API_KEY`
+   - `TELEGRAM_BOT_TOKEN`
+   - `ADMIN_CHAT_ID` (يمكن ضبطه إلى `6380833552` إذا كانت هذه هي الدردشة الإدارية الصحيحة)
 6. سيقوم Render بتثبيت المتطلبات من `requirements.txt` وبدء التشغيل.
 
 ### 2. نشر الـ Frontend على Vercel

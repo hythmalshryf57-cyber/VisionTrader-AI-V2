@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>التقويم الاقتصادي</title>
+	<link rel="stylesheet" href="css/style.css">
+	<script src="js/api.js"></script>
+	<style>
+		body { font-family: sans-serif; padding: 20px; }
+		.container { max-width: 980px; margin: 0 auto; }
+		h1 { margin-bottom: 12px; }
+		.controls { display:flex; gap:12px; align-items:center; margin-bottom:16px; }
+		select { padding:6px 8px; }
+		table { width:100%; border-collapse:collapse; margin-top:8px; }
+		th,td { padding:8px 10px; border:1px solid #e3e3e3; text-align:right; }
+		.impact-high { color:#b71c1c; font-weight:600 }
+		.impact-medium { color:#f57f17 }
+		.impact-low { color:#388e3c }
+		.empty-message { text-align:center; padding:28px; border:1px dashed #ddd; border-radius:8px; background:#fafafa; color:#666 }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>التقويم الاقتصادي</h1>
+
+		<div class="controls">
+			<label for="impactFilter">الفلتر حسب التأثير:</label>
+			<select id="impactFilter">
+				<option value="all">الكل</option>
+				<option value="high">عالٍ</option>
+				<option value="medium">متوسط</option>
+				<option value="low">منخفض</option>
+			</select>
+			<button id="refreshBtn">تحديث</button>
+		</div>
+
+		<div id="events-container">
+			<div id="empty-message" class="empty-message" style="display:none">لا توجد أحداث حالياً</div>
+
+			<table id="events-table" style="display:none">
+				<thead>
+					<tr>
+						<th>التاريخ</th>
+						<th>الوقت</th>
+						<th>البلد</th>
+						<th>الحدث</th>
+						<th>التأثير</th>
+						<th>تفاصيل</th>
+					</tr>
+				</thead>
+				<tbody id="events-body"></tbody>
+			</table>
+		</div>
+	</div>
+
+	<script src="js/api.js"></script>
+	<script>
+		const eventsTable = document.getElementById('events-table');
+		const eventsBody = document.getElementById('events-body');
+		const emptyMessage = document.getElementById('empty-message');
+		const impactFilter = document.getElementById('impactFilter');
+		const refreshBtn = document.getElementById('refreshBtn');
+
+		let events = [];
+
+		function formatDate(d) {
+			try { return new Date(d).toLocaleDateString('ar-EG'); } catch(e){ return d }
+		}
+
+		function renderTable(list){
+			eventsBody.innerHTML = '';
+			if(!list || list.length === 0){
+				eventsTable.style.display = 'none';
+				emptyMessage.style.display = 'block';
+				return;
+			}
+			emptyMessage.style.display = 'none';
+			eventsTable.style.display = 'table';
+			list.forEach(ev =>{
+				const tr = document.createElement('tr');
+				const impactClass = ev.impact && ev.impact.toLowerCase().includes('high') ? 'impact-high' : ev.impact && ev.impact.toLowerCase().includes('medium') ? 'impact-medium' : 'impact-low';
+				tr.innerHTML = `
+					<td>${formatDate(ev.date || ev.datetime || ev.start_date || '')}</td>
+					<td>${ev.time || (ev.datetime? new Date(ev.datetime).toLocaleTimeString('ar-EG') : '')}</td>
+					<td>${ev.country || ev.region || ''}</td>
+					<td>${ev.title || ev.name || ''}</td>
+					<td class="${impactClass}">${ev.impact || ev.importance || ''}</td>
+					<td>${ev.description || ev.details || ''}</td>
+				`;
+				eventsBody.appendChild(tr);
+			})
+		}
+
+		function applyFilter(){
+			const f = impactFilter.value;
+			if(f === 'all') return renderTable(events);
+			const map = { high: ['high','عال'], medium:['medium','متوس'], low:['low','منخ'] };
+			const checks = map[f] || [f];
+			const filtered = events.filter(e=>{
+				const imp = (e.impact || e.importance || '').toString().toLowerCase();
+				return checks.some(c=> imp.includes(c));
+			});
+			renderTable(filtered);
+		}
+
+		async function loadEvents(){
+			events = [];
+			eventsTable.style.display = 'none';
+			emptyMessage.style.display = 'none';
+			emptyMessage.textContent = 'جاري التحميل...';
+			emptyMessage.style.display = 'block';
+			try{
+				const data = await api.getCalendarEvents(24);
+				events = Array.isArray(data) ? data : (data.events || []);
+				if(events.length === 0){
+					emptyMessage.textContent = 'لا توجد أحداث حالياً';
+				}
+				applyFilter();
+			}catch(err){
+				emptyMessage.textContent = err.message || 'تعذر تحميل الأحداث';
+				console.error(err);
+			}
+		}
+
+		impactFilter.addEventListener('change', applyFilter);
+		refreshBtn.addEventListener('click', loadEvents);
+		// initial load
+		loadEvents();
+	</script>
+</body>
+</html>
+

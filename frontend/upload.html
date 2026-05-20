@@ -239,6 +239,7 @@
         }
 
         function displayResult(result) {
+            localStorage.setItem('lastAnalysis', JSON.stringify(result));
             resultCard.classList.remove('hidden');
             document.getElementById('resultMarket').textContent = result.market || document.getElementById('marketInput').value || 'غير محدد';
             document.getElementById('resultConfidence').textContent = result.confidence || 0;
@@ -247,6 +248,9 @@
             document.getElementById('resultRecommendation').textContent = (result.recommendation || 'غير محدد').toUpperCase();
             document.getElementById('resultDetails').textContent = JSON.stringify(result, null, 2);
             document.getElementById('memoryInsight').textContent = result.memory_insight || 'لا يوجد.';
+            setTimeout(() => {
+                window.location.href = 'result.html';
+            }, 500);
         }
 
         analyzeBtn.addEventListener('click', performAnalysis);
