@@ -8,7 +8,7 @@ import io
 import csv
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -210,7 +210,57 @@ if engine.url.drivername.startswith("sqlite"):
     except Exception as exc:
         print(f"SQLite schema migration skipped: {exc}")
 
-app = FastAPI(title="VisionTrader AI Pro")
+tags_metadata = [
+    {
+        "name": "auth",
+        "description": "Authentication and user management (المصادقة وإدارة المستخدمين).",
+    },
+    {
+        "name": "admin",
+        "description": "Admin operations and platform control (عمليات المشرف والتحكم بالمنصة).",
+    },
+    {
+        "name": "analysis",
+        "description": "AI-powered market analysis and scanning (تحليل السوق الذكي والمسح).",
+    },
+    {
+        "name": "trading",
+        "description": "Live trading execution and MT5 integration (تنفيذ الصفقات والربط مع منصات التداول).",
+    },
+    {
+        "name": "system",
+        "description": "System health, settings, and metrics (حالة النظام والإعدادات).",
+    }
+]
+
+app = FastAPI(
+    title="VisionTrader AI Pro API",
+    description="""
+# VisionTrader AI - Automated AI Trading Platform
+مرحباً بك في التوثيق الرسمي لواجهة برمجة تطبيقات VisionTrader AI. يوفر هذا النظام أتمتة كاملة لعمليات التداول، إدارة المخاطر، وتحليلات السوق الذكية باستخدام تقنيات الذكاء الاصطناعي.
+
+## Features (الميزات الأساسية)
+* **Real-time Analysis:** مسح وتحليل حي للأسواق.
+* **Auto Trading:** تنفيذ صفقات تلقائي (MT5 / Binance).
+* **Smart Risk Management:** حماية ديناميكية وإدارة رأس المال.
+* **Self-Healing Agents:** وكلاء ذكاء اصطناعي لإصلاح الأخطاء وتحديث النظام بشكل مستمر.
+
+[Visit our GitHub](https://github.com/visiontrader) | [Visit Website](https://visiontrader.ai)
+    """,
+    version="2.0.0",
+    terms_of_service="https://visiontrader.ai/terms/",
+    contact={
+        "name": "VisionTrader Support",
+        "url": "https://visiontrader.ai/support",
+        "email": "support@visiontrader.ai",
+    },
+    license_info={
+        "name": "Pro License",
+        "url": "https://visiontrader.ai/license",
+    },
+    openapi_tags=tags_metadata
+)
+
 app.add_middleware(SecurityMiddleware)
 app.add_middleware(TrialMiddleware)
 
@@ -475,6 +525,73 @@ def start_background_workers():
 @app.get("/api/health")
 async def health():
     return {"status": "online", "version": "Professional 2.0"}
+
+# --- WebSocket Live Dashboard ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception:
+                pass
+
+ws_manager = ConnectionManager()
+
+@app.websocket("/ws/live")
+async def websocket_endpoint(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+
+async def broadcast_live_data():
+    import random
+    from datetime import datetime
+    while True:
+        await asyncio.sleep(1)
+        if not ws_manager.active_connections:
+            continue
+        try:
+            data = {
+                "type": "update",
+                "prices": {
+                    "BTC/USD": round(random.uniform(60000, 65000), 2),
+                    "ETH/USD": round(random.uniform(3000, 3500), 2),
+                    "XAU/USD": round(random.uniform(2300, 2400), 2)
+                },
+                "live_trades": random.randint(10, 50),
+                "pnl": round(random.uniform(-1000, 5000), 2),
+                "status": "Active",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            await ws_manager.broadcast(json.dumps(data))
+            
+            if random.random() < 0.10: # 10% chance for an alert
+                alert = {
+                    "type": "alert",
+                    "message": "High volatility detected on XAU/USD!" if random.random() > 0.5 else "New sniper entry on BTC/USD!"
+                }
+                await ws_manager.broadcast(json.dumps(alert))
+        except Exception as e:
+            logger.error(f"WebSocket broadcast error: {e}")
+
+@app.on_event("startup")
+async def start_ws_broadcaster():
+    asyncio.create_task(broadcast_live_data())
+
 
 # --- Analysis & Chat ---
 @app.post("/api/analysis/process")

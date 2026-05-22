@@ -1,14 +1,19 @@
 import os
+import sys
 import time
 import logging
 import random
 import requests
 from typing import Any, Dict, List, Optional
 
+# Fix Arabic/Unicode output on Windows terminal
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 logger = logging.getLogger(__name__)
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-046971017e5f4efbb60a6408a056e478")
-DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.ai/v1/analyze")
+DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/analyze")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -218,7 +223,8 @@ def example_usage():
         for i in range(21)
     ]
     result = orchestrator.orchestrate(market_data, reports)
-    print(result)
+    import json
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 
 if __name__ == "__main__":

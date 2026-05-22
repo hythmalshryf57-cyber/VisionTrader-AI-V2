@@ -1,0 +1,112 @@
+{
+  "generated_at": "2026-05-22T22:52:51.496495",
+  "initial_capital": 10000.0,
+  "total_trades": 500,
+  "metrics": {
+    "total_return": 32182.79,
+    "total_return_pct": 3.218279,
+    "annualized_return": 15.88823408706634,
+    "cagr": 15.88823408706634,
+    "total_trades": 500,
+    "winning_trades": 318,
+    "losing_trades": 182,
+    "win_rate": 0.636,
+    "avg_win": 147.6432389937107,
+    "avg_loss": -81.14153846153846,
+    "avg_trade": 64.36558000000001,
+    "expectancy": 64.36558,
+    "profit_factor": 3.179260090900719,
+    "sharpe_ratio": 8.45817322436748,
+    "sortino_ratio": 39.9653987432654,
+    "calmar_ratio": 1221.0512070546813,
+    "max_drawdown": 535.2099999999991,
+    "max_drawdown_pct": 0.013011931027356849,
+    "avg_drawdown": 130.22899563318757,
+    "recovery_factor": 60.13114478429038,
+    "risk_of_ruin": 0.0037708797208657377,
+    "max_win_streak": 12,
+    "max_loss_streak": 5,
+    "current_streak": 3,
+    "streak_type": "win",
+    "ulcer_index": 0.0025424270443055166,
+    "serenity_ratio": 15719.388618359453,
+    "payoff_ratio": 1.8195765300123612
+  },
+  "monte_carlo": {
+    "simulations": 500,
+    "success_probability": 1.0,
+    "avg_return": 32394.591540000005,
+    "median_return": 32427.635000000002,
+    "best_case_95": 36699.700999999994,
+    "worst_case_5": 27794.676999999978,
+    "avg_max_drawdown": 528.0895599999997,
+    "worst_drawdown_95": 772.7194999999975,
+    "var_95": 0.0,
+    "cvar_95": 0.0,
+    "percentiles": {
+      "p5": 27794.676999999978,
+      "p10": 29037.289000000055,
+      "p25": 30911.84999999997,
+      "p50": 32427.635000000002,
+      "p75": 34114.88000000005,
+      "p90": 35773.65200000001,
+      "p95": 36699.700999999994
+    }
+  },
+  "walk_forward": {
+    "windows": 5,
+    "in_sample_return": 0.4614916,
+    "out_sample_return": 0.18216420000000003,
+    "efficiency_ratio": 0.3947291781692235,
+    "is_overfit": true,
+    "overfit_score": 0.6052708218307765,
+    "recommendation": "تحذير: Overfitting مرتفع (61%) – الاستراتيجية محسّنة للبيانات التاريخية ولن تعمل جيداً في المستقبل. يُنصح بتبسيط النموذج وتقليل المعاملات.",
+    "periods": [
+      {
+        "window": 1,
+        "trade_range": "0–100",
+        "train_trades": 70,
+        "test_trades": 30,
+        "in_sample_return": 53.73,
+        "out_sample_return": 10.42,
+        "efficiency": 0.194
+      },
+      {
+        "window": 2,
+        "trade_range": "100–200",
+        "train_trades": 70,
+        "test_trades": 30,
+        "in_sample_return": 45.01,
+        "out_sample_return": 19.35,
+        "efficiency": 0.43
+      },
+      {
+        "window": 3,
+        "trade_range": "200–300",
+        "train_trades": 70,
+        "test_trades": 30,
+        "in_sample_return": 39.35,
+        "out_sample_return": 23.1,
+        "efficiency": 0.587
+      },
+      {
+        "window": 4,
+        "trade_range": "300–400",
+        "train_trades": 70,
+        "test_trades": 30,
+        "in_sample_return": 48.56,
+        "out_sample_return": 20.57,
+        "efficiency": 0.424
+      },
+      {
+        "window": 5,
+        "trade_range": "400–500",
+        "train_trades": 70,
+        "test_trades": 30,
+        "in_sample_return": 44.1,
+        "out_sample_return": 17.65,
+        "efficiency": 0.4
+      }
+    ]
+  }
+}

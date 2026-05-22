@@ -1,0 +1,48 @@
+══════════════════════════════════════════════════════════════
+  SANDBOX TEST REPORT – VisionTrader AI
+  Strategy : evolved_momentum_v1
+  Generated: 2026-05-22 21:58:22 UTC
+══════════════════════════════════════════════════════════════
+
+  📊 PERFORMANCE METRICS
+──────────────────────────────────────────────────────────────
+  Days Simulated   : 5
+  Total Bars       : 120
+  Total Trades     : 1
+  Wins / Losses    : 0 / 1
+  Win Rate         : 0.00%
+  Total PnL        : -10.4926
+  Return %         : -0.105%
+  Final Capital    : $9,989.51
+  Profit Factor    : 0.000
+  Sharpe Ratio     : 0.000
+  Max Drawdown     : 0.105%
+  Avg PnL/Trade    : -10.4926
+
+  🔄 VS. ORIGINAL STRATEGY
+──────────────────────────────────────────────────────────────
+  Win Rate          : 0.0        (orig: 0.0) +0.0% ↓ تراجع
+  Sharpe Ratio      : 0.0        (orig: 0.0) +0.0% ↓ تراجع
+  Max Drawdown      : 0.105      (orig: 0.105) +0.0% ↑ تحسّن
+  Profit Factor     : 0.0        (orig: 0.0) +0.0% ↓ تراجع
+  Return %          : -0.105     (orig: -0.105) +0.0% ↓ تراجع
+  Total Trades      : 1          (orig: 1) +0.0% ↓ تراجع
+
+  ⭐ الاستراتيجية الأصلية لا تزال أفضل (17% فقط من المقاييس تحسّنت) ⚠️
+
+  🏆 VS. BEST ACTIVE STRATEGY  (momentum_baseline, Sharpe=0.000)
+──────────────────────────────────────────────────────────────
+  Win Rate          : 0.0        (best: 100.0) -100.0% ↓ تراجع
+  Sharpe Ratio      : 0.0        (best: 0.0) +0.0% ↓ تراجع
+  Max Drawdown      : 0.105      (best: 0.0) +100.0% ↓ تراجع
+  Profit Factor     : 0.0        (best: 7.061) -100.0% ↓ تراجع
+  Return %          : -0.105     (best: 0.071) -247.9% ↓ تراجع
+  Total Trades      : 1          (best: 1) +0.0% ↓ تراجع
+
+  ⭐ الاستراتيجية الأصلية لا تزال أفضل (0% فقط من المقاييس تحسّنت) ⚠️
+
+  📋 LAST 5 TRADES
+──────────────────────────────────────────────────────────────
+  ❌ BUY   entry=2080.92 exit=2073.21  PnL=-10.4926  [END_OF_SIM]
+
+══════════════════════════════════════════════════════════════

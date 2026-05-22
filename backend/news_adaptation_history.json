@@ -1,0 +1,230 @@
+[
+  {
+    "timestamp": "2026-05-22T22:38:14.656524",
+    "impact_level": "HIGH",
+    "trigger_news": "Test news (ImpactLevel.HIGH)",
+    "actions_taken": [
+      "⚠️ تخفيض أحجام الصفقات 50%",
+      "📏 توسيع الوقف 1.5×",
+      "❄️  تجميد الاستراتيجيات عالية المخاطر",
+      "⚖️ تقليل وزن Momentum"
+    ],
+    "strategy_weights": {
+      "momentum": 0.7,
+      "power": 1.3,
+      "geometric": 0.8
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 0.5,
+    "stop_loss_factor": 1.5,
+    "size_reduction": 0.5
+  },
+  {
+    "timestamp": "2026-05-22T22:38:14.757924",
+    "impact_level": "POSITIVE",
+    "trigger_news": "Test news (ImpactLevel.POSITIVE)",
+    "actions_taken": [
+      "📈 زيادة وزن Momentum +40%",
+      "✅ السماح بأحجام صفقات طبيعية",
+      "🚀 تفعيل استراتيجيات الاتجاه"
+    ],
+    "strategy_weights": {
+      "momentum": 1.4,
+      "power": 0.8,
+      "geometric": 1.1
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 1.1,
+    "stop_loss_factor": 1.0,
+    "size_reduction": 0.0
+  },
+  {
+    "timestamp": "2026-05-22T22:38:14.764661",
+    "impact_level": "NEGATIVE",
+    "trigger_news": "Test news (ImpactLevel.NEGATIVE)",
+    "actions_taken": [
+      "🛡️ زيادة وزن Power (تحوط) +50%",
+      "📉 تقليل Momentum -40%",
+      "📏 تخفيض أحجام الصفقات 30%",
+      "🔒 توسيع الوقف 1.3×"
+    ],
+    "strategy_weights": {
+      "momentum": 0.6,
+      "power": 1.5,
+      "geometric": 0.9
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 0.7,
+    "stop_loss_factor": 1.3,
+    "size_reduction": 0.3
+  },
+  {
+    "timestamp": "2026-05-22T22:38:14.873967",
+    "impact_level": "NEUTRAL",
+    "trigger_news": "Test news (ImpactLevel.NEUTRAL)",
+    "actions_taken": [
+      "ℹ️ لا تغيير – الخبر محايد"
+    ],
+    "strategy_weights": {
+      "momentum": 1.0,
+      "power": 1.0,
+      "geometric": 1.0
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 1.0,
+    "stop_loss_factor": 1.0,
+    "size_reduction": 0.0
+  },
+  {
+    "timestamp": "2026-05-22T22:40:07.441274",
+    "impact_level": "HIGH",
+    "trigger_news": "Test news (ImpactLevel.HIGH)",
+    "actions_taken": [
+      "⚠️ تخفيض أحجام الصفقات 50%",
+      "📏 توسيع الوقف 1.5×",
+      "❄️  تجميد الاستراتيجيات عالية المخاطر",
+      "⚖️ تقليل وزن Momentum"
+    ],
+    "strategy_weights": {
+      "momentum": 0.7,
+      "power": 1.3,
+      "geometric": 0.8
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 0.5,
+    "stop_loss_factor": 1.5,
+    "size_reduction": 0.5
+  },
+  {
+    "timestamp": "2026-05-22T22:40:07.473231",
+    "impact_level": "POSITIVE",
+    "trigger_news": "Test news (ImpactLevel.POSITIVE)",
+    "actions_taken": [
+      "📈 زيادة وزن Momentum +40%",
+      "✅ السماح بأحجام صفقات طبيعية",
+      "🚀 تفعيل استراتيجيات الاتجاه"
+    ],
+    "strategy_weights": {
+      "momentum": 1.4,
+      "power": 0.8,
+      "geometric": 1.1
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 1.1,
+    "stop_loss_factor": 1.0,
+    "size_reduction": 0.0
+  },
+  {
+    "timestamp": "2026-05-22T22:40:07.523962",
+    "impact_level": "NEGATIVE",
+    "trigger_news": "Test news (ImpactLevel.NEGATIVE)",
+    "actions_taken": [
+      "🛡️ زيادة وزن Power (تحوط) +50%",
+      "📉 تقليل Momentum -40%",
+      "📏 تخفيض أحجام الصفقات 30%",
+      "🔒 توسيع الوقف 1.3×"
+    ],
+    "strategy_weights": {
+      "momentum": 0.6,
+      "power": 1.5,
+      "geometric": 0.9
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 0.7,
+    "stop_loss_factor": 1.3,
+    "size_reduction": 0.3
+  },
+  {
+    "timestamp": "2026-05-22T22:40:07.537706",
+    "impact_level": "NEUTRAL",
+    "trigger_news": "Test news (ImpactLevel.NEUTRAL)",
+    "actions_taken": [
+      "ℹ️ لا تغيير – الخبر محايد"
+    ],
+    "strategy_weights": {
+      "momentum": 1.0,
+      "power": 1.0,
+      "geometric": 1.0
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 1.0,
+    "stop_loss_factor": 1.0,
+    "size_reduction": 0.0
+  },
+  {
+    "timestamp": "2026-05-22T22:41:06.482417",
+    "impact_level": "HIGH",
+    "trigger_news": "Test news (ImpactLevel.HIGH)",
+    "actions_taken": [
+      "⚠️ تخفيض أحجام الصفقات 50%",
+      "📏 توسيع الوقف 1.5×",
+      "❄️  تجميد الاستراتيجيات عالية المخاطر",
+      "⚖️ تقليل وزن Momentum"
+    ],
+    "strategy_weights": {
+      "momentum": 0.7,
+      "power": 1.3,
+      "geometric": 0.8
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 0.5,
+    "stop_loss_factor": 1.5,
+    "size_reduction": 0.5
+  },
+  {
+    "timestamp": "2026-05-22T22:41:06.482417",
+    "impact_level": "POSITIVE",
+    "trigger_news": "Test news (ImpactLevel.POSITIVE)",
+    "actions_taken": [
+      "📈 زيادة وزن Momentum +40%",
+      "✅ السماح بأحجام صفقات طبيعية",
+      "🚀 تفعيل استراتيجيات الاتجاه"
+    ],
+    "strategy_weights": {
+      "momentum": 1.4,
+      "power": 0.8,
+      "geometric": 1.1
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 1.1,
+    "stop_loss_factor": 1.0,
+    "size_reduction": 0.0
+  },
+  {
+    "timestamp": "2026-05-22T22:41:06.482417",
+    "impact_level": "NEGATIVE",
+    "trigger_news": "Test news (ImpactLevel.NEGATIVE)",
+    "actions_taken": [
+      "🛡️ زيادة وزن Power (تحوط) +50%",
+      "📉 تقليل Momentum -40%",
+      "📏 تخفيض أحجام الصفقات 30%",
+      "🔒 توسيع الوقف 1.3×"
+    ],
+    "strategy_weights": {
+      "momentum": 0.6,
+      "power": 1.5,
+      "geometric": 0.9
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 0.7,
+    "stop_loss_factor": 1.3,
+    "size_reduction": 0.3
+  },
+  {
+    "timestamp": "2026-05-22T22:41:06.506399",
+    "impact_level": "NEUTRAL",
+    "trigger_news": "Test news (ImpactLevel.NEUTRAL)",
+    "actions_taken": [
+      "ℹ️ لا تغيير – الخبر محايد"
+    ],
+    "strategy_weights": {
+      "momentum": 1.0,
+      "power": 1.0,
+      "geometric": 1.0
+    },
+    "trading_allowed": true,
+    "risk_multiplier": 1.0,
+    "stop_loss_factor": 1.0,
+    "size_reduction": 0.0
+  }
+]

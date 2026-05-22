@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Dashboard - VisionTrader AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { margin: 0; font-size: 1.5rem; color: var(--primary); }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            background-color: var(--danger);
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+        .dot.connected { background-color: var(--success); }
+        .dot.connected.pulse { box-shadow: 0 0 10px var(--success); }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .card h3 { margin: 0 0 10px 0; color: #94a3b8; font-size: 1rem; }
+        .card .value { font-size: 2rem; font-weight: bold; }
+        .profit { color: var(--success); }
+        .loss { color: var(--danger); }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .alerts-panel {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .alerts-panel h3 { margin-top: 0; color: var(--warning); border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .alert-item {
+            padding: 10px;
+            border-left: 4px solid var(--primary);
+            background-color: rgba(59, 130, 246, 0.1);
+            margin-bottom: 10px;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease-out;
+        }
+        .alert-item.urgent { border-left-color: var(--danger); background-color: rgba(239, 68, 68, 0.1); }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .prices-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .price-item {
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .price-item .symbol { display: block; font-size: 0.9rem; color: #94a3b8; }
+        .price-item .price { font-size: 1.2rem; font-weight: bold; }
+        .price-up { color: var(--success); }
+        .price-down { color: var(--danger); }
+        
+        /* Glassmorphism details */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header glass">
+        <h1>VisionTrader AI - Real-time Dashboard</h1>
+        <div class="status-indicator">
+            <span id="conn-text">يتم الاتصال...</span>
+            <div id="conn-dot" class="dot"></div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card glass">
+            <h3>الصفقات الحية (Live Trades)</h3>
+            <div id="live-trades" class="value">0</div>
+        </div>
+        <div class="card glass">
+            <h3>الربح / الخسارة (Live P&L)</h3>
+            <div id="live-pnl" class="value profit">$0.00</div>
+        </div>
+        <div class="card glass">
+            <h3>حالة النظام</h3>
+            <div id="sys-status" class="value" style="color: var(--primary);">Waiting...</div>
+        </div>
+    </div>
+    
+    <div class="chart-card glass" style="margin-bottom: 20px;">
+        <h3>أسعار مباشرة (Live Prices)</h3>
+        <div class="prices-grid" id="prices-grid">
+            <div class="price-item"><span class="symbol">جاري التحميل...</span></div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-card glass">
+            <h3>تطور الأرباح (P&L Chart)</h3>
+            <canvas id="pnlChart"></canvas>
+        </div>
+        <div class="alerts-panel glass">
+            <h3>تنبيهات فورية (Live Alerts)</h3>
+            <div id="alerts-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js Setup
+        const ctx = document.getElementById('pnlChart').getContext('2d');
+        const pnlChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Live P&L ($)',
+                    data: [],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                },
+                plugins: { legend: { labels: { color: '#f8fafc' } } }
+            }
+        });
+
+        const maxDataPoints = 30;
+        let ws;
+        let previousPrices = {};
+
+        function live_chart_update(pnlValue, timeLabel) {
+            if (pnlChart.data.labels.length > maxDataPoints) {
+                pnlChart.data.labels.shift();
+                pnlChart.data.datasets[0].data.shift();
+            }
+            pnlChart.data.labels.push(timeLabel);
+            pnlChart.data.datasets[0].data.push(pnlValue);
+            pnlChart.update();
+        }
+
+        function alert_notification(message, isUrgent = false) {
+            const container = document.getElementById('alerts-container');
+            const alertEl = document.createElement('div');
+            alertEl.className = `alert-item ${isUrgent ? 'urgent' : ''}`;
+            const time = new Date().toLocaleTimeString();
+            alertEl.innerHTML = `<strong>${time}</strong>: ${message}`;
+            container.prepend(alertEl);
+            
+            if (container.children.length > 20) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function update_dashboard(data) {
+            // Update Stats
+            document.getElementById('live-trades').innerText = data.live_trades;
+            
+            const pnlEl = document.getElementById('live-pnl');
+            pnlEl.innerText = `$${data.pnl.toLocaleString()}`;
+            pnlEl.className = `value ${data.pnl >= 0 ? 'profit' : 'loss'}`;
+            
+            document.getElementById('sys-status').innerText = data.status;
+            
+            // Update Prices
+            if(data.prices) {
+                const pricesGrid = document.getElementById('prices-grid');
+                pricesGrid.innerHTML = '';
+                for (const [symbol, price] of Object.entries(data.prices)) {
+                    const prev = previousPrices[symbol] || price;
+                    const colorClass = price >= prev ? 'price-up' : 'price-down';
+                    
+                    pricesGrid.innerHTML += `
+                        <div class="price-item">
+                            <span class="symbol">${symbol}</span>
+                            <span class="price ${colorClass}">$${price.toLocaleString()}</span>
+                        </div>
+                    `;
+                    previousPrices[symbol] = price;
+                }
+            }
+            
+            // Update Chart
+            const timeLabel = new Date(data.timestamp).toLocaleTimeString();
+            live_chart_update(data.pnl, timeLabel);
+        }
+
+        function connect_websocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // Default to 8000 for FastAPI
+            let host = window.location.host;
+            if (host === '' || host.includes('63342') || window.location.protocol === 'file:') {
+                host = 'localhost:8000';
+            }
+            const wsUrl = `ws://${host}/ws/live`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                document.getElementById('conn-text').innerText = 'متصل (Connected)';
+                document.getElementById('conn-text').style.color = 'var(--success)';
+                const dot = document.getElementById('conn-dot');
+                dot.classList.add('connected');
+                dot.classList.add('pulse');
+                alert_notification('تم الاتصال بخادم WebSocket اللحظي بنجاح.', false);
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'update') {
+                        update_dashboard(data);
+                    } else if (data.type === 'alert') {
+                        alert_notification(data.message, data.message.includes('High') || data.message.includes('عاجل'));
+                    }
+                } catch (e) {
+                    console.error("Error parsing WebSocket data:", e);
+                }
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('conn-text').innerText = 'غير متصل (Disconnected)';
+                document.getElementById('conn-text').style.color = 'var(--danger)';
+                const dot = document.getElementById('conn-dot');
+                dot.classList.remove('connected');
+                dot.classList.remove('pulse');
+                alert_notification('فقد الاتصال بالخادم. جاري إعادة المحاولة...', true);
+                
+                // Auto-reconnect
+                setTimeout(connect_websocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error("WebSocket Error: ", error);
+            };
+        }
+
+        // Initialize connection
+        connect_websocket();
+    </script>
+</body>
+</html>

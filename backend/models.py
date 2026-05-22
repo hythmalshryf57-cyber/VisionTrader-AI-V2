@@ -296,3 +296,73 @@ class UserChallengeProgress(Base):
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class GlobalMemoryEvent(Base):
+    """ذاكرة عالمية لتسجيل تجارب كل المكونات وتعلّم النظام من نفسه"""
+    __tablename__ = "global_memory_events"
+    id = Column(Integer, primary_key=True, index=True)
+    component = Column(String, index=True)          # اسم المكون: agent_manager, news_adapter, self_healing, etc.
+    event_type = Column(String, index=True)          # نوع الحدث: agent_accuracy, news_impact, fix_applied, alert_response, etc.
+    event_key = Column(String, index=True)           # مفتاح فرعي: اسم الوكيل، الكلمة المفتاحية، اسم الملف، إلخ
+    event_value = Column(Float, default=0.0)         # القيمة الرقمية: الدقة، التأثير، عدد الأخطاء، إلخ
+    metadata_json = Column(Text, nullable=True)      # بيانات إضافية بصيغة JSON
+    context = Column(String, nullable=True)          # سياق: market session, volatility level, etc.
+    success = Column(Boolean, default=True)          # هل نجح الحدث أم لا
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+
+
+class FixCacheEntry(Base):
+    """ذاكرة الإصلاحات السابقة للنظام الذاتي الإصلاح"""
+    __tablename__ = "fix_cache_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    error_signature = Column(String, unique=True, index=True)  # بصمة الخطأ الفريدة
+    error_message = Column(Text)                                # رسالة الخطأ الأصلية
+    fix_code = Column(Text)                                     # كود الإصلاح
+    fix_description = Column(Text, nullable=True)               # وصف الإصلاح
+    component = Column(String)                                  # المكون المصاب
+    times_applied = Column(Integer, default=1)                  # عدد مرات تطبيق هذا الإصلاح
+    success_rate = Column(Float, default=1.0)                   # نسبة نجاح الإصلاح
+    last_applied = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class AlertPreference(Base):
+    """تفضيلات المستخدم للتنبيهات - يتعلم من تفاعل المستخدم"""
+    __tablename__ = "alert_preferences"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    alert_type = Column(String, index=True)       # نوع التنبيه
+    times_sent = Column(Integer, default=0)        # عدد مرات الإرسال
+    times_read = Column(Integer, default=0)        # عدد مرات القراءة
+    times_acted = Column(Integer, default=0)       # عدد مرات التفاعل
+    priority_adjustment = Column(Float, default=0.0)  # تعديل الأولوية
+    last_sent = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class NewsKeywordImpact(Base):
+    """تأثير الكلمات المفتاحية الإخبارية على الأسعار - يتعلم من الواقع"""
+    __tablename__ = "news_keyword_impacts"
+    id = Column(Integer, primary_key=True, index=True)
+    keyword = Column(String, index=True)           # الكلمة المفتاحية
+    market = Column(String, nullable=True)          # السوق المتأثر
+    predicted_impact = Column(Float, default=0.0)   # التأثير المتوقع
+    actual_impact = Column(Float, default=0.0)      # التأثير الفعلي
+    price_before = Column(Float, nullable=True)     # السعر قبل الخبر
+    price_after = Column(Float, nullable=True)      # السعر بعد الخبر
+    times_observed = Column(Integer, default=1)     # عدد مرات الملاحظة
+    learned_weight = Column(Float, default=0.5)     # الوزن المتعلّم
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class CodeReviewHistory(Base):
+    """سجل مراجعات الكود وتكرار الأخطاء لكل ملف"""
+    __tablename__ = "code_review_history"
+    id = Column(Integer, primary_key=True, index=True)
+    file_path = Column(String, index=True)          # مسار الملف
+    error_type = Column(String)                      # نوع الخطأ
+    error_count = Column(Integer, default=1)         # عدد مرات ظهور الخطأ
+    strictness_level = Column(String, default="medium")  # مستوى التدقيق الحالي
+    last_review = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
