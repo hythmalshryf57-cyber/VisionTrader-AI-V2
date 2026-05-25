@@ -1,0 +1,15 @@
+{
+  "demo_fatigue_strategy": {
+    "last_evaluated": "2026-05-23T12:15:46.184168",
+    "strategy_name": "demo_fatigue_strategy",
+    "fatigue_index": 14.0,
+    "success_rate_decay": 0.0,
+    "profit_compression": 0.0,
+    "late_entry": 0.7,
+    "recent_trades": 21,
+    "total_wins": 14,
+    "total_losses": 7,
+    "reason": "علامات تأخر الدخول واضحة",
+    "performance_summary": {}
+  }
+}

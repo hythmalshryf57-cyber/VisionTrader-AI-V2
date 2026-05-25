@@ -42,11 +42,11 @@
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 20px; gap: 12px; flex-wrap:wrap;">
             <h2 style="margin:0;">سجل التحليلات الذكي</h2>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <input id="historyFilterInput" type="text" placeholder="فلترة بالسوق أو التوصية" style="padding: 10px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); color: inherit; min-width: 220px;" oninput="applyHistoryFilter()" />
+                <input class="cosmic-input" id="historyFilterInput" type="text" placeholder="فلترة بالسوق أو التوصية" style="min-width: 220px;" oninput="applyHistoryFilter()" />
                 <button class="btn btn-ghost" id="exportCsvBtn" style="padding: 10px 18px; border-radius: 14px;">تصدير CSV</button>
             </div>
         </div>
-        <div class="history-card">
+        <div class="card history-card">
             <div class="history-item" style="font-weight: bold; color: #888; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;">
                 <div>السوق</div>
                 <div>توقع الـ AI</div>
@@ -64,14 +64,14 @@
         </div>
 
         <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div class="history-card">
+            <div class="card history-card">
                 <h3>أعلى الأسواق دقة</h3>
                 <div style="margin-top: 15px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Gold</span> <span>94%</span></div>
                     <div style="display: flex; justify-content: space-between;"><span>US30</span> <span>88%</span></div>
                 </div>
             </div>
-            <div class="history-card">
+            <div class="card history-card">
                 <h3>أفضل الاستراتيجيات نجاحاً</h3>
                 <div style="margin-top: 15px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>SMC</span> <span>91%</span></div>

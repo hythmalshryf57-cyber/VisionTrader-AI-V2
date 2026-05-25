@@ -1,0 +1,28 @@
+{
+  "events": [
+    {
+      "type": "deployment_threshold",
+      "key": "test_key",
+      "value": 0.75,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-22T23:25:57.883034"
+    },
+    {
+      "type": "deployment_threshold",
+      "key": "test_key_2",
+      "value": 0.6,
+      "success": false,
+      "context": null,
+      "timestamp": "2026-05-22T23:25:57.883034"
+    },
+    {
+      "type": "deployment_threshold",
+      "key": "test_key_3",
+      "value": 0.8,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-22T23:25:57.894301"
+    }
+  ]
+}

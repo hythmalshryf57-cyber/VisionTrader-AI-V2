@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 from database import SessionLocal
 import models
+from .telegram_service import telegram_service
 from .binance_service import BinanceService
 from .performance_tracker import PerformanceTracker
 
@@ -36,11 +37,14 @@ class TradeProtectionService:
         return datetime(now.year, now.month, now.day, 23, 59, 59)
 
     def _compute_daily_loss(self, db, user_id: int) -> float:
+        # Compute today's net P&L from TradeExperience entries (preferred over Journal)
         today = datetime.utcnow().date()
-        entries = db.query(models.JournalEntry).filter(
-            models.JournalEntry.user_id == user_id,
-            models.JournalEntry.date >= datetime(today.year, today.month, today.day)
+        start = datetime(today.year, today.month, today.day)
+        entries = db.query(models.TradeExperience).filter(
+            models.TradeExperience.user_id == user_id,
+            models.TradeExperience.created_at >= start
         ).all()
+        # profit_loss expected to be positive for profit, negative for loss
         return sum(float(e.profit_loss or 0.0) for e in entries)
 
     def _has_three_consecutive_losses(self, db, user_id: int) -> bool:
@@ -138,23 +142,50 @@ class TradeProtectionService:
         daily_loss = self._compute_daily_loss(db, user_id)
         capital = float(user_prefs.capital or 10000.0)
         daily_drawdown_pct = round(max(0.0, -daily_loss / capital * 100.0), 2)
-        if daily_drawdown_pct >= 10.0 and not user_prefs.trading_locked_until:
-            user_prefs.trading_locked_until = self._end_of_day()
-            db.add(models.PsychologyLog(
-                user_id=user_id,
-                event_type="daily_drawdown_lock",
-                description=f"تم قفل التداول بعد خسارة يومية {'{:.2f}%'.format(daily_drawdown_pct)} من رأس المال."
-            ))
-            changed = True
 
-        # New feature 30: Daily profit/loss limits
-        daily_profit_target = capital * (user_prefs.daily_profit_target_percent / 100.0)
-        daily_loss_limit = capital * (user_prefs.daily_loss_limit_percent / 100.0)
+        # If absolute daily loss amount is set, use it; otherwise compute from percent
+        if user_prefs.daily_loss_limit_amount and user_prefs.daily_loss_limit_amount > 0:
+            daily_loss_limit_amount = float(user_prefs.daily_loss_limit_amount)
+            daily_loss_limit = daily_loss_limit_amount
+            daily_loss_limit_pct = round(daily_loss_limit_amount / max(1.0, capital) * 100.0, 2)
+        else:
+            daily_loss_limit_pct = float(user_prefs.daily_loss_limit_percent or 5.0)
+            daily_loss_limit = capital * (daily_loss_limit_pct / 100.0)
+
+        # If drawdown crosses hard limit, lock trading for rest of the day and notify
         if daily_loss <= -daily_loss_limit and not user_prefs.trading_locked_today:
             user_prefs.trading_locked_today = True
-            user_prefs.lock_reason = f"⛔ وصلت حد الخسارة {user_prefs.daily_loss_limit_percent}%. تداولك متوقف لليوم"
+            user_prefs.lock_reason = "تم إيقاف التداول اليوم. الخسائر تجاوزت الحد المسموح."
+            # create an alert record and psychology log
+            try:
+                db.add(models.Alert(
+                    user_id=user_id,
+                    market=None,
+                    recommendation="",
+                    confidence=0,
+                    entry=None,
+                    sl=None,
+                    tp=None,
+                    top_strategies=None,
+                ))
+            except Exception:
+                pass
+            db.add(models.PsychologyLog(
+                user_id=user_id,
+                event_type="daily_loss_limit_locked",
+                description=f"تم إيقاف التداول لليوم بعد خسارة {abs(round(daily_loss,2))}$ (الحد: {round(daily_loss_limit,2)}$)."
+            ))
+            # send telegram if configured
+            try:
+                if user_prefs.telegram_chat_id:
+                    telegram_service.send_message(user_prefs.telegram_chat_id, "تم إيقاف التداول اليوم. الخسائر تجاوزت الحد المسموح.")
+            except Exception:
+                pass
             changed = True
-        elif daily_loss >= daily_profit_target and not user_prefs.trading_locked_today:
+
+        # Handle profit target similarly (existing behavior)
+        daily_profit_target = capital * (float(user_prefs.daily_profit_target_percent or 30.0) / 100.0)
+        if daily_loss >= daily_profit_target and not user_prefs.trading_locked_today:
             user_prefs.trading_locked_today = True
             user_prefs.lock_reason = f"🎉 حققت هدفك اليومي {user_prefs.daily_profit_target_percent}%. تداولك متوقف لليوم"
             changed = True
@@ -181,11 +212,12 @@ class TradeProtectionService:
             "analysis_locked_until": user_prefs.analysis_locked_until.isoformat() if user_prefs.analysis_locked_until else None,
             "trading_locked_until": user_prefs.trading_locked_until.isoformat() if user_prefs.trading_locked_until else None,
             "analysis_message": "خسرت 3 صفقات متتالية. خذ استراحة" if (user_prefs.analysis_locked_until and user_prefs.analysis_locked_until > now) else None,
-            "trading_message": "وصلت حد الخسارة اليومية 10%. تداولك متوقف لليوم" if (user_prefs.trading_locked_until and user_prefs.trading_locked_until > now) else None,
+            "trading_message": ("تم إيقاف التداول اليوم. الخسائر تجاوزت الحد المسموح." if user_prefs.trading_locked_today else ("وصلت حد الخسارة اليومية {}%. تداولك متوقف لليوم".format(user_prefs.daily_loss_limit_percent) if (user_prefs.trading_locked_until and user_prefs.trading_locked_until > now) else None)),
             "daily_drawdown_pct": today_drawdown,
             "weekly_drawdown_pct": weekly_drawdown,
             "daily_loss_usd": round(daily_loss, 2),
-            "daily_loss_limit_pct": 10.0,
+            "daily_loss_limit_pct": float(user_prefs.daily_loss_limit_percent or 5.0),
+            "daily_loss_limit_amount": float(user_prefs.daily_loss_limit_amount) if user_prefs.daily_loss_limit_amount else None,
         }
 
     def refresh_protection(self, user_id: int) -> Dict[str, object]:

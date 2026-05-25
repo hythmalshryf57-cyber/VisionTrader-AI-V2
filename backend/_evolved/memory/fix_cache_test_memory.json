@@ -1,0 +1,7 @@
+{
+  "test_fix": {
+    "error": "test_error",
+    "fix_code": "print('fixed')",
+    "success": true
+  }
+}

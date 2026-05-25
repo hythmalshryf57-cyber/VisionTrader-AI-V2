@@ -1,0 +1,12 @@
+{
+  "events": [
+    {
+      "type": "strategy_simulation",
+      "key": "evolved_failing_strategy",
+      "value": 0.0,
+      "success": false,
+      "context": null,
+      "timestamp": "2026-05-22T23:32:26.496243"
+    }
+  ]
+}

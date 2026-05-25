@@ -1,0 +1,6 @@
+{
+  "last_error": "ImportError: no module named xyz",
+  "fix_applied": "pip install xyz",
+  "success": true,
+  "timestamp": "2026-05-23T13:09:03.689490"
+}

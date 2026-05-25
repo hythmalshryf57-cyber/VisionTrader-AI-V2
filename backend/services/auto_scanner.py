@@ -24,6 +24,12 @@ class AutoScanner:
         self.last_run_l2 = 0
         self.last_run_l3 = 0
 
+    def stop(self):
+        try:
+            self.is_running = False
+        except Exception:
+            pass
+
     def _get_active_users(self):
         db = SessionLocal()
         try:

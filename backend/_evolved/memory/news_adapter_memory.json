@@ -1,0 +1,60 @@
+{
+  "events": [
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:35:49.637492"
+    },
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:43:01.229089"
+    },
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:49:47.141576"
+    },
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:51:36.313550"
+    },
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:52:26.086189"
+    },
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:53:11.069860"
+    },
+    {
+      "type": "news_impact",
+      "key": "FED signals possible rate cut while inflation worries persist",
+      "value": 0.01700000000000003,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-05-23T12:55:07.196626"
+    }
+  ]
+}

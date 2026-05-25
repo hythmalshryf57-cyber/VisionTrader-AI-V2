@@ -226,5 +226,103 @@
     "risk_multiplier": 1.0,
     "stop_loss_factor": 1.0,
     "size_reduction": 0.0
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEGATIVE",
+    "predicted_score": 0.6,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEGATIVE",
+    "predicted_score": 0.6,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEUTRAL",
+    "predicted_score": 0.2,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEUTRAL",
+    "predicted_score": 0.2,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEUTRAL",
+    "predicted_score": 0.2,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEUTRAL",
+    "predicted_score": 0.2,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
+  },
+  {
+    "title": "FED signals possible rate cut while inflation worries persist",
+    "predicted_impact": "NEUTRAL",
+    "predicted_score": 0.2,
+    "price_before": 100.0,
+    "price_after": 98.3,
+    "actual_move": -1.7000000000000028,
+    "actual_score": 0.01700000000000003,
+    "keywords": [
+      "inflation",
+      "rate cut",
+      "worries"
+    ]
   }
 ]

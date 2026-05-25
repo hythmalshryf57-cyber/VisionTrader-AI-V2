@@ -42,7 +42,7 @@
         <p style="color: #888; margin-bottom: 30px;">خصص تجربتك في VisionTrader AI بما يناسب احتياجاتك</p>
 
         <!-- UI Settings -->
-        <div class="settings-section">
+        <div class="settings-section card">
             <h2><i class="fas fa-palette"></i> المظهر واللغة</h2>
             <div class="settings-row">
                 <span>الوضع الداكن (Dark Mode)</span>
@@ -53,7 +53,7 @@
             </div>
             <div class="settings-row">
                 <span>لغة المنصة</span>
-                <select id="langSelect" style="width: 150px;">
+                <select class="cosmic-input" id="langSelect" style="width: 150px;">
                     <option value="ar">العربية</option>
                     <option value="en">English</option>
                     <option value="tr">Türkçe</option>
@@ -63,7 +63,7 @@
             </div>
             <div class="settings-row">
                 <span>وضع التداول</span>
-                <select id="tradingModeSelect" style="width: 150px;">
+                <select class="cosmic-input" id="tradingModeSelect" style="width: 150px;">
                     <option value="day">يومي</option>
                     <option value="swing">متأرجح</option>
                     <option value="scalp">سكالب</option>
@@ -73,7 +73,7 @@
         </div>
 
         <!-- Notification Settings -->
-        <div class="settings-section">
+        <div class="settings-section card">
             <h2><i class="fas fa-bell"></i> التنبيهات</h2>
             <div class="settings-row">
                 <span>إشعارات Telegram</span>
@@ -96,17 +96,17 @@
         </div>
 
         <!-- Favorite Strategies -->
-        <div class="settings-section">
+        <div class="settings-section card">
             <h2><i class="fas fa-star"></i> استراتيجيات مفضلة</h2>
             <div style="margin-bottom: 15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <input id="favoriteStrategyInput" type="text" placeholder="أدخل اسم الاستراتيجية" style="flex:1; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: #111; color: #fff;" />
+                <input class="cosmic-input" id="favoriteStrategyInput" type="text" placeholder="أدخل اسم الاستراتيجية" style="flex:1;" />
                 <button class="btn btn-primary" onclick="addFavoriteStrategy()">إضافة</button>
             </div>
             <div id="favoriteStrategiesList" style="display:grid; gap: 10px;"></div>
         </div>
 
         <!-- Sync & Backup -->
-        <div class="settings-section">
+        <div class="settings-section card">
             <h2><i class="fas fa-sync"></i> المزامنة والنسخ الاحتياطي</h2>
             <div class="settings-row">
                 <span>مزامنة Google Drive</span>
@@ -123,7 +123,7 @@
         </div>
 
         <!-- Demo Mode -->
-        <div class="settings-section">
+        <div class="settings-section card">
             <h2><i class="fas fa-flask"></i> الوضع التجريبي (Demo Mode)</h2>
             <div class="settings-row">
                 <span>تفعيل الحساب التجريبي ($1M)</span>

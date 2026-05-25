@@ -336,26 +336,36 @@ class _ShadowAccount:
 
 def test_strategy(
     strategy_path: str,
-    days: int = 5,
+    days: Optional[int] = None,
     initial_capital: float = 10_000.0,
     risk_pct: float = 1.0,
     seed: Optional[int] = 42,
     market_params: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     """
-    يختبر استراتيجية (من _evolved/ أو builtin) على بيانات وهمية لمدة `days` أيام.
-
-    Args:
-        strategy_path    : مسار ملف .py أو اسم استراتيجية builtin
-        days             : عدد أيام المحاكاة
-        initial_capital  : رأس المال الابتدائي
-        risk_pct         : نسبة المخاطرة لكل صفقة
-        seed             : بذرة عشوائية
-        market_params    : معاملات السوق الوهمي {base_price, volatility, trend}
-
-    Returns:
-        قاموس يحوي المقاييس الكاملة + قائمة الصفقات
+    يختبر استراتيجية (من _evolved/ أو builtin) على بيانات وهمية لمدة أيام تتكيف تلقائياً.
     """
+    try:
+        from .internal_brain import InternalBrain
+        brain = InternalBrain()
+        summary = brain.get_daily_learning_summary()
+        win_rate = summary.get("success_rate", 50.0)
+    except Exception:
+        brain = None
+        win_rate = 50.0
+
+    # تحديد فترة الاختبار ديناميكياً إذا لم تُمرر
+    if days is None:
+        if win_rate > 60.0:
+            days = 3  # أداء ممتاز = 3 أيام
+            logger.info("System performance is EXCELLENT (>60%). Using 3-day fast-track testing.")
+        elif win_rate < 40.0:
+            days = 7  # أداء ضعيف = 7 أيام
+            logger.info("System performance is POOR (<40%). Using 7-day extended testing.")
+        else:
+            days = 5  # متوسط
+            logger.info("System performance is NEUTRAL. Using standard 5-day testing.")
+
     mp = market_params or {}
     bars = _generate_ohlcv(
         days=days,
@@ -414,6 +424,19 @@ def test_strategy(
         f"PnL:{metrics['total_pnl']} "
         f"Sharpe:{metrics['sharpe_ratio']}"
     )
+
+    if brain:
+        # Log the simulation success to InternalBrain
+        success = metrics["sharpe_ratio"] > 1.0 and metrics["win_rate_pct"] > 50.0
+        brain.log_event_experience(
+            component="sandbox_tester",
+            event_type="strategy_simulation",
+            event_key=strategy_name,
+            event_value=metrics["sharpe_ratio"],
+            metadata={"win_rate": metrics["win_rate_pct"], "pnl": metrics["total_pnl"], "days": days},
+            success=success
+        )
+
     return metrics
 
 

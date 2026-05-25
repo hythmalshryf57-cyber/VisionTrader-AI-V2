@@ -46,7 +46,7 @@
             </div>
         </aside>
         <main class="main-content">
-            <div class="result-glass">
+            <div class="card result-glass">
                 <div class="main-signal">
             <span style="color: #888; font-size: 0.9rem;">التوصية النهائية لـ <span id="marketName">XAUUSD</span></span>
             <div class="signal-badge tech-title" id="signalBadge">جاري التحميل...</div>
@@ -54,7 +54,7 @@
         </div>
 
         <!-- Confluence Map -->
-        <div class="confluence-map" style="background: rgba(255, 255, 255, 0.02); border-radius: 20px; padding: 25px; margin: 30px 0; border: 1px solid rgba(255, 255, 255, 0.05);">
+        <div class="card confluence-map" style="background: rgba(255, 255, 255, 0.02); border-radius: 20px; padding: 25px; margin: 30px 0; border: 1px solid rgba(255, 255, 255, 0.05);">
             <h3 style="text-align: center; margin-bottom: 20px; color: #00bdff;"><i class="fas fa-brain"></i> خريطة التوافق (Confluence Map)</h3>
 
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
@@ -103,7 +103,7 @@
             </div>
 
             <!-- Top Voters -->
-            <div class="top-voters" style="background: rgba(255, 255, 255, 0.02); border-radius: 15px; padding: 20px;">
+            <div class="card top-voters" style="background: rgba(255, 255, 255, 0.02); border-radius: 15px; padding: 20px;">
                 <h4 style="text-align: center; margin-bottom: 15px; color: #ffd700;"><i class="fas fa-trophy"></i> أكبر المصوتين (Top Voters)</h4>
                 <div id="topVotersList" style="display: grid; gap: 10px;">
                     <!-- سيتم تعبئته بالجافا سكريبت -->
@@ -190,8 +190,12 @@
             <button class="btn" id="tradeLossBtn" style="flex: 1; background: #e53e3e; color: white; border-radius: 10px; padding: 12px; font-weight: bold;">الصفقة فشلت</button>
         </div>
 
+        <div style="margin-top: 12px; display:flex; gap:10px;">
+            <button class="btn btn-warning" id="shadowRecBtn" style="flex:1; background:#ffbb00; color:#111; border-radius:10px; padding:10px; font-weight:700;">توصية ظل</button>
+        </div>
+
         <div style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
-            <button class="btn btn-outline" style="flex: 1; min-width: 160px;" onclick="downloadResultPdf()"><i class="fas fa-file-pdf"></i> حفظ PDF</button>
+            <button class="btn btn-secondary" style="flex: 1; min-width: 160px;" onclick="downloadResultPdf()"><i class="fas fa-file-pdf"></i> حفظ PDF</button>
             <button class="btn btn-primary" style="flex: 1; min-width: 160px;" onclick="shareAnalysis()"><i class="fas fa-share-alt"></i> مشاركة التحليل</button>
             <button class="btn btn-ghost" style="flex: 1; min-width: 160px;" onclick="window.location.href='dashboard.html'"><i class="fas fa-home"></i> العودة للرئيسية</button>
         </div>
@@ -258,6 +262,28 @@
             document.getElementById('tradeLossBtn').addEventListener('click', async () => {
                 await sendLearn('loss');
             });
+
+            // Shadow recommendation button
+            const shadowBtn = document.getElementById('shadowRecBtn');
+            if (shadowBtn) {
+                shadowBtn.addEventListener('click', async () => {
+                    const data = JSON.parse(localStorage.getItem('lastAnalysis') || '{}');
+                    const payload = {
+                        market: data.market || data.symbol || 'UNKNOWN',
+                        price: data.entry_price || data.current_price || data.price || null,
+                        sl: data.stop_loss || null,
+                        tp: data.take_profit || null,
+                        expected_price: data.expected_price || null,
+                        notes: 'Shadow recommendation created from UI'
+                    };
+                    try {
+                        const res = await api.request('POST', '/api/shadow/trade', payload, true);
+                        alert('تم إنشاء توصية ظل. ستجدها في صفحة لوحة التحكم.');
+                    } catch (err) {
+                        alert('فشل إنشاء توصية ظل: ' + err.message);
+                    }
+                });
+            }
         };
 
         function updateConfluenceMap(data) {

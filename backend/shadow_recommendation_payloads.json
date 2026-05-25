@@ -1,0 +1,22 @@
+{
+  "7": {
+    "market": "EURUSD",
+    "direction": "buy",
+    "entry_price": 1.1,
+    "price_history": [
+      1.1,
+      1.1015,
+      1.102
+    ]
+  },
+  "8": {
+    "market": "EURUSD",
+    "direction": "buy",
+    "entry_price": 1.2,
+    "price_history": [
+      1.2,
+      1.198,
+      1.195
+    ]
+  }
+}

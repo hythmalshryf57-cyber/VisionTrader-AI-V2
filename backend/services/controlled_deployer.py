@@ -151,15 +151,23 @@ def request_approval(strategy_name: str, report: Dict[str, Any], new_path: str, 
     win_rate = report.get("win_rate_pct", 0.0)
     auto_approve = False
 
-    logger.info(f"Evaluating approval for {strategy_name} (Sharpe: {sharpe}, WR: {win_rate}%)")
+    try:
+        from .internal_brain import InternalBrain
+        brain = InternalBrain()
+        dynamic_threshold = brain.get_dynamic_threshold("controlled_deployer", "deployment_threshold", default_val=2.0)
+    except Exception:
+        brain = None
+        dynamic_threshold = 2.0
+
+    logger.info(f"Evaluating approval for {strategy_name} (Sharpe: {sharpe}, WR: {win_rate}%, Target: >{dynamic_threshold})")
 
     msg = f"🚀 *New Strategy Ready: {strategy_name}*\n"
-    msg += f"Sharpe: {sharpe}\nWin Rate: {win_rate}%\n"
+    msg += f"Sharpe: {sharpe}\nWin Rate: {win_rate}%\nThreshold: {dynamic_threshold}\n"
 
-    if sharpe > 2.0:
+    if sharpe > dynamic_threshold:
         auto_approve = True
-        msg += "✅ *Auto-Approved* (Sharpe > 2.0)"
-        logger.info("Auto-approved based on Sharpe > 2.0")
+        msg += f"✅ *Auto-Approved* (Sharpe > {dynamic_threshold})"
+        logger.info(f"Auto-approved based on Sharpe > {dynamic_threshold}")
     else:
         msg += "⚠️ *Manual Approval Required*\nPlease approve deployment."
         logger.info("Requires manual approval. Simulating manual approval for demo purposes.")
@@ -175,6 +183,17 @@ def request_approval(strategy_name: str, report: Dict[str, Any], new_path: str, 
 
     if auto_approve:
         success = deploy(new_path, cluster_name, original_to_archive=original_path)
+        
+        if brain:
+            brain.log_event_experience(
+                component="controlled_deployer",
+                event_type="deployment_threshold",
+                event_key=strategy_name,
+                event_value=dynamic_threshold,
+                metadata={"sharpe": sharpe, "win_rate": win_rate},
+                success=success
+            )
+
         if success:
             logger.info("Deployment successful.")
             return True

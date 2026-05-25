@@ -1,0 +1,919 @@
+{
+  "apis": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "tested_path": "/api/auth/register",
+      "url": "http://127.0.0.1:8000/api/auth/register",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"email\"],\"msg\":\"Field required\",\"input\":{}},{\"type\":\"missing\",\"loc\":[\"body\",\"password\"],\"msg\":\"Field required\",\"input\":{}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "tested_path": "/api/auth/login",
+      "url": "http://127.0.0.1:8000/api/auth/login",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"email\"],\"msg\":\"Field required\",\"input\":{}},{\"type\":\"missing\",\"loc\":[\"body\",\"password\"],\"msg\":\"Field required\",\"input\":{}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "tested_path": "/api/auth/me",
+      "url": "http://127.0.0.1:8000/api/auth/me",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/trial-status",
+      "tested_path": "/api/auth/trial-status",
+      "url": "http://127.0.0.1:8000/api/auth/trial-status",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/soc-dashboard",
+      "tested_path": "/api/admin/soc-dashboard",
+      "url": "http://127.0.0.1:8000/api/admin/soc-dashboard",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-dossier/{user_id}",
+      "tested_path": "/api/admin/user-dossier/1",
+      "url": "http://127.0.0.1:8000/api/admin/user-dossier/1",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "tested_path": "/api/admin/users",
+      "url": "http://127.0.0.1:8000/api/admin/users",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/{user_id}",
+      "tested_path": "/api/admin/users/1",
+      "url": "http://127.0.0.1:8000/api/admin/users/1",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/users/{user_id}",
+      "tested_path": "/api/admin/users/1",
+      "url": "http://127.0.0.1:8000/api/admin/users/1",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/toggle",
+      "tested_path": "/api/admin/users/1/toggle",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/toggle",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/force-logout",
+      "tested_path": "/api/admin/users/1/force-logout",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/force-logout",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/freeze",
+      "tested_path": "/api/admin/users/1/freeze",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/freeze",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/device-lock",
+      "tested_path": "/api/admin/users/1/device-lock",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/device-lock",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/kill-switch",
+      "tested_path": "/api/admin/users/1/kill-switch",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/kill-switch",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/shadow-monitor",
+      "tested_path": "/api/admin/users/1/shadow-monitor",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/shadow-monitor",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/invite-codes",
+      "tested_path": "/api/admin/invite-codes",
+      "url": "http://127.0.0.1:8000/api/admin/invite-codes",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/generate-code-smart",
+      "tested_path": "/api/admin/generate-code-smart",
+      "url": "http://127.0.0.1:8000/api/admin/generate-code-smart",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/decrypt-user-field",
+      "tested_path": "/api/admin/decrypt-user-field",
+      "url": "http://127.0.0.1:8000/api/admin/decrypt-user-field",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "tested_path": "/api/admin/stats",
+      "url": "http://127.0.0.1:8000/api/admin/stats",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/security-logs",
+      "tested_path": "/api/admin/security-logs",
+      "url": "http://127.0.0.1:8000/api/admin/security-logs",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learn",
+      "tested_path": "/api/learn",
+      "url": "http://127.0.0.1:8000/api/learn",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analysis/{analysis_id}",
+      "tested_path": "/api/analysis/1",
+      "url": "http://127.0.0.1:8000/api/analysis/1",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/{analysis_id}/delete",
+      "tested_path": "/api/analysis/1/delete",
+      "url": "http://127.0.0.1:8000/api/analysis/1/delete",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "tested_path": "/api/health",
+      "url": "http://127.0.0.1:8000/api/health",
+      "status": 200,
+      "msg": "{\"status\":\"online\",\"version\":\"Professional 2.0\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/process",
+      "tested_path": "/api/analysis/process",
+      "url": "http://127.0.0.1:8000/api/analysis/process",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/mentor",
+      "tested_path": "/api/analysis/mentor",
+      "url": "http://127.0.0.1:8000/api/analysis/mentor",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cache/clear",
+      "tested_path": "/api/cache/clear",
+      "url": "http://127.0.0.1:8000/api/cache/clear",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/journal",
+      "tested_path": "/api/journal",
+      "url": "http://127.0.0.1:8000/api/journal",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/journal",
+      "tested_path": "/api/journal",
+      "url": "http://127.0.0.1:8000/api/journal",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/comparison",
+      "tested_path": "/api/stats/comparison",
+      "url": "http://127.0.0.1:8000/api/stats/comparison",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/today",
+      "tested_path": "/api/stats/today",
+      "url": "http://127.0.0.1:8000/api/stats/today",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/performance",
+      "tested_path": "/api/stats/performance",
+      "url": "http://127.0.0.1:8000/api/stats/performance",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/scanner",
+      "tested_path": "/api/stats/scanner",
+      "url": "http://127.0.0.1:8000/api/stats/scanner",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scanner/start",
+      "tested_path": "/api/scanner/start",
+      "url": "http://127.0.0.1:8000/api/scanner/start",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scanner/stop",
+      "tested_path": "/api/scanner/stop",
+      "url": "http://127.0.0.1:8000/api/scanner/stop",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scanner/status",
+      "tested_path": "/api/scanner/status",
+      "url": "http://127.0.0.1:8000/api/scanner/status",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/strategy/refresh",
+      "tested_path": "/api/strategy/refresh",
+      "url": "http://127.0.0.1:8000/api/strategy/refresh",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scanner/alerts",
+      "tested_path": "/api/scanner/alerts",
+      "url": "http://127.0.0.1:8000/api/scanner/alerts",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/preferences",
+      "tested_path": "/api/user/preferences",
+      "url": "http://127.0.0.1:8000/api/user/preferences",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/preferences",
+      "tested_path": "/api/user/preferences",
+      "url": "http://127.0.0.1:8000/api/user/preferences",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/favorites",
+      "tested_path": "/api/user/favorites",
+      "url": "http://127.0.0.1:8000/api/user/favorites",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/favorites",
+      "tested_path": "/api/user/favorites",
+      "url": "http://127.0.0.1:8000/api/user/favorites",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/favorites/remove",
+      "tested_path": "/api/user/favorites/remove",
+      "url": "http://127.0.0.1:8000/api/user/favorites/remove",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/draft",
+      "tested_path": "/api/analysis/draft",
+      "url": "http://127.0.0.1:8000/api/analysis/draft",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analysis/drafts",
+      "tested_path": "/api/analysis/drafts",
+      "url": "http://127.0.0.1:8000/api/analysis/drafts",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/journal/export",
+      "tested_path": "/api/journal/export",
+      "url": "http://127.0.0.1:8000/api/journal/export",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system-health",
+      "tested_path": "/api/admin/system-health",
+      "url": "http://127.0.0.1:8000/api/admin/system-health",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/health-details",
+      "tested_path": "/api/system/health-details",
+      "url": "http://127.0.0.1:8000/api/system/health-details",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/recommendation/quick/{market}",
+      "tested_path": "/api/recommendation/quick/1",
+      "url": "http://127.0.0.1:8000/api/recommendation/quick/1",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markets/compare",
+      "tested_path": "/api/markets/compare",
+      "url": "http://127.0.0.1:8000/api/markets/compare",
+      "status": 400,
+      "msg": "{\"detail\":\"Provide a markets list to compare.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/tune-weights",
+      "tested_path": "/api/system/tune-weights",
+      "url": "http://127.0.0.1:8000/api/system/tune-weights",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/watchlist",
+      "tested_path": "/api/user/watchlist",
+      "url": "http://127.0.0.1:8000/api/user/watchlist",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/watchlist/add",
+      "tested_path": "/api/user/watchlist/add",
+      "url": "http://127.0.0.1:8000/api/user/watchlist/add",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/watchlist/remove",
+      "tested_path": "/api/user/watchlist/remove",
+      "url": "http://127.0.0.1:8000/api/user/watchlist/remove",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reports/daily",
+      "tested_path": "/api/reports/daily",
+      "url": "http://127.0.0.1:8000/api/reports/daily",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/daily/generate",
+      "tested_path": "/api/reports/daily/generate",
+      "url": "http://127.0.0.1:8000/api/reports/daily/generate",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/daily/send-telegram",
+      "tested_path": "/api/reports/daily/send-telegram",
+      "url": "http://127.0.0.1:8000/api/reports/daily/send-telegram",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/summary",
+      "tested_path": "/api/account/summary",
+      "url": "http://127.0.0.1:8000/api/account/summary",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/deep-market/scan",
+      "tested_path": "/api/deep-market/scan",
+      "url": "http://127.0.0.1:8000/api/deep-market/scan",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scanner/top-opportunities",
+      "tested_path": "/api/scanner/top-opportunities",
+      "url": "http://127.0.0.1:8000/api/scanner/top-opportunities",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/binance/scan",
+      "tested_path": "/api/binance/scan",
+      "url": "http://127.0.0.1:8000/api/binance/scan",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tradingview/fetch",
+      "tested_path": "/api/tradingview/fetch",
+      "url": "http://127.0.0.1:8000/api/tradingview/fetch",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/active",
+      "tested_path": "/api/trade/active",
+      "url": "http://127.0.0.1:8000/api/trade/active",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/history",
+      "tested_path": "/api/trade/history",
+      "url": "http://127.0.0.1:8000/api/trade/history",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/start-monitoring",
+      "tested_path": "/api/trade/start-monitoring",
+      "url": "http://127.0.0.1:8000/api/trade/start-monitoring",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/stop-monitoring",
+      "tested_path": "/api/trade/stop-monitoring",
+      "url": "http://127.0.0.1:8000/api/trade/stop-monitoring",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/add-active",
+      "tested_path": "/api/trade/add-active",
+      "url": "http://127.0.0.1:8000/api/trade/add-active",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/remove-active",
+      "tested_path": "/api/trade/remove-active",
+      "url": "http://127.0.0.1:8000/api/trade/remove-active",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/pulse",
+      "tested_path": "/api/system/pulse",
+      "url": "http://127.0.0.1:8000/api/system/pulse",
+      "status": 200,
+      "msg": "{\"status\":\"online\",\"refresh_time\":\"2026-05-23T10:17:15.690908\",\"active_strategies\":35,\"system_healthy\":true,\"health_details\":{\"active_strategies\":35,\"clusters\":{\"power\":{\"count\":13,\"strategies\":[\"chaos_fractal_theory.ChaosFractalStrategy\",\"composite_operator_tracking.CompositeOperatorStrategy\",\"cryp"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/strategies",
+      "tested_path": "/api/system/strategies",
+      "url": "http://127.0.0.1:8000/api/system/strategies",
+      "status": 200,
+      "msg": "{\"strategies\":[],\"total_strategies\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/personality",
+      "tested_path": "/api/system/personality",
+      "url": "http://127.0.0.1:8000/api/system/personality",
+      "status": 200,
+      "msg": "{\"current_mode\":\"DAY_TRADING\",\"description\":\"الوضع الافتراضي للنظام للأختبار.\",\"favorite_strategies\":[\"ICT\",\"VSA\",\"PriceAction\",\"RSI\",\"MACD\"],\"strengths\":[\"تحليل البيانات\",\"التركيز على السيولة\",\"المرونة\"],\"weaknesses\":[\"الأسواق الجانبية\",\"الأحداث غير المتوقعة\"],\"beliefs\":[\"الاتجاه صديقي\",\"السيولة تك"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/feedback",
+      "tested_path": "/api/system/feedback",
+      "url": "http://127.0.0.1:8000/api/system/feedback",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/events",
+      "tested_path": "/api/calendar/events",
+      "url": "http://127.0.0.1:8000/api/calendar/events",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/high-impact",
+      "tested_path": "/api/calendar/high-impact",
+      "url": "http://127.0.0.1:8000/api/calendar/high-impact",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/backtest/run",
+      "tested_path": "/api/backtest/run",
+      "url": "http://127.0.0.1:8000/api/backtest/run",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/voice/command",
+      "tested_path": "/api/voice/command",
+      "url": "http://127.0.0.1:8000/api/voice/command",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/broker/audit",
+      "tested_path": "/api/broker/audit",
+      "url": "http://127.0.0.1:8000/api/broker/audit",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/smart-orders/create",
+      "tested_path": "/api/smart-orders/create",
+      "url": "http://127.0.0.1:8000/api/smart-orders/create",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/plan",
+      "tested_path": "/api/trade/plan",
+      "url": "http://127.0.0.1:8000/api/trade/plan",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/market/session",
+      "tested_path": "/api/market/session",
+      "url": "http://127.0.0.1:8000/api/market/session",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/market/spread",
+      "tested_path": "/api/market/spread",
+      "url": "http://127.0.0.1:8000/api/market/spread",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/price-alerts",
+      "tested_path": "/api/price-alerts",
+      "url": "http://127.0.0.1:8000/api/price-alerts",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/price-alerts",
+      "tested_path": "/api/price-alerts",
+      "url": "http://127.0.0.1:8000/api/price-alerts",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/price-alerts/delete",
+      "tested_path": "/api/price-alerts/delete",
+      "url": "http://127.0.0.1:8000/api/price-alerts/delete",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/journal/quick-entry",
+      "tested_path": "/api/journal/quick-entry",
+      "url": "http://127.0.0.1:8000/api/journal/quick-entry",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sentiment/scan",
+      "tested_path": "/api/sentiment/scan",
+      "url": "http://127.0.0.1:8000/api/sentiment/scan",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/psychology/report",
+      "tested_path": "/api/psychology/report",
+      "url": "http://127.0.0.1:8000/api/psychology/report",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/shadow/trade",
+      "tested_path": "/api/shadow/trade",
+      "url": "http://127.0.0.1:8000/api/shadow/trade",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/protection/status",
+      "tested_path": "/api/protection/status",
+      "url": "http://127.0.0.1:8000/api/protection/status",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade-mover/check",
+      "tested_path": "/api/trade-mover/check",
+      "url": "http://127.0.0.1:8000/api/trade-mover/check",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/confidence",
+      "tested_path": "/api/trade/confidence",
+      "url": "http://127.0.0.1:8000/api/trade/confidence",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/market/countdown",
+      "tested_path": "/api/market/countdown",
+      "url": "http://127.0.0.1:8000/api/market/countdown",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/assistant",
+      "tested_path": "/api/ai/assistant",
+      "url": "http://127.0.0.1:8000/api/ai/assistant",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chart/detect",
+      "tested_path": "/api/chart/detect",
+      "url": "http://127.0.0.1:8000/api/chart/detect",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/daily-limits/status",
+      "tested_path": "/api/daily-limits/status",
+      "url": "http://127.0.0.1:8000/api/daily-limits/status",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/weekly-challenge",
+      "tested_path": "/api/weekly-challenge",
+      "url": "http://127.0.0.1:8000/api/weekly-challenge",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/leaderboard",
+      "tested_path": "/api/leaderboard",
+      "url": "http://127.0.0.1:8000/api/leaderboard",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/save-sensitive",
+      "tested_path": "/api/settings/save-sensitive",
+      "url": "http://127.0.0.1:8000/api/settings/save-sensitive",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/retrieve-sensitive",
+      "tested_path": "/api/settings/retrieve-sensitive",
+      "url": "http://127.0.0.1:8000/api/settings/retrieve-sensitive",
+      "status": 401,
+      "msg": "{\"detail\":\"Not authenticated\"}"
+    }
+  ],
+  "pages": [
+    {
+      "file": "academy.html",
+      "url": "http://127.0.0.1:8000/academy.html",
+      "status": 200
+    },
+    {
+      "file": "admin-engine.html",
+      "url": "http://127.0.0.1:8000/admin-engine.html",
+      "status": 200
+    },
+    {
+      "file": "admin.html",
+      "url": "http://127.0.0.1:8000/admin.html",
+      "status": 200
+    },
+    {
+      "file": "api-docs.html",
+      "url": "http://127.0.0.1:8000/api-docs.html",
+      "status": 200
+    },
+    {
+      "file": "ask-ai.html",
+      "url": "http://127.0.0.1:8000/ask-ai.html",
+      "status": 200
+    },
+    {
+      "file": "backtest.html",
+      "url": "http://127.0.0.1:8000/backtest.html",
+      "status": 200
+    },
+    {
+      "file": "calendar.html",
+      "url": "http://127.0.0.1:8000/calendar.html",
+      "status": 200
+    },
+    {
+      "file": "chat.html",
+      "url": "http://127.0.0.1:8000/chat.html",
+      "status": 200
+    },
+    {
+      "file": "dashboard.html",
+      "url": "http://127.0.0.1:8000/dashboard.html",
+      "status": 200
+    },
+    {
+      "file": "evolution.html",
+      "url": "http://127.0.0.1:8000/evolution.html",
+      "status": 200
+    },
+    {
+      "file": "heatmap.html",
+      "url": "http://127.0.0.1:8000/heatmap.html",
+      "status": 200
+    },
+    {
+      "file": "history.html",
+      "url": "http://127.0.0.1:8000/history.html",
+      "status": 200
+    },
+    {
+      "file": "index.html",
+      "url": "http://127.0.0.1:8000/index.html",
+      "status": 200
+    },
+    {
+      "file": "journal.html",
+      "url": "http://127.0.0.1:8000/journal.html",
+      "status": 200
+    },
+    {
+      "file": "login.html",
+      "url": "http://127.0.0.1:8000/login.html",
+      "status": 200
+    },
+    {
+      "file": "realtime.html",
+      "url": "http://127.0.0.1:8000/realtime.html",
+      "status": 200
+    },
+    {
+      "file": "register.html",
+      "url": "http://127.0.0.1:8000/register.html",
+      "status": 200
+    },
+    {
+      "file": "result.html",
+      "url": "http://127.0.0.1:8000/result.html",
+      "status": 200
+    },
+    {
+      "file": "service-health.html",
+      "url": "http://127.0.0.1:8000/service-health.html",
+      "status": 200
+    },
+    {
+      "file": "settings.html",
+      "url": "http://127.0.0.1:8000/settings.html",
+      "status": 200
+    },
+    {
+      "file": "strategy-battle.html",
+      "url": "http://127.0.0.1:8000/strategy-battle.html",
+      "status": 200
+    },
+    {
+      "file": "strategy_factory.html",
+      "url": "http://127.0.0.1:8000/strategy_factory.html",
+      "status": 200
+    },
+    {
+      "file": "system-health.html",
+      "url": "http://127.0.0.1:8000/system-health.html",
+      "status": 200
+    },
+    {
+      "file": "upload.html",
+      "url": "http://127.0.0.1:8000/upload.html",
+      "status": 200
+    }
+  ],
+  "root": 200
+}

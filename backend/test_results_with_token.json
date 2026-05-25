@@ -1,0 +1,796 @@
+{
+  "apis": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "tested_path": "/api/auth/register",
+      "url": "http://127.0.0.1:8000/api/auth/register",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"email\"],\"msg\":\"Field required\",\"input\":{}},{\"type\":\"missing\",\"loc\":[\"body\",\"password\"],\"msg\":\"Field required\",\"input\":{}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "tested_path": "/api/auth/login",
+      "url": "http://127.0.0.1:8000/api/auth/login",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"email\"],\"msg\":\"Field required\",\"input\":{}},{\"type\":\"missing\",\"loc\":[\"body\",\"password\"],\"msg\":\"Field required\",\"input\":{}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "tested_path": "/api/auth/me",
+      "url": "http://127.0.0.1:8000/api/auth/me",
+      "status": 200,
+      "msg": "{\"email\":\"hythmalshryf57@gmail.com\",\"locked_device_id\":null,\"ip_address\":null,\"trial_start\":null,\"is_active\":true,\"trial_end\":null,\"is_admin\":true,\"daily_analyses_count\":null,\"registered_at\":\"2026-05-20T10:34:28.369762\",\"last_analysis_date\":null,\"force_logout_at\":null,\"has_used_trial\":null,\"id\":6,\"i"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/trial-status",
+      "tested_path": "/api/auth/trial-status",
+      "url": "http://127.0.0.1:8000/api/auth/trial-status",
+      "status": 200,
+      "msg": "{\"trial_active\":false,\"days_left\":0,\"daily_analyses_used\":null,\"daily_limit\":10,\"has_used_trial\":null}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/soc-dashboard",
+      "tested_path": "/api/admin/soc-dashboard",
+      "url": "http://127.0.0.1:8000/api/admin/soc-dashboard",
+      "status": 200,
+      "msg": "{\"threat_map\":[],\"suspicious_users\":[{\"id\":1,\"email\":\"testuser+1778949943@example.com\",\"reason\":\"frozen\"}],\"api_usage\":{\"gemini\":0,\"deepseek\":0},\"server_status\":{\"cpu\":87.2,\"ram\":87.2},\"live_alerts\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/user-dossier/{user_id}",
+      "tested_path": "/api/admin/user-dossier/1",
+      "url": "http://127.0.0.1:8000/api/admin/user-dossier/1",
+      "status": 200,
+      "msg": "{\"user\":{\"id\":1,\"email\":\"testuser+1778949943@example.com\",\"is_active\":false,\"is_frozen\":true,\"registered_at\":\"2026-05-16T16:45:45.435267\"},\"devices\":[],\"activities\":[],\"trades\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "tested_path": "/api/admin/users",
+      "url": "http://127.0.0.1:8000/api/admin/users",
+      "status": 200,
+      "msg": "[{\"id\":11,\"email\":\"testuser1779531241@example.com\",\"invite_code\":null,\"ip_address\":\"127.0.0.1\",\"is_active\":true,\"is_admin\":false,\"registered_at\":\"2026-05-23T10:14:03.345428\"},{\"id\":10,\"email\":\"testuser1779531224@example.com\",\"invite_code\":null,\"ip_address\":\"127.0.0.1\",\"is_active\":true,\"is_admin\":fal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/{user_id}",
+      "tested_path": "/api/admin/users/1",
+      "url": "http://127.0.0.1:8000/api/admin/users/1",
+      "status": 200,
+      "msg": "{\"id\":1,\"email\":\"testuser+1778949943@example.com\",\"invite_code\":null,\"ip_address\":\"127.0.0.1\",\"is_active\":false,\"is_admin\":false,\"registered_at\":\"2026-05-16T16:45:45.435267\"}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/users/{user_id}",
+      "tested_path": "/api/admin/users/1",
+      "url": "http://127.0.0.1:8000/api/admin/users/1",
+      "status": 200,
+      "msg": "{\"status\":\"disabled\"}"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/toggle",
+      "tested_path": "/api/admin/users/1/toggle",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/toggle",
+      "status": 200,
+      "msg": "{\"status\":\"updated\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/force-logout",
+      "tested_path": "/api/admin/users/1/force-logout",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/force-logout",
+      "status": 200,
+      "msg": "{\"status\":\"force_logout_set\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/freeze",
+      "tested_path": "/api/admin/users/1/freeze",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/freeze",
+      "status": 200,
+      "msg": "{\"status\":\"frozen\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/device-lock",
+      "tested_path": "/api/admin/users/1/device-lock",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/device-lock",
+      "status": 400,
+      "msg": "{\"detail\":\"device_id required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/kill-switch",
+      "tested_path": "/api/admin/users/1/kill-switch",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/kill-switch",
+      "status": 200,
+      "msg": "{\"status\":\"killed\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/shadow-monitor",
+      "tested_path": "/api/admin/users/1/shadow-monitor",
+      "url": "http://127.0.0.1:8000/api/admin/users/1/shadow-monitor",
+      "status": 200,
+      "msg": "{\"status\":\"started\",\"stream_token\":\"CvPgDTkyfentsWpm7tNZgQ\",\"note\":\"Use token to initiate stream; stream implementation is separate.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/invite-codes",
+      "tested_path": "/api/admin/invite-codes",
+      "url": "http://127.0.0.1:8000/api/admin/invite-codes",
+      "status": 200,
+      "msg": "[{\"code\":\"B8M5-C5ZD-2VWC\",\"created_at\":\"2026-05-23T10:25:14.752934\",\"expires_at\":\"2026-06-22T10:25:14.752934\",\"max_uses\":1,\"uses_count\":0,\"used_ip\":\"N/A\"},{\"code\":\"YJFM-QMWH-QDKY\",\"created_at\":\"2026-05-23T10:22:20.540410\",\"expires_at\":\"2026-06-22T10:22:20.504631\",\"max_uses\":1,\"uses_count\":0,\"used_ip"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/generate-code-smart",
+      "tested_path": "/api/admin/generate-code-smart",
+      "url": "http://127.0.0.1:8000/api/admin/generate-code-smart",
+      "status": 200,
+      "msg": "{\"code\":\"WMWP-5CV7-3QZY\",\"created_at\":\"2026-05-23T10:40:20.694056\",\"expires_at\":\"2026-06-22T10:40:20.694056\",\"max_uses\":1,\"uses_count\":0}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/decrypt-user-field",
+      "tested_path": "/api/admin/decrypt-user-field",
+      "url": "http://127.0.0.1:8000/api/admin/decrypt-user-field",
+      "status": 400,
+      "msg": "{\"detail\":\"user_id and field required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "tested_path": "/api/admin/stats",
+      "url": "http://127.0.0.1:8000/api/admin/stats",
+      "status": 200,
+      "msg": "{\"total_users\":11,\"active_users\":10,\"inactive_users\":1}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/security-logs",
+      "tested_path": "/api/admin/security-logs",
+      "url": "http://127.0.0.1:8000/api/admin/security-logs",
+      "status": 200,
+      "msg": "[{\"id\":15,\"user_id\":1,\"event_type\":\"shadow_monitor_start\",\"ip_address\":null,\"timestamp\":\"2026-05-23T10:40:20.243771\"},{\"id\":14,\"user_id\":1,\"event_type\":\"kill_switch\",\"ip_address\":null,\"timestamp\":\"2026-05-23T10:40:09.763370\"},{\"id\":13,\"user_id\":1,\"event_type\":\"freeze_account\",\"ip_address\":null,\"time"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learn",
+      "tested_path": "/api/learn",
+      "url": "http://127.0.0.1:8000/api/learn",
+      "status": 400,
+      "msg": "{\"detail\":\"Invalid result value; expected 'win' or 'loss'.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analysis/{analysis_id}",
+      "tested_path": "/api/analysis/1",
+      "url": "http://127.0.0.1:8000/api/analysis/1",
+      "status": 200,
+      "msg": "{\"id\":1,\"user_id\":1,\"market\":\"EURUSD\",\"description\":\"Analysis for EURUSD based on uploaded charts.\",\"result_json\":\"{\\\"recommendation\\\": \\\"بيانات غير كافية\\\", \\\"confidence\\\": 0, \\\"reason\\\": \\\"لم يتمكن النظام من توحيد بيانات السوق بشكل كافٍ.\\\", \\\"issues\\\": [\\\"Data quality below acceptable threshold: p"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/{analysis_id}/delete",
+      "tested_path": "/api/analysis/1/delete",
+      "url": "http://127.0.0.1:8000/api/analysis/1/delete",
+      "status": 200,
+      "msg": "{\"status\":\"soft_deleted\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "tested_path": "/api/health",
+      "url": "http://127.0.0.1:8000/api/health",
+      "status": 200,
+      "msg": "{\"status\":\"online\",\"version\":\"Professional 2.0\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/process",
+      "tested_path": "/api/analysis/process",
+      "url": "http://127.0.0.1:8000/api/analysis/process",
+      "status": 200,
+      "msg": "{\"recommendation\":\"بيانات غير كافية\",\"confidence\":0,\"reason\":\"لم يتمكن النظام من توحيد بيانات السوق بشكل كافٍ.\",\"issues\":[\"Data quality below acceptable threshold: processing stopped.\"],\"data_quality\":0.0,\"market\":\"Unknown\",\"timestamp\":\"2026-05-23T13:40:22.501748\",\"analysis_id\":6,\"memory_matches\":[{"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/mentor",
+      "tested_path": "/api/analysis/mentor",
+      "url": "http://127.0.0.1:8000/api/analysis/mentor",
+      "status": 200,
+      "msg": "{\"error\":\"feature_disabled\",\"message\":\"Mentor chat feature غير متاحة حتى يتم ربطه بخدمة تحليل ذكي حقيقي.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cache/clear",
+      "tested_path": "/api/cache/clear",
+      "url": "http://127.0.0.1:8000/api/cache/clear",
+      "status": 200,
+      "msg": "{\"status\":\"success\",\"message\":\"Cache cleared\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/journal",
+      "tested_path": "/api/journal",
+      "url": "http://127.0.0.1:8000/api/journal",
+      "status": 200,
+      "msg": "[{\"user_id\":6,\"recommendation\":\"بيع\",\"date\":\"2026-05-23T10:28:25.198761\",\"profit_loss\":0.0,\"notes\":\"سجلت صفقة بسرعة مع SL=0.0, TP=0.0.\",\"mood\":null,\"created_at\":\"2026-05-23T10:28:25.198761\",\"id\":4,\"market\":\"\",\"result\":\"pending\",\"confidence\":null,\"screenshot_url\":null,\"session\":\"London\"},{\"user_id\":6"
+    },
+    {
+      "method": "POST",
+      "path": "/api/journal",
+      "tested_path": "/api/journal",
+      "url": "http://127.0.0.1:8000/api/journal",
+      "status": 500,
+      "msg": "Internal Server Error"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/comparison",
+      "tested_path": "/api/stats/comparison",
+      "url": "http://127.0.0.1:8000/api/stats/comparison",
+      "status": 200,
+      "msg": "{\"human_win_rate\":62,\"ai_win_rate\":100,\"best_strategy\":\"ICT\",\"total_profit\":100.0,\"top_strategies\":[{\"strategy\":\"ICT\",\"wins\":2,\"losses\":0,\"total_profit\":50.0},{\"strategy\":\"VSA\",\"wins\":2,\"losses\":0,\"total_profit\":50.0}],\"top_markets\":[{\"market\":\"EURUSD\",\"win_rate\":0,\"trades\":1},{\"market\":\"XAUUSD\",\"wi"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/today",
+      "tested_path": "/api/stats/today",
+      "url": "http://127.0.0.1:8000/api/stats/today",
+      "status": 200,
+      "msg": "{\"total_trades\":2,\"wins\":0,\"losses\":0,\"win_rate\":0,\"profit_loss\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/performance",
+      "tested_path": "/api/stats/performance",
+      "url": "http://127.0.0.1:8000/api/stats/performance",
+      "status": 200,
+      "msg": "{\"weekly\":{\"total\":2,\"wins\":0,\"losses\":0,\"rate\":0,\"pnl\":0},\"monthly\":{\"total\":2,\"wins\":0,\"losses\":0,\"rate\":0,\"pnl\":0},\"yearly\":{\"total\":2,\"wins\":0,\"losses\":0,\"rate\":0,\"pnl\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/scanner",
+      "tested_path": "/api/stats/scanner",
+      "url": "http://127.0.0.1:8000/api/stats/scanner",
+      "status": 200,
+      "msg": "{\"total_opportunities\":0,\"wins\":0,\"losses\":0,\"win_rate\":0,\"best_market\":null}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scanner/start",
+      "tested_path": "/api/scanner/start",
+      "url": "http://127.0.0.1:8000/api/scanner/start",
+      "status": 200,
+      "msg": "{\"status\":\"already running\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scanner/stop",
+      "tested_path": "/api/scanner/stop",
+      "url": "http://127.0.0.1:8000/api/scanner/stop",
+      "status": 500,
+      "msg": "Internal Server Error"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scanner/status",
+      "tested_path": "/api/scanner/status",
+      "url": "http://127.0.0.1:8000/api/scanner/status",
+      "status": 200,
+      "msg": "{\"is_running\":true}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/strategy/refresh",
+      "tested_path": "/api/strategy/refresh",
+      "url": "http://127.0.0.1:8000/api/strategy/refresh",
+      "status": 200,
+      "msg": "{\"status\":\"success\",\"summary\":{\"updated_strategies\":[],\"strategy_count\":0}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scanner/alerts",
+      "tested_path": "/api/scanner/alerts",
+      "url": "http://127.0.0.1:8000/api/scanner/alerts",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/preferences",
+      "tested_path": "/api/user/preferences",
+      "url": "http://127.0.0.1:8000/api/user/preferences",
+      "status": 200,
+      "msg": "{\"theme\":\"dark\",\"language\":\"ar\",\"telegram_chat_id\":null,\"email_notifications\":false,\"demo_mode\":false,\"demo_balance\":1000000.0,\"trading_mode\":\"day\",\"capital\":10000.0,\"account_balance\":10000.0,\"risk_percentage\":1.0,\"favorite_strategies\":[],\"watchlist\":[],\"daily_profit_target_percent\":30.0,\"daily_loss"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/preferences",
+      "tested_path": "/api/user/preferences",
+      "url": "http://127.0.0.1:8000/api/user/preferences",
+      "status": 200,
+      "msg": "{\"theme\":\"dark\",\"language\":\"ar\",\"telegram_chat_id\":null,\"email_notifications\":false,\"demo_mode\":false,\"demo_balance\":1000000.0,\"trading_mode\":\"day\",\"capital\":10000.0,\"account_balance\":10000.0,\"risk_percentage\":1.0,\"favorite_strategies\":[],\"watchlist\":[],\"daily_profit_target_percent\":30.0,\"daily_loss"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/favorites",
+      "tested_path": "/api/user/favorites",
+      "url": "http://127.0.0.1:8000/api/user/favorites",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/favorites",
+      "tested_path": "/api/user/favorites",
+      "url": "http://127.0.0.1:8000/api/user/favorites",
+      "status": 400,
+      "msg": "{\"detail\":\"استراتيجية مطلوبة\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/favorites/remove",
+      "tested_path": "/api/user/favorites/remove",
+      "url": "http://127.0.0.1:8000/api/user/favorites/remove",
+      "status": 400,
+      "msg": "{\"detail\":\"استراتيجية مطلوبة\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analysis/draft",
+      "tested_path": "/api/analysis/draft",
+      "url": "http://127.0.0.1:8000/api/analysis/draft",
+      "status": 400,
+      "msg": "{\"detail\":\"البيانات مطلوبة لحفظ المسودة\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analysis/drafts",
+      "tested_path": "/api/analysis/drafts",
+      "url": "http://127.0.0.1:8000/api/analysis/drafts",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"int_parsing\",\"loc\":[\"path\",\"analysis_id\"],\"msg\":\"Input should be a valid integer, unable to parse string as an integer\",\"input\":\"drafts\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/journal/export",
+      "tested_path": "/api/journal/export",
+      "url": "http://127.0.0.1:8000/api/journal/export",
+      "status": 200,
+      "msg": "﻿التاريخ,الزوج,التوصية,الثقة,النتيجة,الربح/الخسارة\r 2026-05-23T10:28:25.198761,,بيع,N/A,pending,0.00\r 2026-05-23T10:25:27.620636,,بيع,N/A,pending,0.00\r "
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system-health",
+      "tested_path": "/api/admin/system-health",
+      "url": "http://127.0.0.1:8000/api/admin/system-health",
+      "status": 200,
+      "msg": "{\"status\":\"online\",\"cpu_percent\":95.4,\"ram_percent\":84.4,\"ram_used\":3453169664,\"ram_total\":4092243968,\"gemini_calls\":0,\"deepseek_calls\":2,\"request_count\":485,\"daily_requests\":{\"2026-05-23\":485},\"last_error\":\"2026-05-23T10:40:37.764636 - AttributeError: 'AutoScanner' object has no attribute 'stop'\",\""
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/health-details",
+      "tested_path": "/api/system/health-details",
+      "url": "http://127.0.0.1:8000/api/system/health-details",
+      "status": 200,
+      "msg": "{\"status\":\"ok\",\"system_health\":{\"active_strategies\":35,\"clusters\":{\"power\":{\"count\":13,\"strategies\":[\"chaos_fractal_theory.ChaosFractalStrategy\",\"composite_operator_tracking.CompositeOperatorStrategy\",\"crypto_whales.CryptoWhalesStrategy\",\"hft_simulation.HFTSpoofingStrategy\",\"liquidation_heatmap.Liqu"
+    },
+    {
+      "method": "GET",
+      "path": "/api/recommendation/quick/{market}",
+      "tested_path": "/api/recommendation/quick/1",
+      "url": "http://127.0.0.1:8000/api/recommendation/quick/1",
+      "status": 200,
+      "msg": "{\"recommendation\":\"تحليل جديد مطلوب\",\"confidence\":0,\"note\":\"لا توجد تحليل حديث لهذا السوق. الرجاء تشغيل تحليل جديد.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/markets/compare",
+      "tested_path": "/api/markets/compare",
+      "url": "http://127.0.0.1:8000/api/markets/compare",
+      "status": 400,
+      "msg": "{\"detail\":\"Provide a markets list to compare.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/tune-weights",
+      "tested_path": "/api/system/tune-weights",
+      "url": "http://127.0.0.1:8000/api/system/tune-weights",
+      "status": 200,
+      "msg": "{\"status\":\"ok\",\"tuning_summary\":{\"timestamp\":\"2026-05-23T10:40:51.647946\",\"updated_strategies\":[],\"weight_changes\":{\"increased\":0,\"decreased\":0,\"disabled\":0,\"unchanged\":0},\"total_strategies\":0,\"min_weight\":0.2,\"max_weight\":3.0,\"reenabled_strategies\":[]}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user/watchlist",
+      "tested_path": "/api/user/watchlist",
+      "url": "http://127.0.0.1:8000/api/user/watchlist",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/watchlist/add",
+      "tested_path": "/api/user/watchlist/add",
+      "url": "http://127.0.0.1:8000/api/user/watchlist/add",
+      "status": 400,
+      "msg": "{\"detail\":\"Symbol is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user/watchlist/remove",
+      "tested_path": "/api/user/watchlist/remove",
+      "url": "http://127.0.0.1:8000/api/user/watchlist/remove",
+      "status": 400,
+      "msg": "{\"detail\":\"Symbol is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reports/daily",
+      "tested_path": "/api/reports/daily",
+      "url": "http://127.0.0.1:8000/api/reports/daily",
+      "status": 200,
+      "msg": "[{\"report_date\":\"2026-05-23\",\"summary\":\"اليوم: 1 صفقات، 0 رابحة، 0 خاسرة، ربح/خسارة 0.00$\",\"total_trades\":1,\"entered_trades\":1,\"wins\":0,\"losses\":0,\"profit_loss\":0.0,\"sent_to_telegram\":false}]"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/daily/generate",
+      "tested_path": "/api/reports/daily/generate",
+      "url": "http://127.0.0.1:8000/api/reports/daily/generate",
+      "status": 200,
+      "msg": "{\"report_date\":\"2026-05-23\",\"summary\":\"اليوم: 2 صفقات، 0 رابحة، 0 خاسرة، ربح/خسارة 0.00$\",\"total_trades\":2,\"entered_trades\":2,\"wins\":0,\"losses\":0,\"profit_loss\":0.0,\"sent_to_telegram\":false}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reports/daily/send-telegram",
+      "tested_path": "/api/reports/daily/send-telegram",
+      "url": "http://127.0.0.1:8000/api/reports/daily/send-telegram",
+      "status": 400,
+      "msg": "{\"detail\":\"Telegram chat ID is not configured.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/summary",
+      "tested_path": "/api/account/summary",
+      "url": "http://127.0.0.1:8000/api/account/summary",
+      "status": 200,
+      "msg": "{\"email\":\"hythmalshryf57@gmail.com\",\"account_balance\":10000.0,\"trading_mode\":\"day\",\"watchlist\":[],\"daily_report\":{\"report_date\":\"2026-05-23\",\"summary\":\"اليوم: 2 صفقات، 0 رابحة، 0 خاسرة، ربح/خسارة 0.00$\",\"profit_loss\":0.0},\"trial_status\":{\"active\":false,\"ends_at\":null}}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/deep-market/scan",
+      "tested_path": "/api/deep-market/scan",
+      "url": "http://127.0.0.1:8000/api/deep-market/scan",
+      "status": 200,
+      "msg": "{\"symbol\":\"XAUUSDT\",\"timestamp\":1779532863250,\"price\":4509.1,\"volume_profile\":{\"poc\":4507.09,\"poc_volume\":871.23,\"high_volume_nodes\":[4507.09,4507.22,4507.56,4507.61,4507.92],\"low_volume_nodes\":[4509.09,4509.6,4510.02,4511.2,4511.88],\"description\":\"أكبر تداول عند سعر 4507.09\"},\"cumulative_delta\":{\"c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scanner/top-opportunities",
+      "tested_path": "/api/scanner/top-opportunities",
+      "url": "http://127.0.0.1:8000/api/scanner/top-opportunities",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "GET",
+      "path": "/api/binance/scan",
+      "tested_path": "/api/binance/scan",
+      "url": "http://127.0.0.1:8000/api/binance/scan",
+      "status": 200,
+      "msg": "{\"symbol\":\"BTCUSDT\",\"price\":74725.1,\"open_interest\":105088.637,\"cumulative_delta\":-22021.577,\"footprint\":[{\"time\":\"2026-05-23T08:15:00Z\",\"open\":74625.2,\"high\":74718.7,\"low\":74561.0,\"close\":74580.3,\"volume\":2865.521},{\"time\":\"2026-05-23T08:30:00Z\",\"open\":74580.3,\"high\":74591.0,\"low\":74307.0,\"close\":7"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tradingview/fetch",
+      "tested_path": "/api/tradingview/fetch",
+      "url": "http://127.0.0.1:8000/api/tradingview/fetch",
+      "status": 400,
+      "msg": "{\"detail\":\"TradingView URL is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/active",
+      "tested_path": "/api/trade/active",
+      "url": "http://127.0.0.1:8000/api/trade/active",
+      "status": 200,
+      "msg": "{\"active_trades\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/history",
+      "tested_path": "/api/trade/history",
+      "url": "http://127.0.0.1:8000/api/trade/history",
+      "status": 500,
+      "msg": "Internal Server Error"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/start-monitoring",
+      "tested_path": "/api/trade/start-monitoring",
+      "url": "http://127.0.0.1:8000/api/trade/start-monitoring",
+      "status": 200,
+      "msg": "{\"status\":\"monitoring_started\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/stop-monitoring",
+      "tested_path": "/api/trade/stop-monitoring",
+      "url": "http://127.0.0.1:8000/api/trade/stop-monitoring",
+      "status": 200,
+      "msg": "{\"status\":\"monitoring_stopped\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/add-active",
+      "tested_path": "/api/trade/add-active",
+      "url": "http://127.0.0.1:8000/api/trade/add-active",
+      "status": 400,
+      "msg": "{\"detail\":\"Field trade_id is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/remove-active",
+      "tested_path": "/api/trade/remove-active",
+      "url": "http://127.0.0.1:8000/api/trade/remove-active",
+      "status": 400,
+      "msg": "{\"detail\":\"trade_id is required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/pulse",
+      "tested_path": "/api/system/pulse",
+      "url": "http://127.0.0.1:8000/api/system/pulse",
+      "status": 200,
+      "msg": "{\"status\":\"online\",\"refresh_time\":\"2026-05-23T10:41:36.535086\",\"active_strategies\":35,\"system_healthy\":true,\"health_details\":{\"active_strategies\":35,\"clusters\":{\"power\":{\"count\":13,\"strategies\":[\"chaos_fractal_theory.ChaosFractalStrategy\",\"composite_operator_tracking.CompositeOperatorStrategy\",\"cryp"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/strategies",
+      "tested_path": "/api/system/strategies",
+      "url": "http://127.0.0.1:8000/api/system/strategies",
+      "status": 200,
+      "msg": "{\"strategies\":[],\"total_strategies\":0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/personality",
+      "tested_path": "/api/system/personality",
+      "url": "http://127.0.0.1:8000/api/system/personality",
+      "status": 200,
+      "msg": "{\"current_mode\":\"DAY_TRADING\",\"description\":\"الوضع الافتراضي للنظام للأختبار.\",\"favorite_strategies\":[\"ICT\",\"VSA\",\"PriceAction\",\"RSI\",\"MACD\"],\"strengths\":[\"تحليل البيانات\",\"التركيز على السيولة\",\"المرونة\"],\"weaknesses\":[\"الأسواق الجانبية\",\"الأحداث غير المتوقعة\"],\"beliefs\":[\"الاتجاه صديقي\",\"السيولة تك"
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/feedback",
+      "tested_path": "/api/system/feedback",
+      "url": "http://127.0.0.1:8000/api/system/feedback",
+      "status": 400,
+      "msg": "{\"detail\":\"trade_id or analysis_id and correction are required\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/events",
+      "tested_path": "/api/calendar/events",
+      "url": "http://127.0.0.1:8000/api/calendar/events",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar/high-impact",
+      "tested_path": "/api/calendar/high-impact",
+      "url": "http://127.0.0.1:8000/api/calendar/high-impact",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "POST",
+      "path": "/api/backtest/run",
+      "tested_path": "/api/backtest/run",
+      "url": "http://127.0.0.1:8000/api/backtest/run",
+      "status": 200,
+      "msg": "{\"market\":\"Unknown\",\"timeframe\":\"1d\",\"start_date\":null,\"end_date\":null,\"trades_count\":24,\"win_rate\":59.2,\"profit_loss\":44.16,\"note\":\"هذه نتائج اختبار تاريخي تجريبية. يمكن استبدالها بمنطق backtest واقعي لاحقاً.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/voice/command",
+      "tested_path": "/api/voice/command",
+      "url": "http://127.0.0.1:8000/api/voice/command",
+      "status": 200,
+      "msg": "{\"response\":\"I didn't understand the command. Try 'Analyze Gold' or 'Market Status'.\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/broker/audit",
+      "tested_path": "/api/broker/audit",
+      "url": "http://127.0.0.1:8000/api/broker/audit",
+      "status": 200,
+      "msg": "{\"average_slippage\":0.0002,\"spread_efficiency\":\"95%\",\"broker_trust_score\":\"High\",\"incidents\":0}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/smart-orders/create",
+      "tested_path": "/api/smart-orders/create",
+      "url": "http://127.0.0.1:8000/api/smart-orders/create",
+      "status": 200,
+      "msg": "{\"status\":\"Order type not supported\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/plan",
+      "tested_path": "/api/trade/plan",
+      "url": "http://127.0.0.1:8000/api/trade/plan",
+      "status": 200,
+      "msg": "{\"status\":\"hold\",\"reason\":\"التوصية الحالية ليست صعودية أو هبوطية.\",\"confidence\":50,\"recommendation\":\"\",\"recommended_risk_percent\":1.1,\"session_note\":\"جلسة لندن: تقلب أعلى، استخدم وقف أوسع.\",\"strategy_clash\":{\"clash\":false},\"session_info\":{\"session\":\"London\",\"label\":\"لندن 🟢\",\"note\":\"جلسة لندن: تقلب أ"
+    },
+    {
+      "method": "GET",
+      "path": "/api/market/session",
+      "tested_path": "/api/market/session",
+      "url": "http://127.0.0.1:8000/api/market/session",
+      "status": 200,
+      "msg": "{\"session\":\"London\",\"label\":\"لندن 🟢\",\"note\":\"جلسة لندن: تقلب أعلى، استخدم وقف أوسع.\",\"timestamp\":\"2026-05-23T10:41:44.085860Z\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/market/spread",
+      "tested_path": "/api/market/spread",
+      "url": "http://127.0.0.1:8000/api/market/spread",
+      "status": 200,
+      "msg": "{\"symbols\":[],\"weekly_average_spread\":0.0,\"spread_alerts\":[]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/price-alerts",
+      "tested_path": "/api/price-alerts",
+      "url": "http://127.0.0.1:8000/api/price-alerts",
+      "status": 200,
+      "msg": "[]"
+    },
+    {
+      "method": "POST",
+      "path": "/api/price-alerts",
+      "tested_path": "/api/price-alerts",
+      "url": "http://127.0.0.1:8000/api/price-alerts",
+      "status": 400,
+      "msg": "{\"detail\":\"float() argument must be a string or a real number, not 'NoneType'\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/price-alerts/delete",
+      "tested_path": "/api/price-alerts/delete",
+      "url": "http://127.0.0.1:8000/api/price-alerts/delete",
+      "status": 400,
+      "msg": "{\"detail\":\"Alert id required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/journal/quick-entry",
+      "tested_path": "/api/journal/quick-entry",
+      "url": "http://127.0.0.1:8000/api/journal/quick-entry",
+      "status": 200,
+      "msg": "{\"status\":\"ok\",\"result\":{\"trade\":{\"id\":4,\"market\":\"\",\"entry_price\":0.0,\"stop_loss\":0.0,\"take_profit\":0.0,\"status\":\"open\",\"created_at\":\"2026-05-23T10:41:45.489488\"},\"journal\":{\"id\":5,\"market\":\"\",\"recommendation\":\"بيع\",\"result\":\"pending\",\"profit_loss\":0.0,\"notes\":\"سجلت صفقة بسرعة مع SL=0.0, TP=0.0.\",\""
+    },
+    {
+      "method": "GET",
+      "path": "/api/sentiment/scan",
+      "tested_path": "/api/sentiment/scan",
+      "url": "http://127.0.0.1:8000/api/sentiment/scan",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"symbol\"],\"msg\":\"Field required\",\"input\":null}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/psychology/report",
+      "tested_path": "/api/psychology/report",
+      "url": "http://127.0.0.1:8000/api/psychology/report",
+      "status": 200,
+      "msg": "{\"report\":\"Your psychology seems balanced. Keep following your plan.\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/shadow/trade",
+      "tested_path": "/api/shadow/trade",
+      "url": "http://127.0.0.1:8000/api/shadow/trade",
+      "status": 500,
+      "msg": "Internal Server Error"
+    },
+    {
+      "method": "GET",
+      "path": "/api/protection/status",
+      "tested_path": "/api/protection/status",
+      "url": "http://127.0.0.1:8000/api/protection/status",
+      "status": 200,
+      "msg": "{\"analysis_locked\":false,\"trading_locked\":false,\"analysis_locked_until\":null,\"trading_locked_until\":null,\"analysis_message\":null,\"trading_message\":null,\"daily_drawdown_pct\":0.0,\"weekly_drawdown_pct\":0.0,\"daily_loss_usd\":0.0,\"daily_loss_limit_pct\":10.0}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade-mover/check",
+      "tested_path": "/api/trade-mover/check",
+      "url": "http://127.0.0.1:8000/api/trade-mover/check",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"analysis_id\"],\"msg\":\"Field required\",\"input\":null}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/confidence",
+      "tested_path": "/api/trade/confidence",
+      "url": "http://127.0.0.1:8000/api/trade/confidence",
+      "status": 200,
+      "msg": "{\"confidence\":50,\"color\":\"red\",\"status\":\"لا تدخل\",\"message\":\"ثقة الصفقة: 50% لا تدخل\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/market/countdown",
+      "tested_path": "/api/market/countdown",
+      "url": "http://127.0.0.1:8000/api/market/countdown",
+      "status": 200,
+      "msg": "{\"status\":\"مفتوح\",\"next_event\":\"يغلق لندن\",\"countdown\":\"5 ساعات 18 دقيقة\",\"color\":\"gray\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/assistant",
+      "tested_path": "/api/ai/assistant",
+      "url": "http://127.0.0.1:8000/api/ai/assistant",
+      "status": 400,
+      "msg": "{\"detail\":\"Question is required\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chart/detect",
+      "tested_path": "/api/chart/detect",
+      "url": "http://127.0.0.1:8000/api/chart/detect",
+      "status": 422,
+      "msg": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"file\"],\"msg\":\"Field required\",\"input\":null}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/daily-limits/status",
+      "tested_path": "/api/daily-limits/status",
+      "url": "http://127.0.0.1:8000/api/daily-limits/status",
+      "status": 200,
+      "msg": "{\"daily_pnl\":0,\"profit_target\":3000.0,\"loss_limit\":1000.0,\"trading_locked_today\":false,\"lock_reason\":null}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/weekly-challenge",
+      "tested_path": "/api/weekly-challenge",
+      "url": "http://127.0.0.1:8000/api/weekly-challenge",
+      "status": 200,
+      "msg": "{\"challenge\":null}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/leaderboard",
+      "tested_path": "/api/leaderboard",
+      "url": "http://127.0.0.1:8000/api/leaderboard",
+      "status": 200,
+      "msg": "{\"leaderboard\":[]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/save-sensitive",
+      "tested_path": "/api/settings/save-sensitive",
+      "url": "http://127.0.0.1:8000/api/settings/save-sensitive",
+      "status": 200,
+      "msg": "{\"status\":\"Encrypted and saved\",\"preview\":\"...\"}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/retrieve-sensitive",
+      "tested_path": "/api/settings/retrieve-sensitive",
+      "url": "http://127.0.0.1:8000/api/settings/retrieve-sensitive",
+      "status": 200,
+      "msg": "{\"error\":\"Failed to decrypt\"}"
+    }
+  ]
+}

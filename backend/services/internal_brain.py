@@ -16,6 +16,8 @@ except ImportError:
     from models import StrategyPerformance
 
 from .performance_tracker import PerformanceTracker
+from .cancelled_trade_memory import cancelled_trade_memory
+from .strategy_fatigue import strategy_fatigue
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,18 @@ class InternalBrain:
         self.min_weight = 0.3
         self.max_weight = 3.0
         self.performance_tracker = PerformanceTracker()
+        # Cancelled trade memory service
+        try:
+            self.cancelled_trade_memory = cancelled_trade_memory
+        except Exception:
+            self.cancelled_trade_memory = None
+
+        # Strategy fatigue memory service
+        try:
+            self.strategy_fatigue = strategy_fatigue
+        except Exception:
+            self.strategy_fatigue = None
+
         # أوزان افتراضية مدروسة
         self.default_weight_map = {
             'ICT': 1.5,
@@ -285,10 +299,166 @@ class InternalBrain:
             context=market,
             success=was_correct,
         )
-    
-    # ═══════════════════════════════════════════════════════════
+
+    def get_dynamic_fix_time(self, error_signature: str, base_time: float = 0.5) -> float:
+        """يحسّن وقت الإصلاح إذا تكرر نفس الخطأ وأصبح معروفاً."""
+        db = self._get_db_session()
+        try:
+            entry = db.query(models.FixCacheEntry).filter(
+                models.FixCacheEntry.error_signature == error_signature
+            ).first()
+            if not entry:
+                return base_time
+
+            speed_factor = 1.0 - max(0.0, entry.success_rate - 0.5) * 0.5
+            speed_factor = max(0.25, min(1.0, speed_factor))
+            if entry.times_applied >= 3:
+                speed_factor *= 0.75
+
+            return round(base_time * speed_factor, 3)
+        except Exception as e:
+            logger.warning(f"فشل حساب وقت الإصلاح الديناميكي: {e}")
+            return base_time
+        finally:
+            db.close()
+
+    def get_fix_cache_entry(self, error_signature: str) -> Optional[models.FixCacheEntry]:
+        db = self._get_db_session()
+        try:
+            return db.query(models.FixCacheEntry).filter(
+                models.FixCacheEntry.error_signature == error_signature
+            ).first()
+        except Exception as e:
+            logger.warning(f"فشل جلب FixCacheEntry: {e}")
+            return None
+        finally:
+            db.close()
+
+    def record_fix_cache_entry(
+        self,
+        error_signature: str,
+        error_log: str,
+        component: str,
+        action: str,
+        success: bool,
+    ) -> None:
+        db = self._get_db_session()
+        try:
+            entry = db.query(models.FixCacheEntry).filter(
+                models.FixCacheEntry.error_signature == error_signature
+            ).first()
+            if entry:
+                entry.times_applied += 1
+                entry.success_rate = (entry.success_rate * (entry.times_applied - 1) + (1.0 if success else 0.0)) / entry.times_applied
+                entry.fix_description = action
+                entry.fix_code = action
+                entry.last_applied = datetime.utcnow()
+            else:
+                entry = models.FixCacheEntry(
+                    error_signature=error_signature,
+                    error_message=error_log,
+                    fix_code=action,
+                    fix_description=action,
+                    component=component,
+                    times_applied=1,
+                    success_rate=1.0 if success else 0.0,
+                    last_applied=datetime.utcnow(),
+                )
+                db.add(entry)
+            db.commit()
+        except Exception as e:
+            logger.error(f"فشل حفظ FixCacheEntry: {e}")
+            db.rollback()
+        finally:
+            db.close()
+
+    def get_code_review_focus_patterns(self) -> List[str]:
+        """يسترجع أنماط الأخطاء المتكررة في مراجعة الكود لتشديد الفحص عليها."""
+        db = self._get_db_session()
+        try:
+            rows = db.query(models.GlobalMemoryEvent).filter(
+                models.GlobalMemoryEvent.component == "code_review_agent",
+                models.GlobalMemoryEvent.event_type == "recurring_error",
+            ).all()
+            counts: Dict[str, int] = {}
+            for row in rows:
+                counts[row.event_key] = counts.get(row.event_key, 0) + 1
+            return [key for key, count in sorted(counts.items(), key=lambda item: item[1], reverse=True) if count >= 2]
+        except Exception as e:
+            logger.warning(f"فشل استرجاع أنماط مراجعة الكود: {e}")
+            return []
+        finally:
+            db.close()
+
+    def log_code_review_feedback(self, issue: str, filename: str, approved: bool) -> None:
+        self.log_event_experience(
+            component="code_review_agent",
+            event_type="code_review_feedback",
+            event_key=issue[:100],
+            event_value=1.0 if approved else 0.0,
+            metadata={"file": filename, "approved": approved},
+            success=approved,
+        )
+
+    def get_news_keyword_weight(self, keyword: str, default_weight: float = 1.0) -> float:
+        db = self._get_db_session()
+        try:
+            entry = db.query(models.NewsKeywordImpact).filter(
+                models.NewsKeywordImpact.keyword == keyword
+            ).first()
+            if entry:
+                return max(0.1, min(2.0, float(entry.learned_weight)))
+            return default_weight
+        except Exception as e:
+            logger.warning(f"فشل استرجاع وزن الكلمة الإخبارية: {e}")
+            return default_weight
+        finally:
+            db.close()
+
+    def record_news_keyword_impact(
+        self,
+        keyword: str,
+        market: Optional[str],
+        predicted_score: float,
+        actual_score: float,
+        price_before: Optional[float],
+        price_after: Optional[float],
+    ) -> None:
+        db = self._get_db_session()
+        try:
+            entry = db.query(models.NewsKeywordImpact).filter(
+                models.NewsKeywordImpact.keyword == keyword
+            ).first()
+            if entry:
+                entry.times_observed += 1
+                entry.predicted_impact = ((entry.predicted_impact * (entry.times_observed - 1)) + predicted_score) / entry.times_observed
+                entry.actual_impact = ((entry.actual_impact * (entry.times_observed - 1)) + actual_score) / entry.times_observed
+                delta = actual_score - predicted_score
+                entry.learned_weight = max(0.1, min(2.0, entry.learned_weight + delta * 0.15))
+                entry.price_before = price_before
+                entry.price_after = price_after
+            else:
+                entry = models.NewsKeywordImpact(
+                    keyword=keyword,
+                    market=market or "",
+                    predicted_impact=predicted_score,
+                    actual_impact=actual_score,
+                    price_before=price_before,
+                    price_after=price_after,
+                    times_observed=1,
+                    learned_weight=max(0.1, min(2.0, 0.5 + (actual_score - predicted_score) * 0.15)),
+                )
+                db.add(entry)
+            db.commit()
+        except Exception as e:
+            logger.error(f"فشل حفظ تأثير الكلمة الإخبارية: {e}")
+            db.rollback()
+        finally:
+            db.close()
+
+    # ═══════════════════════════════════════════════════════════════════
     #  أداء الاستراتيجيات (Strategy Performance - حدود ديناميكية)
-    # ═══════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════════
     
     def get_dynamic_sandbox_duration(self, strategy_quality_score: float) -> int:
         """
@@ -657,6 +827,22 @@ class InternalBrain:
             return {"date": today.isoformat(), "total_events": 0, "error": str(e)}
         finally:
             db.close()
+
+    def assess_strategy_fatigue(self, strategy_name: str) -> Dict[str, Any]:
+        """الوصول إلى تحليل التعب لاستراتيجية معينة عبر InternalBrain."""
+        if self.strategy_fatigue:
+            try:
+                return self.strategy_fatigue.detect_early_warning(strategy_name)
+            except Exception as e:
+                logger.warning(f"Failed to assess fatigue for {strategy_name}: {e}")
+        return {
+            "strategy_name": strategy_name,
+            "fatigue_index": 0.0,
+            "warnings": [],
+            "is_warning": False,
+            "should_freeze": False,
+            "reason": "Strategy fatigue service unavailable.",
+        }
     
     # ═══════════════════════════════════════════════════════════
     #  الدوال الأصلية (Original Functions - محفوظة)

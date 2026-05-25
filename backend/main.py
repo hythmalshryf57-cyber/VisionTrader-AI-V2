@@ -196,7 +196,8 @@ if engine.url.drivername.startswith("sqlite"):
                     "analysis_locked_until": "ALTER TABLE user_preferences ADD COLUMN analysis_locked_until DATETIME",
                     "trading_locked_until": "ALTER TABLE user_preferences ADD COLUMN trading_locked_until DATETIME",
                     "daily_profit_target_percent": "ALTER TABLE user_preferences ADD COLUMN daily_profit_target_percent FLOAT DEFAULT 30.0",
-                    "daily_loss_limit_percent": "ALTER TABLE user_preferences ADD COLUMN daily_loss_limit_percent FLOAT DEFAULT 10.0",
+                    "daily_loss_limit_percent": "ALTER TABLE user_preferences ADD COLUMN daily_loss_limit_percent FLOAT DEFAULT 5.0",
+                    "daily_loss_limit_amount": "ALTER TABLE user_preferences ADD COLUMN daily_loss_limit_amount FLOAT",
                     "trading_locked_today": "ALTER TABLE user_preferences ADD COLUMN trading_locked_today BOOLEAN DEFAULT 0",
                     "lock_reason": "ALTER TABLE user_preferences ADD COLUMN lock_reason TEXT",
                     "notification_markets": "ALTER TABLE user_preferences ADD COLUMN notification_markets TEXT DEFAULT '[\"XAUUSD\", \"EURUSD\", \"GBPUSD\"]'",
@@ -683,6 +684,19 @@ async def mentor_chat(payload: dict, current_user: models.User = Depends(auth.ge
         "message": "Mentor chat feature غير متاحة حتى يتم ربطه بخدمة تحليل ذكي حقيقي."
     }
 
+
+@app.get("/api/daily-limits/status")
+def get_daily_limits_status(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Return daily limits status for the current user."""
+    status = trade_protection_service.check_protection(current_user.id)
+    # Include user preference details
+    prefs = db.query(models.UserPreferences).filter(models.UserPreferences.user_id == current_user.id).first()
+    if prefs:
+        status["daily_loss_limit_percent"] = float(prefs.daily_loss_limit_percent or 5.0)
+        status["daily_loss_limit_amount"] = float(prefs.daily_loss_limit_amount) if prefs.daily_loss_limit_amount else None
+        status["capital"] = float(prefs.capital or 0.0)
+    return status
+
 @app.post("/api/cache/clear")
 def clear_cache(current_user: models.User = Depends(auth.get_current_user)):
     if not current_user.is_admin:
@@ -693,12 +707,19 @@ def clear_cache(current_user: models.User = Depends(auth.get_current_user)):
 # --- Journal & Stats ---
 @app.post("/api/journal")
 def add_journal(entry: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    required = ['market','recommendation','result']
+    for k in required:
+        if k not in entry:
+            raise HTTPException(status_code=400, detail=f"Field {k} is required")
+    profit = entry.get('pnl') if 'pnl' in entry else entry.get('profit_loss')
+    if profit is None:
+        raise HTTPException(status_code=400, detail="Field pnl or profit_loss is required")
     return journal_service.add_entry(
         user_id=current_user.id,
         market=entry['market'],
         recommendation=entry['recommendation'],
         result=entry['result'],
-        profit_loss=entry['pnl'],
+        profit_loss=profit,
         notes=entry.get('notes'),
         mood_before=entry.get('mood_before'),
         mood_after=entry.get('mood_after'),
@@ -850,8 +871,13 @@ def start_scanner(current_user: models.User = Depends(auth.get_current_user)):
 
 @app.post("/api/scanner/stop")
 def stop_scanner(current_user: models.User = Depends(auth.get_current_user)):
-    auto_scanner.stop()
-    return {"status": "stopped"}
+    try:
+        if not hasattr(auto_scanner, 'stop'):
+            raise RuntimeError('Auto-scanner stop method unavailable')
+        auto_scanner.stop()
+        return {"status": "stopped"}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Scanner stop failed: {exc}")
 
 @app.get("/api/scanner/status")
 def get_scanner_status(current_user: models.User = Depends(auth.get_current_user)):
@@ -1323,31 +1349,35 @@ def get_trade_history(limit: int = 20, current_user: models.User = Depends(auth.
     history = []
     for entry in entries:
         # الحصول على TradeExperience المرتبطة
-        experience = db.query(models.TradeExperience).filter(
-            models.TradeExperience.user_id == current_user.id,
-            models.TradeExperience.market == entry.market,
-            models.TradeExperience.entry_price == entry.entry_price,
-            models.TradeExperience.exit_price == entry.exit_price
-        ).first()
+        entry_price = getattr(entry, 'entry_price', None)
+        exit_price = getattr(entry, 'exit_price', None)
+        experience = None
+        if entry_price is not None and exit_price is not None:
+            experience = db.query(models.TradeExperience).filter(
+                models.TradeExperience.user_id == current_user.id,
+                models.TradeExperience.market == entry.market,
+                models.TradeExperience.entry_price == entry_price,
+                models.TradeExperience.exit_price == exit_price
+            ).first()
 
         history.append({
             "id": entry.id,
             "date": entry.date.isoformat() if entry.date else None,
-            "market": entry.market,
-            "recommendation": entry.recommendation,
-            "result": entry.result,
-            "profit_loss": entry.profit_loss,
-            "notes": entry.notes,
-            "strategies": entry.strategies,
-            "duration": entry.duration,
-            "entry_price": entry.entry_price,
-            "exit_price": entry.exit_price,
-            "stop_loss": entry.stop_loss,
-            "take_profit": entry.take_profit,
+            "market": getattr(entry, 'market', None),
+            "recommendation": getattr(entry, 'recommendation', None),
+            "result": getattr(entry, 'result', None),
+            "profit_loss": getattr(entry, 'profit_loss', None),
+            "notes": getattr(entry, 'notes', None),
+            "strategies": getattr(entry, 'strategies', None),
+            "duration": getattr(entry, 'duration', None),
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "stop_loss": getattr(entry, 'stop_loss', None),
+            "take_profit": getattr(entry, 'take_profit', None),
             "confidence": getattr(entry, 'confidence', None),
             "experience": {
-                "lessons": experience.lessons if experience else None,
-                "strategies_correct": experience.strategies if experience else None,
+                "lessons": getattr(experience, 'lessons', None),
+                "strategies_correct": getattr(experience, 'strategies', None),
             } if experience else None
         })
 
@@ -1716,9 +1746,13 @@ def open_shadow_trade(payload: dict, db: Session = Depends(get_db), current_user
         raise HTTPException(status_code=403, detail=protection.get("trading_message") or "التداول مغلق مؤقتاً.")
 
     market = payload.get('market')
+    price = payload.get('price')
+    if not market or price is None:
+        raise HTTPException(status_code=400, detail='market and price are required')
+
     warning = trade_protection_service.correlation_warning(current_user.id, market)
     st = ShadowTrader(user_id=current_user.id)
-    trade = st.open_trade(market, payload['price'], payload.get('sl'), payload.get('tp'))
+    trade = st.open_trade(market, price, payload.get('sl'), payload.get('tp'))
     response = {"trade": trade}
     if warning:
         response["correlation_warning"] = warning
@@ -1728,13 +1762,26 @@ def open_shadow_trade(payload: dict, db: Session = Depends(get_db), current_user
             user_id=current_user.id,
             market=market,
             expected_price=float(payload.get('expected_price')),
-            executed_price=float(payload.get('price')),
+            executed_price=float(price),
             trade_id=trade.id
         )
         response['slippage'] = slippage
 
     response["protection_status"] = protection
     return response
+
+
+@app.get('/api/shadow/stats')
+def get_shadow_stats(current_user: models.User = Depends(auth.get_current_user)):
+    st = ShadowTrader(user_id=current_user.id)
+    stats = st.get_shadow_stats()
+    return {'status': 'ok', 'stats': stats}
+
+
+@app.get('/api/shadow/list')
+def get_shadow_list(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    trades = db.query(models.ShadowTrade).filter(models.ShadowTrade.user_id == current_user.id).order_by(models.ShadowTrade.created_at.desc()).limit(200).all()
+    return {'status': 'ok', 'trades': [{'id': t.id, 'market': t.market, 'entry_price': t.entry_price, 'exit_price': t.exit_price, 'status': t.status, 'pnl': t.pnl, 'created_at': t.created_at} for t in trades]}
 
 @app.get("/api/protection/status")
 def protection_status(current_user: models.User = Depends(auth.get_current_user)):

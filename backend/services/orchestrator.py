@@ -33,15 +33,15 @@ class MarketThesisGenerator:
         self.api_key = api_key
         self.api_url = api_url
 
-    def generate(self, agent_reports: List[Dict[str, Any]]) -> str:
-        prompt = self._build_prompt(agent_reports)
+    def generate(self, agent_reports: List[Dict[str, Any]], win_rate: float = 50.0) -> str:
+        prompt = self._build_prompt(agent_reports, win_rate)
         try:
             return self._call_deepseek(prompt)
         except Exception:
             logger.exception("DeepSeek thesis generation failed")
             return self._fallback_thesis(agent_reports)
 
-    def _build_prompt(self, reports: List[Dict[str, Any]]) -> str:
+    def _build_prompt(self, reports: List[Dict[str, Any]], win_rate: float = 50.0) -> str:
         summary = []
         for report in reports[:21]:
             name = report.get("agent") or report.get("name") or "unknown"
@@ -50,8 +50,18 @@ class MarketThesisGenerator:
             text = report.get("report", "")
             summary.append(f"- {name}: signal={signal}, confidence={confidence}, report={text}")
 
+        # Injecting recent win rate context
+        performance_context = f"The system's recent win rate is {win_rate}%. "
+        if win_rate < 40.0:
+            performance_context += "Performance is currently POOR. The market might be hostile. Adopt a highly defensive and conservative thesis."
+        elif win_rate > 60.0:
+            performance_context += "Performance is currently STRONG. The market is favorable. Adopt a confident and trend-following thesis."
+        else:
+            performance_context += "Performance is NEUTRAL. Stick to standard analysis."
+
         return (
             "You are a market thesis generator. Review the following 21 agent reports and determine the overall market condition.\n"
+            f"{performance_context}\n"
             "Create a short market thesis in Arabic or English touching on trend, liquidity, risk regime, and recommended cluster bias.\n"
             "Example: 'السوق اليوم: اتجاه صاعد + سيولة منخفضة ← استراتيجيات Momentum أفضل'.\n\n"
             "Reviews:\n"
@@ -197,7 +207,18 @@ class Orchestrator:
         self.deliberation = DeliberationLoop()
 
     def orchestrate(self, market_data: Dict[str, Any], agent_reports: List[Dict[str, Any]]) -> Dict[str, Any]:
-        thesis = self.thesis_generator.generate(agent_reports)
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            win_rate = brain.get_dynamic_win_rate_floor()  # Fetching baseline
+            # Get actual daily success rate
+            summary = brain.get_daily_learning_summary()
+            if summary.get("total_events", 0) > 0:
+                win_rate = summary.get("success_rate", win_rate)
+        except Exception:
+            win_rate = 50.0
+
+        thesis = self.thesis_generator.generate(agent_reports, win_rate)
         weights = self.weight_calculator.calculate(thesis)
         deliberation_result = self.deliberation.run(thesis, weights, market_data, agent_reports)
         final_signal = deliberation_result["analysis"]["decision"]

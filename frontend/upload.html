@@ -64,11 +64,11 @@
         <div class="card">
             <div class="field-group">
                 <label for="marketInput">رمز السوق</label>
-                <input id="marketInput" type="text" placeholder="مثال: XAUUSD أو BTCUSDT" value="XAUUSD">
+                <input class="cosmic-input" id="marketInput" type="text" placeholder="مثال: XAUUSD أو BTCUSDT" value="XAUUSD">
             </div>
             <div class="field-group">
                 <label for="timeframeSelect">الفريم الزمني</label>
-                <select id="timeframeSelect">
+                <select class="cosmic-input" id="timeframeSelect">
                     <option value="1m">1 دقيقة</option>
                     <option value="5m">5 دقائق</option>
                     <option value="15m">15 دقيقة</option>
@@ -93,7 +93,8 @@
         <div class="card">
             <div class="field-group">
                 <label for="tvUrlInput">رابط TradingView</label>
-                <input id="tvUrlInput" type="text" placeholder="https://www.tradingview.com/chart/...">
+                <input class="cosmic-input" id="tvUrlInput" type="text" placeholder="https://www.tradingview.com/chart/...">
+            </div>
             </div>
             <div class="button-row">
                 <button class="btn btn-primary" id="fetchTvBtn">جلب وتحليل من TradingView</button>

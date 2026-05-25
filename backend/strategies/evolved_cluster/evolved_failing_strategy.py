@@ -2,9 +2,9 @@
 ═══════════════════════════════════════════════════════════
 EVOLVED STRATEGY – VisionTrader AI (Local Fallback Engine)
 ═══════════════════════════════════════════════════════════
-Generated : 2026-05-22 22:06:07 UTC
+Generated : 2026-05-22 23:32:26 UTC
 Failure   : Win rate dropped to 25% (threshold < 30%)
-Failed At : 2026-05-22T22:06:07.883568+00:00
+Failed At : 2026-05-22T23:32:26.237485+00:00
 Engine    : Local Fallback (DeepSeek API unavailable)
 
 Improvements Applied:

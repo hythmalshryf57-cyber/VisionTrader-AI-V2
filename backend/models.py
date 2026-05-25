@@ -73,7 +73,9 @@ class UserPreferences(Base):
     trading_locked_until = Column(DateTime, nullable=True)
     # New features 30-34
     daily_profit_target_percent = Column(Float, default=30.0)  # 30% of capital
-    daily_loss_limit_percent = Column(Float, default=10.0)    # 10% of capital
+    daily_loss_limit_percent = Column(Float, default=5.0)    # 5% of capital (default)
+    # Absolute amount override for daily loss limit in USD. If set, this value is used instead of percent.
+    daily_loss_limit_amount = Column(Float, nullable=True)
     trading_locked_today = Column(Boolean, default=False)
     lock_reason = Column(String, nullable=True)
     notification_markets = Column(Text, default='["XAUUSD", "EURUSD", "GBPUSD"]')  # JSON list

@@ -102,17 +102,53 @@ class DegradationWatcher:
 
     def watch(self, demo_mode=False):
         """دورة المراقبة الرئيسية."""
+        # Dynamically adjust interval based on InternalBrain
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            summary = brain.get_daily_learning_summary()
+            sys_win_rate = summary.get("success_rate", 50.0)
+            if sys_win_rate < 40.0:
+                self.interval = 10 * 60  # Check more frequently (every 10 mins) if system is struggling
+                logger.info("System WR < 40%. Checking every 10 mins.")
+            elif sys_win_rate > 60.0:
+                self.interval = 60 * 60  # Check less frequently (every 60 mins) if system is doing well
+                logger.info("System WR > 60%. Checking every 60 mins.")
+            else:
+                self.interval = 30 * 60
+        except Exception:
+            pass
+
         logger.info("Running degradation check cycle...")
         bad_strategies = self._scan_strategies(demo_mode)
-        
+        fatigue_alerts = self._scan_fatigue_issues(demo_mode)
+        for strategy_name, reason in fatigue_alerts.items():
+            if strategy_name not in bad_strategies:
+                bad_strategies[strategy_name] = reason
+
         for strategy_name, reason in bad_strategies.items():
             logger.warning(f"Strategy {strategy_name} degraded. Reason: {reason}")
+            
+            # Log degradation to InternalBrain
+            try:
+                if 'brain' in locals() and brain:
+                    brain.log_event_experience("degradation_watcher", "strategy_failure", strategy_name, 0.0, {"reason": reason}, success=False)
+            except Exception:
+                pass
+
             self.freeze_strategy(strategy_name)
             self.send_alert(strategy_name, reason)
             
-            # Simulate user choosing "1-تعديل/توليد"
-            logger.info(f"Simulating user approval to evolve {strategy_name}...")
-            self.start_evolution_cycle(strategy_name, reason)
+            proactive_result = {}
+            try:
+                proactive_result = strategy_fatigue.proactive_evolution(strategy_name, reason=reason)
+                logger.info(f"Proactive evolution result for {strategy_name}: {proactive_result.get('action', 'unknown')}")
+            except Exception as e:
+                logger.error(f"Proactive evolution failed for {strategy_name}: {e}")
+
+            if not proactive_result.get("generated_path"):
+                logger.info(f"Simulating user approval to evolve {strategy_name} via fallback path...")
+                self.start_evolution_cycle(strategy_name, reason)
 
     def _scan_strategies(self, demo_mode=False) -> Dict[str, str]:
         """
@@ -131,13 +167,20 @@ class DegradationWatcher:
         # Real DB scanning
         db = SessionLocal()
         try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            failure_threshold = brain.get_dynamic_threshold("degradation_watcher", "failure_win_rate_threshold", 30.0)
+        except Exception:
+            failure_threshold = 30.0
+
+        try:
             performances = db.query(StrategyPerformance).all()
             for perf in performances:
                 total_trades = perf.wins + perf.losses
                 if total_trades >= 10:
                     win_rate = (perf.wins / total_trades) * 100
-                    if win_rate < 30.0:
-                        bad[perf.strategy_name] = f"Win rate is critically low: {win_rate:.1f}%"
+                    if win_rate < failure_threshold:
+                        bad[perf.strategy_name] = f"Win rate is critically low: {win_rate:.1f}% (Threshold: {failure_threshold}%)"
                         continue
 
                 # Check consecutive losses in TradeExperience
@@ -154,6 +197,22 @@ class DegradationWatcher:
             db.close()
 
         return bad
+
+    def _scan_fatigue_issues(self, demo_mode: bool = False) -> Dict[str, str]:
+        """يفحص استراتيجيات حية بناءً على مؤشر التعب ويتصرف عند الحاجة."""
+        issues: Dict[str, str] = {}
+        if demo_mode or not _DB_AVAILABLE:
+            return issues
+
+        for py_file in _STRATEGIES_DIR.rglob("*.py"):
+            strategy_name = py_file.stem
+            if strategy_name.startswith("evolved_"):
+                continue
+            summary = strategy_fatigue.detect_early_warning(strategy_name)
+            if summary.get("should_freeze"):
+                issues[strategy_name] = summary.get("reason", "Fatigue threshold exceeded")
+                logger.info(f"Early warning for {strategy_name}: {issues[strategy_name]}")
+        return issues
 
     def freeze_strategy(self, strategy_name: str):
         """يجمد استراتيجية بنقلها لمجلد frozen/."""

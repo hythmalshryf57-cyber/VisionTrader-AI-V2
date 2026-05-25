@@ -56,6 +56,49 @@ class CodeReviewAgent:
         self.approved_strategies_dir = _BACKEND_DIR / "strategies"
         self._test_mode = False
 
+    def _load_learned_patterns(self) -> Dict[str, int]:
+        patterns: Dict[str, int] = {}
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            mem = brain.get_component_memory("code_review_agent")
+            for event in mem.get("events", []):
+                if event.get("type") == "code_review_feedback" and not event.get("success", True):
+                    key = event.get("key", "")
+                    if not key or key.startswith("Learned Repeat Issue:"):
+                        continue
+                    patterns[key] = patterns.get(key, 0) + 1
+            return patterns
+        except Exception:
+            return {}
+
+    def _record_learned_pattern(self, issue: str) -> None:
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            mem = brain.get_component_memory("code_review_agent")
+            events = mem.setdefault("events", [])
+            events.append({
+                "type": "code_review_feedback",
+                "key": issue,
+                "value": 0.0,
+                "success": False,
+                "context": None,
+                "timestamp": ""
+            })
+            brain._save_component_memory("code_review_agent", mem)
+        except Exception:
+            pass
+
+    def _focus_on_repeated_issues(self, code: str, issues: List[str]) -> List[str]:
+        patterns = self._load_learned_patterns()
+        for issue, count in patterns.items():
+            if count >= 1:
+                message = f"Learned Repeat Issue: '{issue[:80]}' appeared {count} times before. Tightening review for this pattern."
+                if message not in issues:
+                    issues.append(message)
+        return issues
+
     def quick_scan(self, code: str) -> List[str]:
         """فحص محلي سريع (نحوي وأمني أساسي) باستخدام AST."""
         logger.info("[Quick Scan] Running local syntax and security check...")
@@ -79,6 +122,7 @@ class CodeReviewAgent:
                 if node.module in risky_imports:
                     issues.append(f"Security: Risky import from '{node.module}' is not allowed in strategies.")
                     
+        issues = self._focus_on_repeated_issues(code, issues)
         return issues
 
     def deep_analysis(self, code: str) -> List[str]:
@@ -121,6 +165,16 @@ class CodeReviewAgent:
         
         if telegram_service:
             telegram_service.send_message(os.getenv("TELEGRAM_CHAT_ID", ""), msg)
+
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            brain.log_code_review_feedback("approved_clean", filename, approved=True)
+            mem = brain.get_component_memory("code_review_agent")
+            mem["approvals"] = mem.get("approvals", 0) + 1
+            brain._save_component_memory("code_review_agent", mem)
+        except Exception:
+            pass
             
         return {
             "status": "approved",
@@ -138,6 +192,28 @@ class CodeReviewAgent:
         
         if telegram_service:
             telegram_service.send_message(os.getenv("TELEGRAM_CHAT_ID", ""), msg)
+            
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            base_issues = [issue for issue in issues if not issue.startswith("Learned Repeat Issue:")]
+            for issue in base_issues:
+                # Log the specific issue pattern to internal brain to track recurring errors
+                brain.log_event_experience(
+                    component="code_review_agent", 
+                    event_type="recurring_error", 
+                    event_key=issue[:50], 
+                    event_value=0.0, 
+                    metadata={"full_issue": issue, "file": filename}, 
+                    success=False
+                )
+                brain.log_code_review_feedback(issue, filename, approved=False)
+                self._record_learned_pattern(issue)
+            mem = brain.get_component_memory("code_review_agent")
+            mem["rejections"] = mem.get("rejections", 0) + 1
+            brain._save_component_memory("code_review_agent", mem)
+        except Exception:
+            pass
             
         return {
             "status": "rejected",

@@ -38,7 +38,7 @@
         </aside>
 
         <main class="main-content">
-            <div class="welcome-section">
+            <div class="welcome-section card">
                 <div>
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; margin-bottom:18px;">
                         <div>
@@ -231,7 +231,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="memory-card" id="binanceScannerCard">
+                <div class="memory-card card" id="binanceScannerCard">
                     <h3><i class="fab fa-bitcoin"></i> Binance Futures Scanner</h3>
                     <div style="margin-top: 18px; display:grid; gap:12px;">
                         <div style="display:flex; gap:10px; align-items:center;">
@@ -253,7 +253,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="memory-card" id="topOpportunitiesCard">
+                <div class="memory-card card" id="topOpportunitiesCard">
                     <h3><i class="fas fa-trophy"></i> 🏆 أفضل الفرص الآن</h3>
                     <div style="margin-top: 20px; display: grid; gap: 14px;" id="topOpportunitiesList">
                         <div style="font-size:0.9rem; color:#bbb;">تحميل أفضل الفرص...</div>
@@ -398,6 +398,27 @@
 
                 await loadJournalInsights();
                 await loadTopOpportunities();
+                // load shadow recommendation stats
+                try {
+                    const shadowRes = await api.request('GET', '/api/shadow/stats', null, true);
+                    if (shadowRes && shadowRes.stats) {
+                        const el = document.createElement('div');
+                        el.className = 'memory-card';
+                        el.innerHTML = `
+                            <h3>توصيات الظل (Shadow Recommendations)</h3>
+                            <div style="margin-top:12px; display:grid; gap:8px;">
+                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>الإجمالي</span><strong>${shadowRes.stats.total}</strong></div>
+                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>المحلّلة</span><strong>${shadowRes.stats.closed}</strong></div>
+                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>الرابحة</span><strong>${shadowRes.stats.wins_count}</strong></div>
+                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>متوسط الربح</span><strong>${shadowRes.stats.wins_avg}</strong></div>
+                            </div>
+                        `;
+                        const container = document.querySelector('.memory-grid');
+                        if (container) container.insertBefore(el, container.firstChild.nextSibling);
+                    }
+                } catch (e) {
+                    console.warn('Failed to load shadow stats', e);
+                }
                 await loadTradeMover();
                 await loadTodaySummary();
                 await loadPerformanceSummary();

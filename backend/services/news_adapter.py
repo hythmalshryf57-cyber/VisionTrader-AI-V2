@@ -26,7 +26,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import threading
 
 import requests
@@ -301,27 +301,35 @@ class ImpactAnalyzer:
 
         all_keywords = high_found + pos_found + neg_found
 
-        has_high = len(high_found) > 0
+        # تعلم كلمات مفتاحية الأخبار
+        high_score = len(high_found)
         pos_score = len(pos_found)
         neg_score = len(neg_found)
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            high_score = sum(brain.get_news_keyword_weight(kw, 1.0) for kw in high_found)
+            pos_score  = sum(brain.get_news_keyword_weight(kw, 1.0) for kw in pos_found)
+            neg_score  = sum(brain.get_news_keyword_weight(kw, 1.0) for kw in neg_found)
+        except Exception:
+            pass
 
-        # إذا كان خبر HIGH + إيجابي → POSITIVE (خبر اقتصادي إيجابي قوي)
+        all_keywords = high_found + pos_found + neg_found
+        has_high = len(high_found) > 0
+
         if has_high and pos_score > 0 and pos_score >= neg_score:
-            return ImpactLevel.POSITIVE, 0.75, all_keywords
+            return ImpactLevel.POSITIVE, min(0.92, 0.70 + pos_score * 0.05), all_keywords
 
-        # إذا كان خبر HIGH + سلبي → NEGATIVE (خبر اقتصادي سلبي قوي)
         if has_high and neg_score > 0 and neg_score > pos_score:
-            return ImpactLevel.NEGATIVE, 0.75, all_keywords
+            return ImpactLevel.NEGATIVE, min(0.92, 0.70 + neg_score * 0.05), all_keywords
 
-        # خبر HIGH بدون توجه واضح
         if has_high:
-            return ImpactLevel.HIGH, 0.80, all_keywords
+            return ImpactLevel.HIGH, min(0.88, 0.70 + high_score * 0.03), all_keywords
 
-        # ── 3) خبر إيجابي/سلبي بدون HIGH ───────────────────────────
         if pos_score > neg_score and pos_score > 0:
-            return ImpactLevel.POSITIVE, 0.65, pos_found
+            return ImpactLevel.POSITIVE, min(0.80, 0.55 + pos_score * 0.06), pos_found
         if neg_score > pos_score and neg_score > 0:
-            return ImpactLevel.NEGATIVE, 0.65, neg_found
+            return ImpactLevel.NEGATIVE, min(0.80, 0.55 + neg_score * 0.06), neg_found
 
         return ImpactLevel.NEUTRAL, 0.50, []
 
@@ -391,8 +399,33 @@ class ImpactAnalyzer:
                 if currency not in news.currencies:
                     news.currencies.append(currency)
 
+        # Check InternalBrain for learned impact
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            strong_learned = []
+            weak_learned = []
+            for kw in news.keywords:
+                weight = brain.get_news_keyword_weight(kw, 1.0)
+                if weight >= 1.2:
+                    strong_learned.append((kw, weight))
+                elif weight <= 0.4:
+                    weak_learned.append((kw, weight))
+
+            if strong_learned and news.impact != ImpactLevel.NEUTRAL:
+                news.confidence = max(news.confidence, 0.75)
+                logger.info(f"🧠 Learned high-impact keywords detected: {[kw for kw, _ in strong_learned]}")
+
+            if weak_learned and news.impact in (ImpactLevel.HIGH, ImpactLevel.NEGATIVE, ImpactLevel.POSITIVE):
+                if len(weak_learned) > len(strong_learned):
+                    news.impact = ImpactLevel.NEUTRAL
+                    news.confidence = min(news.confidence, 0.45)
+                    logger.info(f"🧠 Learned low-impact keywords downgrade this news to NEUTRAL: {[kw for kw, _ in weak_learned]}")
+        except Exception:
+            pass
+
         # ثانياً: DeepSeek إذا كان التأثير HIGH أو أعلى
-        if local_impact in (ImpactLevel.HIGH, ImpactLevel.CRITICAL):
+        if local_impact in (ImpactLevel.HIGH, ImpactLevel.CRITICAL) and news.impact != ImpactLevel.NEGATIVE:
             ds_result = self._deepseek_analyze(news)
             if ds_result:
                 try:
@@ -451,6 +484,66 @@ class NewsAdapter:
                 json.dump(self.history[-500:], f, ensure_ascii=False, indent=2)
         except Exception as exc:
             logger.error(f"خطأ حفظ التاريخ: {exc}")
+
+    def report_actual_news_impact(
+        self,
+        news: NewsItem,
+        price_before: float,
+        price_after: float,
+        market: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """يحفظ نتائج الخبر الفعلية ويُحدِّث الأوزان التعلمية للكلمات المفتاحية."""
+        actual_move = price_after - price_before
+        actual_score = min(1.0, abs(actual_move) / max(1.0, abs(price_before)))
+        predicted_score = {
+            ImpactLevel.CRITICAL: 1.0,
+            ImpactLevel.HIGH: 0.8,
+            ImpactLevel.POSITIVE: 0.6,
+            ImpactLevel.NEGATIVE: 0.6,
+            ImpactLevel.NEUTRAL: 0.2,
+        }.get(news.impact, 0.5)
+
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            for kw in news.keywords:
+                brain.record_news_keyword_impact(
+                    keyword=kw,
+                    market=market,
+                    predicted_score=predicted_score,
+                    actual_score=actual_score,
+                    price_before=price_before,
+                    price_after=price_after,
+                )
+            brain.log_event_experience(
+                component="news_adapter",
+                event_type="news_impact",
+                event_key=news.title[:100],
+                event_value=actual_score,
+                metadata={
+                    "predicted": predicted_score,
+                    "actual": actual_score,
+                    "move": actual_move,
+                    "keywords": news.keywords,
+                },
+                success=actual_score >= 0.01,
+            )
+        except Exception as exc:
+            logger.warning(f"Failed to log actual news impact: {exc}")
+
+        result = {
+            "title": news.title,
+            "predicted_impact": news.impact,
+            "predicted_score": predicted_score,
+            "price_before": price_before,
+            "price_after": price_after,
+            "actual_move": actual_move,
+            "actual_score": actual_score,
+            "keywords": news.keywords,
+        }
+        self.history.append(result)
+        self._save_history()
+        return result
 
     # ─── جلب الأخبار من جميع المصادر ──────────────────────────────
     def _fetch_all_news(self) -> List[NewsItem]:

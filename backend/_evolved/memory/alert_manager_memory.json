@@ -1,0 +1,91 @@
+{
+  "events": [
+    {
+      "type": "alert_sent",
+      "key": "test_cat",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-22T23:43:20.175278"
+    },
+    {
+      "type": "alert_sent",
+      "key": "test_cat",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-22T23:44:54.715476"
+    },
+    {
+      "type": "alert_sent",
+      "key": "trading",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-22T23:46:19.491857"
+    },
+    {
+      "type": "alert_sent",
+      "key": "system",
+      "value": 1,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-22T23:46:19.654937"
+    },
+    {
+      "type": "alert_sent",
+      "key": "trading",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-23T13:09:04.601744"
+    },
+    {
+      "type": "alert_sent",
+      "key": "system",
+      "value": 1,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-23T13:09:05.233676"
+    },
+    {
+      "type": "alert_sent",
+      "key": "test_cat",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-23T16:28:39.613168"
+    }
+  ],
+  "acknowledge_stats": {
+    "total_sent": 7,
+    "total_acknowledged": 5
+  },
+  "ack_speeds": [
+    {
+      "category": "test_cat",
+      "seconds": 0.1,
+      "ts": "2026-05-22T23:43:20.286752"
+    },
+    {
+      "category": "test_cat",
+      "seconds": 0.1,
+      "ts": "2026-05-22T23:44:54.844599"
+    },
+    {
+      "category": "trading",
+      "seconds": 0.3,
+      "ts": "2026-05-22T23:46:19.746607"
+    },
+    {
+      "category": "trading",
+      "seconds": 1.1,
+      "ts": "2026-05-23T13:09:05.718645"
+    },
+    {
+      "category": "test_cat",
+      "seconds": 0.6,
+      "ts": "2026-05-23T16:28:40.129783"
+    }
+  ]
+}

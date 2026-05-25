@@ -9,10 +9,15 @@
     --border-glass: rgba(0, 242, 254, 0.15);
     --neon-aqua: #00f2fe;
     --neon-cyan: #4facfe;
+    --neon-purple: #8b5cf6;
+    --neon-pink: #f472b6;
     --stellar-gold: #ffd700;
     --stellar-pink: #ff007f;
     --text-stellar: #e2e8f0;
+    --text-bright: #f8fafc;
     --text-dim: #8892b0;
+    --bg-card-glass: rgba(6, 20, 38, 0.72);
+    --border-neon: rgba(0, 242, 254, 0.25);
 }
 
 [data-theme="light"] {
@@ -439,5 +444,56 @@ img, video { max-width: 100%; height: auto; }
 .btn-cosmic:hover {
     transform: scale(1.03);
     box-shadow: 0 0 25px rgba(0, 242, 254, 0.5);
+}
+
+.login-card {
+    max-width: 450px;
+    margin: 60px auto;
+    padding: 40px;
+    background: var(--bg-card-glass);
+    border: 1px solid var(--border-neon);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(22px);
+}
+
+.cosmic-input {
+    width: 100%;
+    background: var(--bg-card-glass);
+    border: 1px solid var(--border-neon);
+    color: var(--text-bright);
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 16px;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+}
+
+.cosmic-input:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+    outline: none;
+}
+
+.btn {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(0, 242, 254, 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(0, 242, 254, 0.35);
 }
 

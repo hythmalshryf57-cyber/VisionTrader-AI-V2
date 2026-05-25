@@ -1,0 +1,68 @@
+{
+  "events": [
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-05-22T23:25:57.902296"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-05-22T23:25:57.902296"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-05-22T23:25:57.972133"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-05-22T23:25:57.980129"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-05-22T23:25:57.980129"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "ICT",
+      "value": 0.85,
+      "success": true,
+      "context": "EURUSD",
+      "timestamp": "2026-05-22T23:43:20.337677"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "ICT",
+      "value": 0.85,
+      "success": true,
+      "context": "EURUSD",
+      "timestamp": "2026-05-22T23:44:54.861886"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "ICT",
+      "value": 0.85,
+      "success": true,
+      "context": "EURUSD",
+      "timestamp": "2026-05-23T16:28:40.865904"
+    }
+  ]
+}

@@ -5,7 +5,6 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<title>التقويم الاقتصادي</title>
 	<link rel="stylesheet" href="css/style.css">
-	<script src="js/api.js"></script>
 	<style>
 		body { font-family: sans-serif; padding: 20px; }
 		.container { max-width: 980px; margin: 0 auto; }
@@ -111,6 +110,12 @@
 			emptyMessage.textContent = 'جاري التحميل...';
 			emptyMessage.style.display = 'block';
 			try{
+				if (!localStorage.getItem('token')) {
+					eventsTable.style.display = 'none';
+					emptyMessage.style.display = 'block';
+					emptyMessage.textContent = 'يرجى تسجيل الدخول لعرض الأحداث الاقتصادية.';
+					return;
+				}
 				const data = await api.getCalendarEvents(24);
 				events = Array.isArray(data) ? data : (data.events || []);
 				if(events.length === 0){

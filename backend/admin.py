@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from auth import get_current_user
+import threading
 
 router = APIRouter()
 
@@ -206,7 +207,7 @@ async def kill_switch(user_id: int, db: Session = Depends(get_db), current_user:
     db.add(slog)
     db.commit()
     try:
-        telegram.alert_risk_limit(user_id, 'Kill switch activated by admin')
+        threading.Thread(target=telegram.alert_risk_limit, args=(user_id, 'Kill switch activated by admin'), daemon=True).start()
     except Exception:
         pass
     return {"status": "killed"}

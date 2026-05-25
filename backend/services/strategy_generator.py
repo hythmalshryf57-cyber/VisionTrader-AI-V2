@@ -317,6 +317,16 @@ def generate_from_failure(
         f"# ─── Top Strategy {i+1} ───\n{c}" for i, c in enumerate(top_codes)
     ) or "# No top strategies provided"
 
+    # Add dynamic knowledge from InternalBrain
+    brain_knowledge = ""
+    try:
+        from .internal_brain import InternalBrain
+        brain = InternalBrain()
+        summary = brain.get_daily_learning_summary()
+        brain_knowledge = f"\n## Internal Brain Knowledge\n- System Win Rate: {summary.get('success_rate', 50)}%\n- Use this knowledge to bias your strategy generation towards what is working."
+    except Exception:
+        pass
+
     prompt = f"""\
 You are DeepSeek Coder, an expert quantitative trading strategy developer.
 
@@ -340,6 +350,7 @@ Generate an IMPROVED Python trading strategy that fixes the failure described be
 
 ## Current Market Data
 {market_ctx}
+{brain_knowledge}
 
 ## Requirements for the Improved Strategy
 1. Fix the root cause of the failure
@@ -365,6 +376,13 @@ Generate the evolved strategy now:
     filename = f"evolved_{original_stem}.py"
 
     saved_path = save_generated_strategy(code, filename)
+
+    try:
+        from .internal_brain import InternalBrain
+        InternalBrain().log_event_experience("strategy_generator", "evolve_success", filename, 1.0, {"parent": failed_strategy_path})
+    except Exception:
+        pass
+
     return code, saved_path
 
 
@@ -431,6 +449,13 @@ Generate the hybrid strategy now:
     filename = f"hybrid_{stem1}_{stem2}.py"
 
     saved_path = save_generated_strategy(code, filename)
+
+    try:
+        from .internal_brain import InternalBrain
+        InternalBrain().log_event_experience("strategy_generator", "hybrid_success", filename, 1.0, {"parent1": strategy1_path, "parent2": strategy2_path})
+    except Exception:
+        pass
+
     return code, saved_path
 
 

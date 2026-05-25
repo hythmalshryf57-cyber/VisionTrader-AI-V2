@@ -1,0 +1,68 @@
+[
+  {
+    "timestamp": "2026-05-23T11:52:33.008665",
+    "user_id": null,
+    "recommendation": {
+      "market": "EURUSD",
+      "direction": "buy",
+      "entry_price": 1.1,
+      "price_history": [
+        1.1,
+        1.101,
+        1.1025,
+        1.103
+      ]
+    },
+    "reason": "user_rejected",
+    "analysis": {
+      "estimated_pnl": null,
+      "max_drawdown": null,
+      "best_outcome": null,
+      "notes": "insufficient price information to compute pnl"
+    }
+  },
+  {
+    "timestamp": "2026-05-23T11:52:33.022960",
+    "user_id": null,
+    "recommendation": {
+      "market": "EURUSD",
+      "direction": "buy",
+      "entry_price": 1.2,
+      "price_history": [
+        1.2,
+        1.198,
+        1.197,
+        1.195
+      ]
+    },
+    "reason": "news_surprise",
+    "analysis": {
+      "estimated_pnl": null,
+      "max_drawdown": null,
+      "best_outcome": null,
+      "notes": "insufficient price information to compute pnl"
+    }
+  },
+  {
+    "timestamp": "2026-05-23T11:52:33.022960",
+    "user_id": null,
+    "recommendation": {
+      "market": "GBPUSD",
+      "direction": "sell",
+      "entry_price": 1.3,
+      "price_history": [
+        1.3,
+        1.299,
+        1.295,
+        1.29
+      ]
+    },
+    "reason": "liquidity_change",
+    "analysis": {
+      "estimated_pnl": null,
+      "max_drawdown": null,
+      "best_outcome": null,
+      "notes": "insufficient price information to compute pnl"
+    }
+  }
+]

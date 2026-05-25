@@ -143,19 +143,42 @@ class OmniSelfHealing:
         """يستقبل أي خطأ، يشخصه، ويصلحه."""
         logger.warning(f"[{domain.upper()} ERROR DETECTED] {error_log[:80]}")
         
-        # 1. Diagnose
-        diagnosis = _diagnose_error(error_log, domain)
-        err_type = diagnosis["type"]
-        action = diagnosis["action"]
-        
+        # 1. Diagnose & Check Fix Cache
+        err_type = "unknown"
+        action = "escalate_to_human"
+        cached_fix = False
+        error_signature = error_log[:80].strip().lower()
+
+        try:
+            from .internal_brain import InternalBrain
+            brain = InternalBrain()
+            cached_entry = brain.get_fix_cache_entry(error_signature)
+            if cached_entry:
+                cached_fix = True
+                err_type = cached_entry.error_message or "known_error"
+                action = cached_entry.fix_description or cached_entry.fix_code or "escalate_to_human"
+                logger.info(f"   ↳ Using cached fix for repeated error signature: {error_signature[:40]}...")
+            else:
+                diagnosis = _diagnose_error(error_log, domain)
+                err_type = diagnosis["type"]
+                action = diagnosis["action"]
+        except Exception:
+            brain = None
+            diagnosis = _diagnose_error(error_log, domain)
+            err_type = diagnosis["type"]
+            action = diagnosis["action"]
+
         logger.info(f"   ↳ Diagnosis: {err_type} -> Required Action: {action}")
         
         # 2. Heal
         success = False
-        time.sleep(0.5) # Simulate healing process
+        heal_duration = 0.5
+        if 'brain' in locals() and brain and cached_fix:
+            heal_duration = brain.get_dynamic_fix_time(error_signature, base_time=0.5)
+        time.sleep(heal_duration)
         
         if action != "escalate_to_human":
-            logger.info(f"   ↳ [Fixer Agent] Executing auto-fix: {action}...")
+            logger.info(f"   ↳ [Fixer Agent] Executing auto-fix: {action}... (estimated {heal_duration}s)")
             success = True
         else:
             logger.error(f"   ↳ [Fixer Agent] Cannot auto-fix {err_type}. Escalating!")
@@ -165,9 +188,15 @@ class OmniSelfHealing:
         if success:
             logger.info(f"   ↳ [Verification Agent] ✅ Verified. {domain} is fully operational.")
             self.health_stats[domain]["healed"] += 1
+            if 'brain' in locals() and brain:
+                brain.log_event_experience("self_healing", "auto_fix", err_type, 1.0, {"action": action, "error": error_log[:50], "cached_fix": cached_fix}, success=True)
+                brain.record_fix_cache_entry(error_signature, err_type, domain, action, True)
             return True
         else:
             logger.error(f"   ↳ [Verification Agent] ❌ Healing failed for {domain}.")
+            if 'brain' in locals() and brain:
+                brain.log_event_experience("self_healing", "auto_fix", err_type, 0.0, {"action": action, "error": error_log[:50], "cached_fix": cached_fix}, success=False)
+                brain.record_fix_cache_entry(error_signature, err_type, domain, action, False)
             self._notify_admin(domain, error_log, err_type)
             return False
 

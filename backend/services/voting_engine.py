@@ -260,21 +260,51 @@ class EnvironmentFilter:
         """
         issues: List[str] = []
 
+        # الوقت الحالي بالـ UTC (نستخدمه في كل فحوصات التوقيت)
+        utc_now = datetime.utcnow()
+
         # فحص التقويم الاقتصادي (نفترض أن التواريخ تُرجع/تُقارن بالـ UTC)
         upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
         high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
 
+        # فلتر ما قبل الأخبار (Pre-News Volatility Filter):
+        # - قبل 15 دقيقة: تجميد التوصيات الجديدة (suspend)
+        # - قبل 5 دقائق: نصيحة بإغلاق الصفقات أو تضييق الوقف (suspend + نصيحة)
+        # - بعد الخبر بـ 10 دقائق: يعيد التداول إذا استقرت الأسعار (proceed)
+        message: Optional[str] = None
+        minutes_to_event: Optional[int] = None
+
         if high_impact_events:
             next_event = min(high_impact_events, key=lambda x: x.get('time_until', timedelta(hours=24)))
             time_until = next_event.get('time_until', timedelta(hours=24))
+            minutes = int(time_until.total_seconds() / 60)
+            minutes_to_event = max(0, minutes)
 
-            if time_until < timedelta(minutes=15):
+            # حالات قبل الخبر
+            if time_until <= timedelta(minutes=15) and time_until > timedelta(minutes=5):
                 issues.append("High impact news in less than 15 minutes")
-            elif time_until < timedelta(hours=1):
+                message = f"خبر عالي التأثير قادم خلال {minutes_to_event} دقيقة - تم تعليق التوصيات"
+            elif time_until <= timedelta(minutes=5):
+                issues.append("High impact news in less than 5 minutes - close or tighten stops recommended")
+                message = f"خبر عالي التأثير قادم خلال {minutes_to_event} دقيقة - يُنصح بإغلاق الصفقات المفتوحة أو تضييق الوقف - تم تعليق التوصيات"
+            elif time_until <= timedelta(hours=1):
                 issues.append("High impact news within 1 hour")
+                message = f"خبر عالي التأثير متوقع خلال {minutes_to_event} دقيقة - توخ الحذر"
+
+        # فحص إذا كان حدث عالي التأثير قد وقع خلال آخر 10 دقائق — في هذه الحالة نعيد التداول
+        today_events = self.calendar_service.get_today_events()
+        recent_past_high = [e for e in today_events
+                            if e.get('impact') == 'high'
+                            and 'time' in e
+                            and isinstance(e['time'], datetime)
+                            and e['time'] < utc_now
+                            and (utc_now - e['time']) <= timedelta(minutes=10)]
+        if recent_past_high:
+            # حدث وقع خلال آخر 10 دقائق => نسمح باستئناف التداول إذا استقرت الأسعار
+            issues.append('High impact news occurred within last 10 minutes; resume if stable')
+            message = 'مرور 10 دقائق على خبر عالي التأثير - يستأنف التداول إذا استقرت الأسعار'
 
         # توقيت الجلسة اعتمادًا على GMT/UTC
-        utc_now = datetime.utcnow()
         utc_hour = utc_now.hour
         weekday = utc_now.weekday()  # Monday=0 .. Sunday=6
 
@@ -308,19 +338,30 @@ class EnvironmentFilter:
             pass
 
         # الخروج بثلاث حالات
-        if any('High impact' in i for i in issues):
+        suspend_flag = False
+        if minutes_to_event is not None and minutes_to_event <= 15:
+            suspend_flag = True
+
+        if suspend_flag:
             recommendation = 'suspend'
         elif issues:
             recommendation = 'proceed_warn'
         else:
             recommendation = 'proceed'
 
-        return {
+        result = {
             'recommendation': recommendation,
             'issues': issues,
             'utc_now': utc_now.isoformat(),
             'session': session
         }
+
+        if message:
+            result['message'] = message
+        if minutes_to_event is not None:
+            result['minutes_to_event'] = minutes_to_event
+
+        return result
 
 class StrategyClusterBase:
     def _is_strategy_applicable(self, strategy, market: str) -> bool:

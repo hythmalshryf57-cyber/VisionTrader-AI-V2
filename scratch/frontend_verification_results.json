@@ -1,0 +1,119 @@
+{
+  "all_passed": true,
+  "results": {
+    "login.html": {
+      "exists_locally": true,
+      "size_bytes": 6493,
+      "server_status": 200,
+      "server_error": null
+    },
+    "register.html": {
+      "exists_locally": true,
+      "size_bytes": 5760,
+      "server_status": 200,
+      "server_error": null
+    },
+    "dashboard.html": {
+      "exists_locally": true,
+      "size_bytes": 61049,
+      "server_status": 200,
+      "server_error": null
+    },
+    "upload.html": {
+      "exists_locally": true,
+      "size_bytes": 15486,
+      "server_status": 200,
+      "server_error": null
+    },
+    "result.html": {
+      "exists_locally": true,
+      "size_bytes": 28035,
+      "server_status": 200,
+      "server_error": null
+    },
+    "history.html": {
+      "exists_locally": true,
+      "size_bytes": 11462,
+      "server_status": 200,
+      "server_error": null
+    },
+    "calendar.html": {
+      "exists_locally": true,
+      "size_bytes": 4680,
+      "server_status": 200,
+      "server_error": null
+    },
+    "settings.html": {
+      "exists_locally": true,
+      "size_bytes": 12552,
+      "server_status": 200,
+      "server_error": null
+    },
+    "backtest.html": {
+      "exists_locally": true,
+      "size_bytes": 4573,
+      "server_status": 200,
+      "server_error": null
+    },
+    "journal.html": {
+      "exists_locally": true,
+      "size_bytes": 10042,
+      "server_status": 200,
+      "server_error": null
+    },
+    "admin.html": {
+      "exists_locally": true,
+      "size_bytes": 22829,
+      "server_status": 200,
+      "server_error": null
+    },
+    "strategy_factory.html": {
+      "exists_locally": true,
+      "size_bytes": 20695,
+      "server_status": 200,
+      "server_error": null
+    },
+    "ask-ai.html": {
+      "exists_locally": true,
+      "size_bytes": 5364,
+      "server_status": 200,
+      "server_error": null
+    },
+    "heatmap.html": {
+      "exists_locally": true,
+      "size_bytes": 3128,
+      "server_status": 200,
+      "server_error": null
+    },
+    "academy.html": {
+      "exists_locally": true,
+      "size_bytes": 5214,
+      "server_status": 200,
+      "server_error": null
+    },
+    "service-health.html": {
+      "exists_locally": true,
+      "size_bytes": 10481,
+      "server_status": 200,
+      "server_error": null
+    },
+    "evolution.html": {
+      "exists_locally": true,
+      "size_bytes": 16023,
+      "server_status": 200,
+      "server_error": null
+    },
+    "realtime.html": {
+      "exists_locally": true,
+      "size_bytes": 11758,
+      "server_status": 200,
+      "server_error": null
+    },
+    "api-docs.html": {
+      "exists_locally": true,
+      "size_bytes": 9495,
+      "server_status": 200,
+      "server_error": null
+    }
+  }
+}
