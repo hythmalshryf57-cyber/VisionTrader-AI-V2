@@ -5,21 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="/manifest.json">
 
-    <title>Ask AI - VisionTrader AI</title>
+    <title>المساعد الذكي - VisionTrader AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .chat-container { height: calc(100vh - 100px); max-width: 1000px; margin: 20px auto; display: flex; flex-direction: column; background: rgba(255,255,255,0.02); border-radius: 25px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; }
-        .chat-messages { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-        .message { max-width: 80%; padding: 15px 20px; border-radius: 20px; line-height: 1.6; }
-        .ai-msg { align-self: flex-start; background: rgba(255,255,255,0.05); border-bottom-left-radius: 5px; }
-        .user-msg { align-self: flex-end; background: var(--accent-gradient); border-bottom-right-radius: 5px; color: white; }
-        
-        .chat-input-area { padding: 20px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 15px; align-items: center; }
-        .chat-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 15px; color: white; resize: none; height: 50px; }
-        .action-btn { background: none; border: none; color: #888; font-size: 1.5rem; cursor: pointer; transition: 0.3s; }
-        .action-btn:hover { color: var(--accent-color); }
-        .send-btn { background: var(--accent-color); color: white; width: 50px; height: 50px; border-radius: 15px; border: none; cursor: pointer; }
+        .chat-container { min-height: calc(100vh - 60px); max-width: 1180px; margin: 20px auto; display: flex; flex-direction: column; background: rgba(255,255,255,0.03); border-radius: 24px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 30px; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.15); }
+        .chat-header h1 { margin: 0; font-size: 1.45rem; letter-spacing: 0.8px; }
+        .chat-header p { margin: 0; color: #d1d5db; max-width: 680px; line-height: 1.6; }
+        .chat-body { display: flex; flex: 1; min-height: 520px; }
+        .chat-panel { flex: 1; display: flex; flex-direction: column; }
+        .chat-messages { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+        .message { max-width: 84%; padding: 16px 20px; border-radius: 22px; line-height: 1.65; white-space: pre-wrap; word-wrap: break-word; }
+        .ai-msg { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e5e7eb; }
+        .user-msg { align-self: flex-end; background: linear-gradient(135deg, #4f46e5, #2563eb); color: white; }
+        .system-msg { align-self: center; background: rgba(59,130,246,0.12); color: #bfdbfe; border-radius: 18px; padding: 12px 16px; border: 1px solid rgba(59,130,246,0.16); max-width: 75%; }
+        .message strong { color: #f9fafb; }
+        .chat-input-area { padding: 18px 24px 24px; background: rgba(0,0,0,0.14); border-top: 1px solid rgba(255,255,255,0.08); display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; }
+        .chat-input { width: 100%; min-height: 56px; max-height: 180px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; padding: 16px 18px; color: #f8fafc; font-size: 0.98rem; resize: vertical; }
+        .chat-input::placeholder { color: rgba(255,255,255,0.55); }
+        .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); color: #d1d5db; cursor: pointer; transition: all 0.2s ease; }
+        .icon-btn:hover { transform: translateY(-1px); border-color: rgba(59,130,246,0.35); color: #93c5fd; }
+        .send-btn { min-width: 52px; height: 52px; border: none; border-radius: 16px; background: linear-gradient(135deg, #22c55e, #06b6d4); color: white; font-size: 1.2rem; cursor: pointer; }
+        .panel-info { padding: 24px; width: 320px; display: grid; gap: 18px; border-left: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); }
+        .panel-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 18px; }
+        .panel-card h3 { margin: 0 0 10px; font-size: 1rem; }
+        .panel-card p { margin: 0; color: #cbd5e1; line-height: 1.65; font-size: 0.95rem; }
+        .upload-area { border: 2px dashed rgba(255,255,255,0.18); border-radius: 22px; padding: 20px; display: grid; gap: 12px; text-align: center; background: rgba(255,255,255,0.02); cursor: pointer; }
+        .upload-area:hover { border-color: rgba(34,197,94,0.5); }
+        .upload-area input { display: none; }
+        .upload-area strong { display: block; font-size: 1rem; color: #e2e8f0; }
+        .upload-preview { border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; padding: 14px; display: grid; gap: 12px; background: rgba(255,255,255,0.04); }
+        .upload-preview img { max-width: 100%; border-radius: 14px; object-fit: contain; }
+        .upload-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .upload-actions button { border: none; border-radius: 12px; padding: 10px 14px; background: rgba(255,255,255,0.08); color: #d1d5db; cursor: pointer; }
+        .upload-actions button:hover { background: rgba(255,255,255,0.14); }
+        .status-label { color: #cbd5e1; font-size: 0.95rem; }
+        @media (max-width: 1024px) {
+            .chat-body { flex-direction: column; }
+            .panel-info { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.08); }
+        }
+        @media (max-width: 760px) {
+            .chat-header, .chat-input-area { padding: 18px; }
+            .chat-header h1 { font-size: 1.25rem; }
+            .chat-input-area { grid-template-columns: 1fr auto; }
+            .chat-input { min-height: 52px; }
+            .icon-btn { width: 48px; height: 48px; }
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
@@ -39,57 +71,210 @@
         </aside>
         <main class="main-content fade-in">
             <div class="chat-container">
-        <div class="chat-messages" id="chatMessages">
-            <div class="message ai-msg">
-                أهلاً بك في **Mentor AI**! أنا مدعوم بنموذج DeepSeek R1. كيف يمكنني مساعدتك في تحليلاتك اليوم؟ يمكنك سؤالي عن أي سوق أو رفع صورة شارت.
+                <div class="chat-header">
+                    <div>
+                        <h1>المساعد الذكي</h1>
+                        <p>اسأل أي سؤال تداولي الآن، ستحصل على تحليل موجز ومحترف مع إمكانية رفع صورة شارت لتحسين السياق.</p>
+                    </div>
+                    <button class="send-btn" onclick="clearConversation()"><i class="fas fa-sync-alt"></i> بدء جديد</button>
+                </div>
+                <div class="chat-body">
+                    <div class="chat-panel">
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input-area">
+                            <button class="icon-btn" id="attachImageBtn" title="رفع صورة" onclick="triggerImageUpload()"><i class="fas fa-image"></i></button>
+                            <textarea class="chat-input" id="userInput" placeholder="اكتب سؤالك التداولي هنا واضغط إرسال..."></textarea>
+                            <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                            <input type="file" id="imageUploadInput" accept="image/*" hidden onchange="handleImageSelected(event)">
+                        </div>
+                        <div class="status-label" id="statusLabel">يمكنك استخدام لوحة الأسئلة الذكية لتحليل السوق أو طلب توجيه تداولي.</div>
+                    </div>
+                    <aside class="panel-info">
+                        <div class="panel-card">
+                            <h3><i class="fas fa-lightbulb"></i> نصائح سريعة</h3>
+                            <p>استخدم أسئلة واضحة مثل: "ما حالة EUR/USD الآن؟" أو "ما السيناريو الأفضل على الذهب اليوم؟".</p>
+                        </div>
+                        <div class="panel-card upload-area" id="uploadArea" onclick="triggerImageUpload()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                            <strong>اسحب وأفلت صورة الشارت هنا</strong>
+                            <span>أو اضغط لرفع صورة</span>
+                        </div>
+                        <div class="panel-card" id="imagePreviewCard" style="display:none;"></div>
+                    </aside>
+                </div>
             </div>
-        </div>
-        
-        <div class="chat-input-area">
-            <button class="action-btn"><i class="fas fa-image"></i></button>
-            <button class="action-btn"><i class="fas fa-microphone"></i></button>
-            <textarea class="chat-input" id="userInput" placeholder="اسأل أي سؤال تداولي..."></textarea>
-            <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-        </div>
+        </main>
     </div>
 
+    <script src="js/api.js"></script>
     <script>
-        function sendMessage() {
-            const input = document.getElementById('userInput');
-            const messages = document.getElementById('chatMessages');
-            if (!input.value.trim()) return;
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const imageUploadInput = document.getElementById('imageUploadInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const imagePreviewCard = document.getElementById('imagePreviewCard');
+        const statusLabel = document.getElementById('statusLabel');
 
-            // User Message
-            const userDiv = document.createElement('div');
-            userDiv.className = 'message user-msg';
-            userDiv.innerText = input.value;
-            messages.appendChild(userDiv);
+        let attachedImageFile = null;
+        let attachedImageUrl = null;
+        let isSending = false;
 
-            const val = input.value;
-            input.value = '';
-            messages.scrollTop = messages.scrollHeight;
+        const welcomeMessage = `مرحباً بك في مساعد VisionTrader AI. اسألني عن تحليلات العملات، الذهب، الأسهم، أو إدارة المخاطر.`;
 
-            // AI Response (Mock)
-            setTimeout(() => {
-                const aiDiv = document.createElement('div');
-                aiDiv.className = 'message ai-msg';
-                aiDiv.innerText = `بناءً على طلبك حول "${val}"، أرى أن السوق في منطقة تجميع حالياً وفقاً لمنطق وايكوف. أنصح بانتظار اختراق منطقة 1.0850 للتأكيد.`;
-                messages.appendChild(aiDiv);
-                messages.scrollTop = messages.scrollHeight;
-            }, 1000);
+        function appendMessage(content, styleClass) {
+            const bubble = document.createElement('div');
+            bubble.className = `message ${styleClass}`;
+            bubble.innerText = content;
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return bubble;
         }
-    </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
+
+        function appendSystemMessage(content) {
+            const bubble = document.createElement('div');
+            bubble.className = 'system-msg';
+            bubble.innerText = content;
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function setStatus(text, isError = false) {
+            statusLabel.textContent = text;
+            statusLabel.style.color = isError ? '#fb7185' : '#cbd5e1';
+        }
+
+        function renderWelcome() {
+            chatMessages.innerHTML = '';
+            appendMessage(welcomeMessage, 'ai-msg');
+            setStatus('جاهز لاستقبال سؤالك.');
+        }
+
+        function triggerImageUpload() {
+            imageUploadInput.click();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return `${bytes} بايت`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} كيلوبايت`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)} ميجابايت`;
+        }
+
+        function showImagePreview(file) {
+            if (attachedImageUrl) {
+                URL.revokeObjectURL(attachedImageUrl);
+            }
+            attachedImageUrl = URL.createObjectURL(file);
+            imagePreviewCard.innerHTML = `
+                <div class="upload-preview">
+                    <img src="${attachedImageUrl}" alt="صورة الشارت">
+                    <div class="upload-actions">
+                        <span>تم إرفاق: ${file.name} • ${formatFileSize(file.size)}</span>
+                        <button type="button" onclick="removeAttachedImage()">إلغاء الصورة</button>
+                    </div>
+                </div>
+            `;
+            imagePreviewCard.style.display = 'block';
+        }
+
+        function removeAttachedImage() {
+            attachedImageFile = null;
+            if (attachedImageUrl) {
+                URL.revokeObjectURL(attachedImageUrl);
+                attachedImageUrl = null;
+            }
+            imagePreviewCard.style.display = 'none';
+            imagePreviewCard.innerHTML = '';
+            setStatus('تمت إزالة الصورة. يمكنك متابعة الاستفسار النصي فقط.');
+        }
+
+        function handleImageSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                setStatus('الرجاء اختيار ملف صورة صالح.', true);
+                return;
+            }
+            attachedImageFile = file;
+            showImagePreview(file);
+            setStatus('تم إرفاق الصورة. يمكنك إرسال سؤال لتحليلها.');
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            uploadArea.style.borderColor = '#22c55e';
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            uploadArea.style.borderColor = 'rgba(255,255,255,0.18)';
+            const file = event.dataTransfer.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                setStatus('الملف المرفوع ليس صورة.', true);
+                return;
+            }
+            attachedImageFile = file;
+            showImagePreview(file);
+            setStatus('تم إرفاق صورة الشارت عبر السحب والإفلات.');
+        }
+
+        async function sendMessage() {
+            const question = userInput.value.trim();
+            if (!question) {
+                setStatus('رجاءً اكتب سؤالك أولاً.', true);
+                return;
+            }
+            if (isSending) return;
+
+            isSending = true;
+            setStatus('جارٍ إرسال سؤالك إلى المساعد...');
+            appendMessage(question, 'user-msg');
+            userInput.value = '';
+
+            if (attachedImageFile) {
+                appendSystemMessage('جارٍ فحص الصورة المرفقة...');
+                try {
+                    const chartResult = await api.detectChart(attachedImageFile);
+                    appendSystemMessage(`تم اكتشاف الشارت: ${chartResult.pair} • TF: ${chartResult.timeframe} • ثقة ${chartResult.confidence}%`);
+                } catch (error) {
+                    appendSystemMessage(`تعذر تحليل الصورة: ${error.message}`);
+                }
+            }
+
+            try {
+                const response = await api.askAssistant(question);
+                const answer = response.answer || 'تعذر الحصول على رد من المساعد. حاول إعادة الصياغة.';
+                appendMessage(answer, 'ai-msg');
+                setStatus('تم الرد. يمكنك متابعة السؤال أو تجربة سؤال جديد.');
+            } catch (error) {
+                appendMessage(`حدث خطأ: ${error.message}`, 'ai-msg');
+                setStatus('تعذر الاتصال بالمساعد. تحقق من اتصالك أو سجل الدخول مجدداً.', true);
+            } finally {
+                isSending = false;
+            }
+        }
+
+        function clearConversation() {
+            renderWelcome();
+            removeAttachedImage();
+            userInput.focus();
+        }
+
+        userInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            renderWelcome();
+            if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then(reg => console.log('Service Worker registered:', reg.scope))
                     .catch(err => console.warn('SW registration failed:', err));
-            });
-        }
+            }
+        });
     </script>
-        </main>
-    </div>
     <script src="js/theme.js"></script>
 </body>
 </html>

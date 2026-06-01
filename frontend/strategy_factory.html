@@ -357,6 +357,18 @@
         // تحميل الصفحة
         loadStrategies();
         loadSavedSettings();
+        async function protectStrategyFactory() {
+            try {
+                const profile = await api.me();
+                if (!profile.is_admin) {
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                console.warn('Strategy Factory access blocked:', error);
+                window.location.href = 'login.html';
+            }
+        }
+        protectStrategyFactory();
     </script>
     <script>
         if ('serviceWorker' in navigator) {

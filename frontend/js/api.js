@@ -39,6 +39,24 @@ const api = {
   // Analysis & Chat
   async analyzeMarket(market, images) { return this.request('POST', '/api/analysis/process', { market, images }, true); },
   async getMentorResponse(query) { return this.request('POST', '/api/analysis/mentor', { query }, true); },
+  async askAssistant(question) { return this.request('POST', '/api/ai/assistant', { question }, true); },
+  async detectChart(file) {
+    const url = this.baseUrl + '/api/chart/detect';
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(url, { method: 'POST', headers, body: form });
+    const txt = await res.text();
+    let json;
+    try { json = JSON.parse(txt); } catch { json = txt; }
+    if (!res.ok) {
+      const errorMsg = (json && json.detail) ? json.detail : 'خطأ في تحليل الصورة';
+      throw new Error(errorMsg);
+    }
+    return json;
+  },
 
   // Journal & Stats
   async getJournal() { return this.request('GET', '/api/journal', null, true); },
