@@ -1,0 +1,1137 @@
+[
+  {
+    "name": "Login/Register",
+    "status": "OK",
+    "payload": null,
+    "response": {
+      "token_present": true
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/system/pulse",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "status": "online",
+      "refresh_time": "2026-06-01T11:12:08.672617",
+      "active_strategies": 35,
+      "system_healthy": true,
+      "health_details": {
+        "active_strategies": 35,
+        "clusters": {
+          "power": {
+            "count": 13,
+            "strategies": [
+              "chaos_fractal_theory.ChaosFractalStrategy",
+              "composite_operator_tracking.CompositeOperatorStrategy",
+              "crypto_whales.CryptoWhalesStrategy",
+              "hft_simulation.HFTSpoofingStrategy",
+              "liquidation_heatmap.LiquidationHeatmapStrategy",
+              "market_making.MarketMakingStrategy",
+              "options_flow.OptionsFlowStrategy",
+              "order_flow_tape_reading.OrderFlowStrategy",
+              "psychological_engineering.PsychologicalEngineeringStrategy",
+              "smc_ict.ICTStrategy",
+              "social_sentiment.SocialSentimentStrategy",
+              "volume_spread_analysis.VSAStrategy",
+              "vpin_toxicity.VPINToxicityStrategy"
+            ]
+          },
+          "geometric": {
+            "count": 7,
+            "strategies": [
+              "auction_market_theory.AuctionMarketStrategy",
+              "elliott_wave.ElliottWaveStrategy",
+              "fibonacci.DynamicFibonacciStrategy",
+              "harmonic_patterns.HarmonicPatternStrategy",
+              "market_profile.MarketProfileStrategy",
+              "seasonality.SeasonalityStrategy",
+              "wyckoff.WyckoffStrategy"
+            ]
+          },
+          "momentum": {
+            "count": 15,
+            "strategies": [
+              "adaptive_ai.AdaptiveAIStrategy",
+              "bollinger.DynamicBollingerStrategy",
+              "candlestick_patterns.CandlestickPatternsStrategy",
+              "cot_analysis.COTAnalysisStrategy",
+              "currency_strength.CurrencyStrengthStrategy",
+              "dynamic_price_action.PriceActionStrategy",
+              "hybrid_modern.HybridModernStrategy",
+              "intermarket.IntermarketStrategy",
+              "macd.DynamicMACDStrategy",
+              "mean_reversion.MeanReversionStrategy",
+              "moving_averages.DynamicMovingAverageStrategy",
+              "regime_detector.RegimeDetectionStrategy",
+              "rsi.DynamicRSIStrategy",
+              "stochastic.DynamicStochasticStrategy",
+              "time_sessions.TimeSessionsStrategy"
+            ]
+          }
+        },
+        "overall_system_win_rate": 100.0,
+        "total_performance_records": 2,
+        "memory_entries": 1,
+        "external_api_state": {
+          "binance": "ok",
+          "tradingview": "failed",
+          "deepseek": "missing_api_key"
+        },
+        "last_auto_tune": "2026-06-01T10:50:16.060660",
+        "last_cluster_tune": "2026-06-01T10:50:16.060660",
+        "last_monthly_review": "2026-06-01T10:50:16.060660",
+        "cluster_weights": {
+          "power": 0.4,
+          "geometric": 0.3,
+          "momentum": 0.3
+        },
+        "judge_performance": {
+          "total_decisions": 0,
+          "correct_decisions": 0,
+          "accuracy_rate": 0.0,
+          "confidence_threshold": 60,
+          "last_adjustment": null
+        },
+        "disabled_strategies": {
+          "active_disabled": {},
+          "expired_and_reenabled": []
+        },
+        "trade_counter": 0,
+        "strategy_weights_summary": {
+          "total_strategies": 8,
+          "weight_distribution": {
+            "high": 2,
+            "medium": 0,
+            "low": 6
+          }
+        }
+      }
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/health",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "status": "online",
+      "version": "Professional 2.0"
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/system/strategies",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "strategies": [],
+      "total_strategies": 0
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/calendar/events",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "GET /api/calendar/high-impact",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "GET /api/user/preferences",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "theme": "dark",
+      "language": "ar",
+      "telegram_chat_id": null,
+      "email_notifications": null,
+      "demo_mode": false,
+      "demo_balance": 1000000.0,
+      "trading_mode": "day",
+      "capital": 10000.0,
+      "account_balance": 10000.0,
+      "risk_percentage": 1.0,
+      "favorite_strategies": [],
+      "watchlist": [],
+      "daily_profit_target_percent": null,
+      "daily_loss_limit_percent": null,
+      "trading_locked_today": false,
+      "lock_reason": null,
+      "notification_markets": [],
+      "enable_smart_notifications": null,
+      "custom_indicators": []
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/market/session",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "session": "London",
+      "label": "لندن 🟢",
+      "note": "جلسة لندن: تقلب أعلى، استخدم وقف أوسع.",
+      "timestamp": "2026-06-01T11:12:18.035646Z"
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/trade/active",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "active_trades": []
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/protection/status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "analysis_locked": false,
+      "trading_locked": false,
+      "analysis_locked_until": null,
+      "trading_locked_until": null,
+      "analysis_message": null,
+      "trading_message": null,
+      "daily_drawdown_pct": 0.0,
+      "weekly_drawdown_pct": 0.0,
+      "daily_loss_usd": 0,
+      "daily_loss_limit_pct": 5.0,
+      "daily_loss_limit_amount": null
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/daily-limits/status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "analysis_locked": false,
+      "trading_locked": false,
+      "analysis_locked_until": null,
+      "trading_locked_until": null,
+      "analysis_message": null,
+      "trading_message": null,
+      "daily_drawdown_pct": 0.0,
+      "weekly_drawdown_pct": 0.0,
+      "daily_loss_usd": 0,
+      "daily_loss_limit_pct": 5.0,
+      "daily_loss_limit_amount": null,
+      "daily_loss_limit_percent": 5.0,
+      "capital": 10000.0
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/scanner/status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "is_running": false
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/scanner/alerts",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "GET /api/debug/integration",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "ws_attached": true,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT"
+      ],
+      "sample_live": {
+        "BTCUSDT": {
+          "cumulative_delta": null,
+          "price": null
+        },
+        "ETHUSDT": {
+          "cumulative_delta": null,
+          "price": null
+        },
+        "BNBUSDT": {
+          "cumulative_delta": null,
+          "price": null
+        }
+      },
+      "agents": [
+        "Trend Agent",
+        "Structure Agent",
+        "Volatility Agent",
+        "Correlation Agent",
+        "SR Agent",
+        "Volume Agent",
+        "OrderFlow Agent",
+        "Footprint Agent",
+        "Bookmap Agent",
+        "Liquidity Agent",
+        "Market Manipulation Detector",
+        "Momentum Agent",
+        "Divergence Agent",
+        "Strength Agent",
+        "Candlestick Agent",
+        "Harmonic Agent",
+        "Elliott Agent",
+        "Price Pattern Agent",
+        "Long-term Agent",
+        "Medium-term Agent",
+        "Short-term Agent",
+        "Temporal Audit Agent",
+        "News Agent",
+        "Sentiment Agent",
+        "Adaptation Agent"
+      ]
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/system/health-details",
+    "status": 403,
+    "payload": null,
+    "response": {
+      "detail": "Admin privileges required"
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/recommendation/quick/BTCUSD",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "recommendation": "تحليل جديد مطلوب",
+      "confidence": 0,
+      "note": "لا توجد تحليل حديث لهذا السوق. الرجاء تشغيل تحليل جديد."
+    },
+    "error": null
+  },
+  {
+    "name": "Journal list before",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Journal add",
+    "status": 400,
+    "payload": {
+      "market": "BTC/USD",
+      "result": "win"
+    },
+    "response": {
+      "detail": "Field recommendation is required"
+    },
+    "error": null
+  },
+  {
+    "name": "Journal list after",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Backtest run",
+    "status": 200,
+    "payload": {
+      "market": "EURUSD",
+      "timeframe": "1h",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-10",
+      "initial_capital": 1000,
+      "simulations": 10,
+      "n_windows": 1
+    },
+    "response": {
+      "generated_at": "2026-06-01T11:12:21.401924",
+      "initial_capital": 1000.0,
+      "total_trades": 30,
+      "metrics": {
+        "total_return": 766.94,
+        "total_return_pct": 0.7669400000000001,
+        "annualized_return": 204942.02263471988,
+        "cagr": 204942.02263471988,
+        "total_trades": 30,
+        "winning_trades": 13,
+        "losing_trades": 17,
+        "win_rate": 0.43333333333333335,
+        "avg_win": 151.92461538461538,
+        "avg_loss": -71.0635294117647,
+        "avg_trade": 25.564666666666668,
+        "expectancy": 25.564666666666675,
+        "profit_factor": 1.6348420634395073,
+        "sharpe_ratio": 3.5087723017132664,
+        "sortino_ratio": 27.014306789584356,
+        "calmar_ratio": 664506.6906359339,
+        "max_drawdown": 460.6600000000001,
+        "max_drawdown_pct": 0.30841227864626924,
+        "avg_drawdown": 185.77958333333336,
+        "recovery_factor": 1.664872139973082,
+        "risk_of_ruin": 1.0,
+        "max_win_streak": 4,
+        "max_loss_streak": 7,
+        "current_streak": 2,
+        "streak_type": "win",
+        "ulcer_index": 0.11031110291354386,
+        "serenity_ratio": 244.89200158534155,
+        "payoff_ratio": 2.1378703906516634
+      },
+      "monte_carlo": {
+        "simulations": 10,
+        "success_probability": 0.9,
+        "avg_return": 637.57,
+        "median_return": 552.0150000000003,
+        "best_case_95": 1589.6204999999998,
+        "worst_case_5": -389.5845000000001,
+        "avg_max_drawdown": 423.0160000000001,
+        "worst_drawdown_95": 849.9689999999997,
+        "var_95": 389.5845000000001,
+        "cvar_95": 793.3200000000002,
+        "percentiles": {
+          "p5": -389.5845000000001,
+          "p10": 14.150999999999954,
+          "p25": 407.6749999999999,
+          "p50": 552.0150000000003,
+          "p75": 1077.6575000000003,
+          "p90": 1390.9410000000003,
+          "p95": 1589.6204999999998
+        }
+      },
+      "walk_forward": {
+        "windows": 1,
+        "in_sample_return": 0.36568,
+        "out_sample_return": 0.40126,
+        "efficiency_ratio": 1.097298184204769,
+        "is_overfit": false,
+        "overfit_score": 0.0,
+        "recommendation": "ممتاز: الاستراتيجية متسقة (كفاءة 110%) – النتائج خارج العينة قريبة من نتائج التدريب.",
+        "periods": [
+          {
+            "window": 1,
+            "trade_range": "0–30",
+            "train_trades": 21,
+            "test_trades": 9,
+            "in_sample_return": 36.57,
+            "out_sample_return": 40.13,
+            "efficiency": 1.097
+          }
+        ]
+      },
+      "bell_curve": "\n  [توزيع Monte Carlo – Bell Curve]\n         Range   Count  Chart\n  -------------------------------------------------------\n     -793.3→   -535.2       1  ##########\n     -535.2→   -277.0       0  \n     -277.0→    -18.8       0  \n      -18.8→   +239.3       1  ##########\n     +239.3→   +497.5       3  ##############################\n     +497.5→   +755.7       1  ##########\n     +755.7→  +1013.8       1  ##########\n    +1013.8→  +1272.0       1  ##########\n    +1272.0→  +1530.1       1  ##########\n    +1530.1→  +1788.3       1  ##########",
+      "market": "EURUSD",
+      "timeframe": "1h",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-10",
+      "trades_count": 30,
+      "win_rate": 43.3,
+      "profit_loss": 766.94,
+      "note": "تم إنشاء تقرير اختبار تاريخي حقيقي باستخدام backtest_engine."
+    },
+    "error": null
+  },
+  {
+    "name": "Update preferences",
+    "status": 200,
+    "payload": {
+      "theme": "light",
+      "language": "en"
+    },
+    "response": {
+      "theme": "light",
+      "language": "en",
+      "telegram_chat_id": null,
+      "email_notifications": null,
+      "demo_mode": false,
+      "demo_balance": 1000000.0,
+      "trading_mode": "day",
+      "capital": 10000.0,
+      "account_balance": 10000.0,
+      "risk_percentage": 1.0,
+      "favorite_strategies": [
+        "macro",
+        "momentum"
+      ],
+      "watchlist": [],
+      "daily_profit_target_percent": null,
+      "daily_loss_limit_percent": null,
+      "trading_locked_today": false,
+      "lock_reason": null,
+      "notification_markets": [],
+      "enable_smart_notifications": null,
+      "custom_indicators": []
+    },
+    "error": null
+  },
+  {
+    "name": "Preferences after update",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "theme": "light",
+      "language": "en",
+      "telegram_chat_id": null,
+      "email_notifications": null,
+      "demo_mode": false,
+      "demo_balance": 1000000.0,
+      "trading_mode": "day",
+      "capital": 10000.0,
+      "account_balance": 10000.0,
+      "risk_percentage": 1.0,
+      "favorite_strategies": [
+        "macro",
+        "momentum"
+      ],
+      "watchlist": [],
+      "daily_profit_target_percent": null,
+      "daily_loss_limit_percent": null,
+      "trading_locked_today": false,
+      "lock_reason": null,
+      "notification_markets": [],
+      "enable_smart_notifications": null,
+      "custom_indicators": []
+    },
+    "error": null
+  },
+  {
+    "name": "Add favorite",
+    "status": 200,
+    "payload": {
+      "strategy": "trend_following"
+    },
+    "response": [
+      "macro",
+      "momentum",
+      "trend_following"
+    ],
+    "error": null
+  },
+  {
+    "name": "List favorites",
+    "status": 200,
+    "payload": null,
+    "response": [
+      "macro",
+      "momentum",
+      "trend_following"
+    ],
+    "error": null
+  },
+  {
+    "name": "Add watchlist",
+    "status": 200,
+    "payload": {
+      "symbol": "EURUSD"
+    },
+    "response": [
+      "EURUSD"
+    ],
+    "error": null
+  },
+  {
+    "name": "Get watchlist",
+    "status": 200,
+    "payload": null,
+    "response": [
+      "EURUSD"
+    ],
+    "error": null
+  },
+  {
+    "name": "Remove watchlist",
+    "status": 200,
+    "payload": {
+      "symbol": "EURUSD"
+    },
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Scanner status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "is_running": false
+    },
+    "error": null
+  },
+  {
+    "name": "Scanner alerts",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Admin health (protected)",
+    "status": 403,
+    "payload": null,
+    "response": {
+      "detail": "Admin privileges required"
+    },
+    "error": null
+  },
+  {
+    "name": "Static page check",
+    "status": "OK",
+    "payload": null,
+    "response": [
+      {
+        "page": "/frontend/index.html",
+        "status": 404,
+        "valid_html": false,
+        "has_buttons": false,
+        "snippet": "{'detail': 'Not Found'}"
+      },
+      {
+        "page": "/frontend/login.html",
+        "status": 404,
+        "valid_html": false,
+        "has_buttons": false,
+        "snippet": "{'detail': 'Not Found'}"
+      },
+      {
+        "page": "/frontend/dashboard.html",
+        "status": 404,
+        "valid_html": false,
+        "has_buttons": false,
+        "snippet": "{'detail': 'Not Found'}"
+      },
+      {
+        "page": "/frontend/journal.html",
+        "status": 404,
+        "valid_html": false,
+        "has_buttons": false,
+        "snippet": "{'detail': 'Not Found'}"
+      },
+      {
+        "page": "/frontend/backtest.html",
+        "status": 404,
+        "valid_html": false,
+        "has_buttons": false,
+        "snippet": "{'detail': 'Not Found'}"
+      },
+      {
+        "page": "/frontend/admin.html",
+        "status": 404,
+        "valid_html": false,
+        "has_buttons": false,
+        "snippet": "{'detail': 'Not Found'}"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "WebSocket /ws/live",
+    "status": "OK",
+    "payload": null,
+    "response": "{\"type\": \"update\", \"prices\": {\"BTC/USD\": 64400.54, \"ETH/USD\": 3277.9, \"XAU/USD\": 2351.66}, \"live_trades\": 22, \"pnl\": -486.32, \"status\": \"Active\", \"timestamp\": \"2026-06-01T11:12:28.820156\"}",
+    "error": null
+  },
+  {
+    "name": "Admin system-health after admin grant",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "status": "online",
+      "cpu_percent": 99.1,
+      "ram_percent": 87.1,
+      "ram_used": 3563819008,
+      "ram_total": 4092243968,
+      "gemini_calls": 0,
+      "deepseek_calls": 0,
+      "request_count": 58,
+      "daily_requests": {
+        "2026-06-01": 58
+      },
+      "last_error": "No errors yet",
+      "uptime_seconds": 1330,
+      "uptime": "0:22:10"
+    },
+    "error": null
+  },
+  {
+    "name": "/api/admin/users",
+    "status": 200,
+    "payload": null,
+    "response": [
+      {
+        "id": 27,
+        "email": "testuser99@test.com",
+        "invite_code": "",
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T10:19:58.902340"
+      },
+      {
+        "id": 26,
+        "email": "testuser_1780252913@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-31T18:41:55.351175"
+      },
+      {
+        "id": 25,
+        "email": "testuser_1780252288@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-31T18:31:43.613796"
+      },
+      {
+        "id": 24,
+        "email": "integration_test@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-28T20:04:21.677819"
+      },
+      {
+        "id": 23,
+        "email": "trialuser_1779918019@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:40:23.382512"
+      },
+      {
+        "id": 22,
+        "email": "testuser_1779917598@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:33:31.553136"
+      },
+      {
+        "id": 21,
+        "email": "testuser_1779917310@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:28:33.062727"
+      },
+      {
+        "id": 20,
+        "email": "testuser_1779916958@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:22:51.072530"
+      },
+      {
+        "id": 19,
+        "email": "trialme_1779916305@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:11:57.280121"
+      },
+      {
+        "id": 18,
+        "email": "trialtest_1779916079@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:08:10.925755"
+      },
+      {
+        "id": 17,
+        "email": "trialtest_1779915920@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:05:31.936457"
+      },
+      {
+        "id": 16,
+        "email": "testuser_1779915742@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:02:24.271593"
+      },
+      {
+        "id": 15,
+        "email": "copilot_test_user@local.example",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-23T16:35:05.121956"
+      },
+      {
+        "id": 14,
+        "email": "copilot_user_22427@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T16:34:48.136191"
+      },
+      {
+        "id": 13,
+        "email": "copilot_test_048ac5@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T16:27:28.210638"
+      },
+      {
+        "id": 12,
+        "email": "testuser@example.com",
+        "invite_code": null,
+        "ip_address": "testclient",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T11:00:47.228209"
+      },
+      {
+        "id": 11,
+        "email": "testuser1779531241@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T10:14:03.345428"
+      },
+      {
+        "id": 10,
+        "email": "testuser1779531224@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T10:13:46.389276"
+      },
+      {
+        "id": 9,
+        "email": "admin@test.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-23T00:01:09.507182"
+      },
+      {
+        "id": 8,
+        "email": "test@test.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-23T00:01:09.483772"
+      },
+      {
+        "id": 7,
+        "email": "normal_test_user@example.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-20T10:34:28.539396"
+      },
+      {
+        "id": 6,
+        "email": "hythmalshryf57@gmail.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-20T10:34:28.369762"
+      },
+      {
+        "id": 5,
+        "email": "copilot_test_user@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-17T09:19:12.555008"
+      },
+      {
+        "id": 4,
+        "email": "learn2@test.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-16T18:42:39.392010"
+      },
+      {
+        "id": 3,
+        "email": "learn_test_1778956211@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-16T18:30:13.458408"
+      },
+      {
+        "id": 2,
+        "email": "testuser+1778950077@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-16T16:47:58.796748"
+      },
+      {
+        "id": 1,
+        "email": "testuser+1778949943@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": false,
+        "is_admin": false,
+        "registered_at": "2026-05-16T16:45:45.435267"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "/api/admin/stats",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "total_users": 27,
+      "active_users": 26,
+      "inactive_users": 1
+    },
+    "error": null
+  },
+  {
+    "name": "/api/admin/security-logs",
+    "status": 200,
+    "payload": null,
+    "response": [
+      {
+        "id": 22,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-28T20:11:34.115228"
+      },
+      {
+        "id": 21,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-28T20:06:57.432707"
+      },
+      {
+        "id": 20,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-28T20:05:04.460457"
+      },
+      {
+        "id": 19,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:28:34.246006"
+      },
+      {
+        "id": 18,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:23:03.512562"
+      },
+      {
+        "id": 17,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:12:09.735029"
+      },
+      {
+        "id": 16,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:08:23.166028"
+      },
+      {
+        "id": 15,
+        "user_id": 1,
+        "event_type": "shadow_monitor_start",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:20.243771"
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "event_type": "kill_switch",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:09.763370"
+      },
+      {
+        "id": 13,
+        "user_id": 1,
+        "event_type": "freeze_account",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:09.312989"
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "event_type": "force_logout",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:02.243693"
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "event_type": "shadow_monitor_start",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:25:14.039691"
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "event_type": "kill_switch",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:24:40.011998"
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "event_type": "freeze_account",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:24:36.929632"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "event_type": "force_logout",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:24:17.958725"
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "event_type": "shadow_monitor_start",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:22:19.891986"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "event_type": "kill_switch",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:22:10.274171"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "event_type": "freeze_account",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:22:09.309622"
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "event_type": "force_logout",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:21:59.055811"
+      },
+      {
+        "id": 3,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-16T19:47:11.463117"
+      },
+      {
+        "id": 2,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-16T19:18:15.618849"
+      },
+      {
+        "id": 1,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-16T18:43:08.995350"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "/api/admin/soc-dashboard",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "threat_map": [],
+      "suspicious_users": [
+        {
+          "id": 1,
+          "email": "testuser+1778949943@example.com",
+          "reason": "frozen"
+        }
+      ],
+      "api_usage": {
+        "gemini": 0,
+        "deepseek": 0
+      },
+      "server_status": {
+        "cpu": 87.4,
+        "ram": 87.0
+      },
+      "live_alerts": []
+    },
+    "error": null
+  },
+  {
+    "name": "Generate invite code",
+    "status": 200,
+    "payload": {
+      "expiry_days": 7,
+      "max_uses": 1
+    },
+    "response": {
+      "code": "X3L6-9UC3-XCZX",
+      "created_at": "2026-06-01T11:12:33.436109",
+      "expires_at": "2026-06-08T11:12:33.436109",
+      "max_uses": 1,
+      "uses_count": 0
+    },
+    "error": null
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "events": [
+    {
+      "type": "journal_entry",
+      "key": "XAUUSD",
+      "value": 0.0,
+      "success": true,
+      "context": null,
+      "timestamp": "2026-06-01T12:10:02.890594"
+    }
+  ]
+}

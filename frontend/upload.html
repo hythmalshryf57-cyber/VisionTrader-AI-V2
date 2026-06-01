@@ -32,7 +32,11 @@
         .status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: rgba(34,197,94,0.12); color: #a7f3d0; }
         .hidden { display: none; }
         pre { white-space: pre-wrap; word-break: break-word; color: #dbeafe; background: rgba(15,23,42,0.95); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
+        .laser-scanner { display: none; width: 100%; height: 4px; background: #38bdf8; box-shadow: 0 0 15px #38bdf8; position: absolute; top: 0; left: 0; animation: scan-effect 2s linear infinite; z-index: 10; }
+        @keyframes scan-effect { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+        .upload-dropzone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease; position: relative; overflow: hidden; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -48,7 +52,7 @@
                 <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
             </div>
         </aside>
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="container">
                 <div class="page-header">
             <div>
@@ -63,8 +67,12 @@
 
         <div class="card">
             <div class="field-group">
-                <label for="marketInput">رمز السوق</label>
-                <input class="cosmic-input" id="marketInput" type="text" placeholder="مثال: XAUUSD أو BTCUSDT" value="XAUUSD">
+                <label for="marketSelect">رمز السوق</label>
+                <select class="cosmic-input" id="marketSelect">
+                    <option value="XAUUSD" selected>XAUUSD (الذهب)</option>
+                    <option value="BTCUSDT">BTCUSDT (البيتكوين)</option>
+                    <option value="EURUSD">EURUSD (اليورو/دولار)</option>
+                </select>
             </div>
             <div class="field-group">
                 <label for="timeframeSelect">الفريم الزمني</label>
@@ -78,6 +86,7 @@
                 </select>
             </div>
             <div class="upload-dropzone" id="dropZone">
+                <div class="laser-scanner" id="laserScanner"></div>
                 <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #38bdf8;"></i>
                 <h3 style="margin: 12px 0 6px;">قم بسحب الشارت هنا</h3>
                 <p style="color:#9ca3af;">أو انقر لرفع صورة. يدعم PNG/JPG.</p>
@@ -155,6 +164,7 @@
         function setLoading(isLoading) {
             analyzeBtn.textContent = isLoading ? 'جاري التحليل...' : 'ابدأ التحليل';
             analyzeBtn.disabled = isLoading;
+            document.getElementById('laserScanner').style.display = isLoading ? 'block' : 'none';
         }
 
         function updatePreview() {
@@ -227,7 +237,7 @@
             }
             setLoading(true);
             try {
-                const market = document.getElementById('marketInput').value.trim() || 'XAUUSD';
+                const market = document.getElementById('marketSelect').value || 'XAUUSD';
                 const images = await collectImages();
                 const payload = { market, timeframe: document.getElementById('timeframeSelect').value, images };
                 const result = await api.analyzeMarket(payload.market, payload.images);
@@ -242,7 +252,7 @@
         function displayResult(result) {
             localStorage.setItem('lastAnalysis', JSON.stringify(result));
             resultCard.classList.remove('hidden');
-            document.getElementById('resultMarket').textContent = result.market || document.getElementById('marketInput').value || 'غير محدد';
+            document.getElementById('resultMarket').textContent = result.market || document.getElementById('marketSelect').value || 'غير محدد';
             document.getElementById('resultConfidence').textContent = result.confidence || 0;
             document.getElementById('resultStrength').textContent = result.strength || result.recommendation || 'غير مؤكد';
             document.getElementById('resultReason').textContent = result.reason || result.notes || 'لا توجد بيانات إضافية.';
@@ -291,5 +301,6 @@
     </script>
         </main>
     </div>
+    <script src="js/theme.js"></script>
 </body>
 </html>

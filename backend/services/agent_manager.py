@@ -1,7 +1,6 @@
 import os
 import time
 import logging
-import random
 import requests
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -9,7 +8,7 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-046971017e5f4efbb60a6408a056e478")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.ai/v1/analyze")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -59,9 +58,20 @@ class AgentBase:
                 return self._fallback(prompt)
             except Exception:
                 logger.exception("Agent %s fallback also failed", self.name)
-                return self._heuristic_response()
+                # When all remote APIs and fallbacks fail, never produce a random decision.
+                # Return a neutral, zero-confidence result with a clear message in Arabic.
+                return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "التحليل غير متاح حالياً"}
+
+# Optional footprint/bookmap analyzers (best-effort import)
+try:
+    from .footprint_service import FootprintChartAnalyzer, BookmapDOMReader  # type: ignore
+except Exception:
+    FootprintChartAnalyzer = None
+    BookmapDOMReader = None
 
     def _call_deepseek(self, prompt: str) -> Dict[str, Any]:
+        if not DEEPSEEK_API_KEY:
+            raise AgentError("DEEPSEEK_API_KEY not configured")
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
         payload = {"prompt": prompt, "max_tokens": 400}
         resp = requests.post(DEEPSEEK_API_URL, json=payload, headers=headers, timeout=15)
@@ -104,7 +114,8 @@ class AgentBase:
         if m:
             conf = int(m.group(2))
         else:
-            conf = random.randint(30, 70)
+            # Do not invent confidence — default to 0 when not provided.
+            conf = 0
         report = text.strip()[:1000]
         return {"agent": self.name, "signal": signal, "confidence": conf, "report": report}
 
@@ -135,11 +146,7 @@ class AgentBase:
 
         raise AgentError("No fallback available or all fallbacks failed")
 
-    def _heuristic_response(self) -> Dict[str, Any]:
-        signal = random.choice(["buy", "sell", "neutral"])
-        conf = random.randint(20, 60)
-        report = f"Heuristic fallback by {self.name}: signal={signal}, confidence={conf}"
-        return {"agent": self.name, "signal": signal, "confidence": conf, "report": report}
+    # NOTE: Removed heuristic/random fallback to ensure no random trading signals are produced.
 
 
 class LiquidityAgent(AgentBase):
@@ -527,6 +534,60 @@ class ManipulationDetector(AgentBase):
         return {"agent": self.name, "signal": signal, "confidence": conf, "report": report, "manipulation_detected": bool(manipulation_flag or manipulation)}
 
 
+class FootprintAgent(AgentBase):
+    def __init__(self):
+        super().__init__("Footprint Agent", "analyze footprint trade imbalances and cumulative delta")
+        self.analyzer = FootprintChartAnalyzer() if FootprintChartAnalyzer else None
+
+    def analyze(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.analyzer:
+            return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "Footprint analyzer unavailable"}
+        trades = data.get("recent_trades") or data.get("trades") or []
+        try:
+            for t in trades:
+                if isinstance(t, dict):
+                    price = t.get("price") or t.get("p") or t.get("price")
+                    qty = t.get("qty") or t.get("q") or t.get("size") or t.get("quantity")
+                    side = t.get("side") or ("buy" if t.get("isBuyerMaker") is False else "sell" if "isBuyerMaker" in t else None)
+                elif isinstance(t, (list, tuple)):
+                    price = t[0] if len(t) > 0 else None
+                    qty = t[1] if len(t) > 1 else None
+                    side = t[2] if len(t) > 2 else None
+                else:
+                    continue
+                if price is None or qty is None:
+                    continue
+                try:
+                    self.analyzer.ingest_trade(float(price), float(qty), side)
+                except Exception:
+                    continue
+            res = self.analyzer.analyze()
+            return {"agent": self.name, "signal": res.get("signal", "neutral"), "confidence": res.get("confidence", 0), "report": res.get("description", "")}
+        except Exception as e:
+            logger.exception("FootprintAgent error: %s", e)
+            return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "error running footprint agent"}
+
+
+class BookmapAgent(AgentBase):
+    def __init__(self):
+        super().__init__("Bookmap Agent", "analyze DOM / orderbook for walls, hidden liquidity and stop-hunts")
+        self.reader = BookmapDOMReader() if BookmapDOMReader else None
+
+    def analyze(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.reader:
+            return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "Bookmap analyzer unavailable"}
+        order_book = data.get("order_book") or {}
+        bids = order_book.get("bids", []) if isinstance(order_book, dict) else []
+        asks = order_book.get("asks", []) if isinstance(order_book, dict) else []
+        try:
+            self.reader.ingest_snapshot(bids, asks)
+            res = self.reader.analyze()
+            return {"agent": self.name, "signal": res.get("signal", "neutral"), "confidence": res.get("confidence", 0), "report": res.get("description", "")}
+        except Exception as e:
+            logger.exception("BookmapAgent error: %s", e)
+            return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "error running bookmap agent"}
+
+
 AGENT_DEFINITIONS = [
     ("Trend Agent", "determine the overall market trend based on price/time series"),
     ("Structure Agent", "analyze highs and lows, support/resistance structure"),
@@ -535,6 +596,8 @@ AGENT_DEFINITIONS = [
     ("SR Agent", "identify key support and resistance levels") ,
     ("Volume Agent", "analyze traded volume patterns and spikes"),
     ("OrderFlow Agent", "assess order flow imbalance and large orders presence"),
+    ("Footprint Agent", "analyze footprint trade imbalances and cumulative delta"),
+    ("Bookmap Agent", "analyze DOM / orderbook for walls, hidden liquidity and stop-hunts"),
     ("Liquidity Agent", "assess market liquidity and spread behaviour"),
     ("Manipulation Detector", "detect market manipulation patterns like spoofing, layering, iceberg, stop-hunting"),
     ("Momentum Agent", "measure momentum indicators and velocity of price moves"),
@@ -564,6 +627,10 @@ class AgentManager:
                     built.append(LiquidityAgent())
                 elif "manipulation" in ln:
                     built.append(ManipulationDetector())
+                elif "footprint" in ln:
+                    built.append(FootprintAgent())
+                elif "bookmap" in ln or "dom" in ln:
+                    built.append(BookmapAgent())
                 elif ln.startswith("temporal") or "temporal audit" in ln:
                     built.append(TemporalAuditAgent())
                 else:
@@ -586,12 +653,17 @@ class AgentManager:
                     logger.exception("Agent future failed: %s", e)
 
         aggregated = self._aggregate(results)
-        # send to orchestrator if configured
+        aggregated["order_book"] = unified_data.get("order_book")
+        aggregated["recent_trades"] = unified_data.get("recent_trades")
+        aggregated["market"] = unified_data.get("market")
+        aggregated["quality_score"] = unified_data.get("quality_score")
+        orchestrator_result = None
         try:
-            self._send_to_orchestrator(aggregated)
+            orchestrator_result = self._send_to_orchestrator(aggregated)
         except Exception:
             logger.exception("Failed to send to orchestrator")
-
+        if orchestrator_result:
+            aggregated["orchestrator"] = orchestrator_result
         return aggregated
 
     def _safe_analyze(self, agent: AgentBase, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -652,17 +724,49 @@ class AgentManager:
         return payload
 
     def _send_to_orchestrator(self, payload: Dict[str, Any]):
-        if not ORCHESTRATOR_URL:
-            logger.info("Orchestrator URL not set; skipping send")
-            return
+        # Prefer remote orchestrator if configured
+        if ORCHESTRATOR_URL:
+            try:
+                headers = {"Content-Type": "application/json"}
+                r = requests.post(ORCHESTRATOR_URL, json=payload, headers=headers, timeout=10)
+                if r.status_code >= 400:
+                    raise AgentError(f"Orchestrator returned {r.status_code}: {r.text}")
+                logger.info("Sent payload to orchestrator: %s", ORCHESTRATOR_URL)
+                try:
+                    return r.json()
+                except Exception:
+                    return None
+            except Exception:
+                logger.exception("Failed to send to orchestrator URL %s; will attempt local orchestrator fallback", ORCHESTRATOR_URL)
+
+        # Fallback: if no ORCHESTRATOR_URL or remote failed, run local Orchestrator
         try:
-            headers = {"Content-Type": "application/json"}
-            r = requests.post(ORCHESTRATOR_URL, json=payload, headers=headers, timeout=10)
-            if r.status_code >= 400:
-                raise AgentError(f"Orchestrator returned {r.status_code}: {r.text}")
-            logger.info("Sent payload to orchestrator: %s", ORCHESTRATOR_URL)
+            from .orchestrator import Orchestrator
+            orch = Orchestrator()
+            market_data = {
+                "ensemble": payload.get("ensemble"),
+                "signals": payload.get("signals"),
+                "confidences": payload.get("confidences"),
+                "timestamp": payload.get("timestamp"),
+                "order_book": payload.get("order_book"),
+                "recent_trades": payload.get("recent_trades"),
+                "market": payload.get("market"),
+                "quality_score": payload.get("quality_score")
+            }
+            # payload['agents'] is a dict of agent_name -> result; orchestrator expects list of reports
+            agent_reports = []
+            agents_obj = payload.get("agents")
+            if isinstance(agents_obj, dict):
+                agent_reports = list(agents_obj.values())
+            else:
+                agent_reports = payload.get("reports", [])
+
+            orch_result = orch.orchestrate(market_data, agent_reports)
+            logger.info("Local orchestrator executed; thesis: %s", orch_result.get("thesis"))
+            return orch_result
         except Exception:
-            logger.exception("Failed to send to orchestrator")
+            logger.exception("Failed to execute local orchestrator fallback")
+            return None
 
 
 def example_usage():

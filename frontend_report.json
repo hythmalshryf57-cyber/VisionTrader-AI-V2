@@ -1,0 +1,429 @@
+{
+    "total_pages": 24,
+    "pages": {
+        "academy.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 4
+        },
+        "admin-engine.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 1
+        },
+        "admin.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 3,
+            "inputs": 3,
+            "selects": 0,
+            "links": 9
+        },
+        "api-docs.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": true,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 2
+        },
+        "ask-ai.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 4,
+            "inputs": 0,
+            "selects": 0,
+            "links": 4
+        },
+        "backtest.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 1,
+            "inputs": 3,
+            "selects": 1,
+            "links": 0
+        },
+        "calendar.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 1,
+            "inputs": 0,
+            "selects": 1,
+            "links": 0
+        },
+        "chat.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": true,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 2,
+            "inputs": 1,
+            "selects": 0,
+            "links": 1
+        },
+        "dashboard.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": true,
+                "laser_scanner": true,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 12,
+            "inputs": 5,
+            "selects": 1,
+            "links": 7
+        },
+        "evolution.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 5
+        },
+        "heatmap.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 0
+        },
+        "history.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 2,
+            "inputs": 1,
+            "selects": 0,
+            "links": 4
+        },
+        "index.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 0
+        },
+        "journal.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 3,
+            "inputs": 2,
+            "selects": 4,
+            "links": 0
+        },
+        "login.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 2,
+            "inputs": 2,
+            "selects": 0,
+            "links": 2
+        },
+        "realtime.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 0
+        },
+        "register.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 1,
+            "inputs": 3,
+            "selects": 0,
+            "links": 1
+        },
+        "result.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": true,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 9,
+            "inputs": 0,
+            "selects": 0,
+            "links": 4
+        },
+        "service-health.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 2,
+            "inputs": 0,
+            "selects": 0,
+            "links": 0
+        },
+        "settings.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 6,
+            "inputs": 5,
+            "selects": 2,
+            "links": 4
+        },
+        "strategy-battle.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 0,
+            "inputs": 0,
+            "selects": 0,
+            "links": 0
+        },
+        "strategy_factory.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 1,
+            "inputs": 3,
+            "selects": 0,
+            "links": 4
+        },
+        "system-health.html": {
+            "effects": {
+                "stars_background": false,
+                "frosted_glass": false,
+                "neon_glow": false,
+                "laser_scanner": false,
+                "fade_in_animation": false,
+                "ripple_effect": false
+            },
+            "buttons": 1,
+            "inputs": 0,
+            "selects": 0,
+            "links": 0
+        },
+        "upload.html": {
+            "effects": {
+                "stars_background": true,
+                "frosted_glass": true,
+                "neon_glow": false,
+                "laser_scanner": true,
+                "fade_in_animation": true,
+                "ripple_effect": false
+            },
+            "buttons": 6,
+            "inputs": 2,
+            "selects": 2,
+            "links": 4
+        }
+    },
+    "broken_links": [
+        "api-docs.html -> /docs",
+        "api-docs.html -> /redoc"
+    ],
+    "issues": [
+        "Missing stars_background in academy.html",
+        "Missing neon_glow in academy.html",
+        "Missing fade_in_animation in academy.html",
+        "Missing ripple_effect in academy.html",
+        "Missing stars_background in admin-engine.html",
+        "Missing frosted_glass in admin-engine.html",
+        "Missing neon_glow in admin-engine.html",
+        "Missing fade_in_animation in admin-engine.html",
+        "Missing ripple_effect in admin-engine.html",
+        "Missing neon_glow in admin.html",
+        "Missing fade_in_animation in admin.html",
+        "Missing ripple_effect in admin.html",
+        "Missing fade_in_animation in api-docs.html",
+        "Missing ripple_effect in api-docs.html",
+        "Missing stars_background in ask-ai.html",
+        "Missing neon_glow in ask-ai.html",
+        "Missing ripple_effect in ask-ai.html",
+        "Missing stars_background in backtest.html",
+        "Missing frosted_glass in backtest.html",
+        "Missing neon_glow in backtest.html",
+        "Missing fade_in_animation in backtest.html",
+        "Missing ripple_effect in backtest.html",
+        "Missing stars_background in calendar.html",
+        "Missing frosted_glass in calendar.html",
+        "Missing neon_glow in calendar.html",
+        "Missing fade_in_animation in calendar.html",
+        "Missing ripple_effect in calendar.html",
+        "Missing stars_background in chat.html",
+        "Missing neon_glow in chat.html",
+        "Missing ripple_effect in chat.html",
+        "Missing stars_background in dashboard.html",
+        "Missing ripple_effect in dashboard.html",
+        "Missing neon_glow in evolution.html",
+        "Missing ripple_effect in evolution.html",
+        "Missing stars_background in heatmap.html",
+        "Missing frosted_glass in heatmap.html",
+        "Missing neon_glow in heatmap.html",
+        "Missing fade_in_animation in heatmap.html",
+        "Missing ripple_effect in heatmap.html",
+        "Missing neon_glow in history.html",
+        "Missing ripple_effect in history.html",
+        "Missing stars_background in index.html",
+        "Missing frosted_glass in index.html",
+        "Missing neon_glow in index.html",
+        "Missing fade_in_animation in index.html",
+        "Missing ripple_effect in index.html",
+        "Missing stars_background in journal.html",
+        "Missing neon_glow in journal.html",
+        "Missing fade_in_animation in journal.html",
+        "Missing ripple_effect in journal.html",
+        "Missing neon_glow in login.html",
+        "Missing ripple_effect in login.html",
+        "Missing stars_background in realtime.html",
+        "Missing neon_glow in realtime.html",
+        "Missing fade_in_animation in realtime.html",
+        "Missing ripple_effect in realtime.html",
+        "Missing neon_glow in register.html",
+        "Missing ripple_effect in register.html",
+        "Missing stars_background in result.html",
+        "Missing ripple_effect in result.html",
+        "Missing stars_background in service-health.html",
+        "Missing frosted_glass in service-health.html",
+        "Missing neon_glow in service-health.html",
+        "Missing fade_in_animation in service-health.html",
+        "Missing ripple_effect in service-health.html",
+        "Missing frosted_glass in settings.html",
+        "Missing neon_glow in settings.html",
+        "Missing ripple_effect in settings.html",
+        "Missing stars_background in strategy-battle.html",
+        "Missing neon_glow in strategy-battle.html",
+        "Missing fade_in_animation in strategy-battle.html",
+        "Missing ripple_effect in strategy-battle.html",
+        "Missing stars_background in strategy_factory.html",
+        "Missing neon_glow in strategy_factory.html",
+        "Missing ripple_effect in strategy_factory.html",
+        "Missing stars_background in system-health.html",
+        "Missing frosted_glass in system-health.html",
+        "Missing neon_glow in system-health.html",
+        "Missing fade_in_animation in system-health.html",
+        "Missing ripple_effect in system-health.html",
+        "Missing neon_glow in upload.html",
+        "Missing ripple_effect in upload.html"
+    ]
+}

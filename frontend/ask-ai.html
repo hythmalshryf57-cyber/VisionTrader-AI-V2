@@ -21,6 +21,7 @@
         .action-btn:hover { color: var(--accent-color); }
         .send-btn { background: var(--accent-color); color: white; width: 50px; height: 50px; border-radius: 15px; border: none; cursor: pointer; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -36,7 +37,7 @@
                 <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
             </div>
         </aside>
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="chat-container">
         <div class="chat-messages" id="chatMessages">
             <div class="message ai-msg">
@@ -89,5 +90,6 @@
     </script>
         </main>
     </div>
+    <script src="js/theme.js"></script>
 </body>
 </html>

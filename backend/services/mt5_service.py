@@ -39,8 +39,10 @@ class MT5Service:
         """Connects to MT5 terminal or enables simulator"""
         if self.simulator_mode:
             logger.warning("MT5 package not available or Simulator forced. Starting in Simulator mode.")
-            self.connected = True
-            return True
+            # Do NOT claim a successful live connection when in simulator mode.
+            # Leave `connected` as False (not connected) but allow simulator behavior in methods.
+            self.connected = False
+            return {"status": "simulated", "warning": "MT5 غير متصل - النتائج محاكاة"}
 
         if not mt5.initialize():
             logger.error(f"MT5 initialize failed, error code: {mt5.last_error()}")
@@ -64,14 +66,14 @@ class MT5Service:
 
     def get_account_info(self) -> dict:
         """Returns account info: balance, equity, margin"""
-        if not self.connected:
-            return {}
-
+        # If simulator mode is enabled, return simulated account info (transparent simulation)
         if self.simulator_mode:
-            # Update equity based on open positions (simulated)
             floating_pnl = sum(p['pnl'] for p in self.open_positions.values())
             self.account_info['equity'] = self.account_info['balance'] + floating_pnl
-            return self.account_info
+            return {**self.account_info, "status": "simulated", "warning": "MT5 غير متصل - النتائج محاكاة"}
+
+        if not self.connected:
+            return {}
 
         account_info = mt5.account_info()
         if account_info is None:
@@ -89,24 +91,24 @@ class MT5Service:
 
     def get_price(self, symbol: str) -> dict:
         """Returns live bid/ask price for a symbol"""
-        if not self.connected:
-            return {}
-
+        # Simulator has priority: provide simulated price even if not marked as connected.
         if self.simulator_mode:
-            # Simulate some live price
             base_price = 2000.0 if "XAU" in symbol else 1.1000
             spread = 0.5 if "XAU" in symbol else 0.0002
             variation = random.uniform(-0.1, 0.1) if "XAU" in symbol else random.uniform(-0.001, 0.001)
             bid = round(base_price + variation, 5)
             ask = round(bid + spread, 5)
-            
+
             # Update simulated P&L
             for t_id, pos in self.open_positions.items():
                 if pos['symbol'] == symbol:
                     diff = (bid - pos['open_price']) if pos['type'] == 'buy' else (pos['open_price'] - ask)
                     pos['pnl'] = round(diff * pos['volume'] * 100, 2)
 
-            return {"symbol": symbol, "bid": bid, "ask": ask, "time": datetime.utcnow().isoformat()}
+            return {"symbol": symbol, "bid": bid, "ask": ask, "time": datetime.utcnow().isoformat(), "status": "simulated", "warning": "MT5 غير متصل - النتائج محاكاة"}
+
+        if not self.connected:
+            return {}
 
         symbol_info = mt5.symbol_info_tick(symbol)
         if symbol_info is None:
@@ -122,9 +124,7 @@ class MT5Service:
 
     def get_history(self, symbol: str, timeframe: str, bars: int) -> list:
         """Returns historical OHLCV data"""
-        if not self.connected:
-            return []
-
+        # Return simulated history when in simulator mode
         if self.simulator_mode:
             history = []
             base_price = 2000.0 if "XAU" in symbol else 1.1000
@@ -143,6 +143,8 @@ class MT5Service:
                     "volume": random.randint(100, 1000)
                 })
             return history
+        if not self.connected:
+            return []
 
         # Map timeframe string to MT5 constant
         tf_map = {
@@ -170,10 +172,6 @@ class MT5Service:
 
     def place_order(self, symbol: str, order_type: str, volume: float, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> dict:
         """Places Market, Limit, or Stop order"""
-        if not self.connected:
-            return {"error": "Not connected"}
-
-        order_type = order_type.lower()
         if self.simulator_mode:
             self.ticket_counter += 1
             ticket = self.ticket_counter
@@ -254,8 +252,11 @@ class MT5Service:
                 self.open_positions[ticket]['sl'] = sl
                 self.open_positions[ticket]['tp'] = tp
                 logger.info(f"[Simulator] Modified {ticket}: SL={sl}, TP={tp}")
-                return {"status": "success", "ticket": ticket}
+                return {"status": "success", "ticket": ticket, "status_detail": "simulated"}
             return {"error": "Ticket not found"}
+
+        if not self.connected:
+            return {"error": "Not connected"}
 
         # For MT5, we need to know symbol and order type to modify
         position = mt5.positions_get(ticket=ticket)
@@ -279,9 +280,6 @@ class MT5Service:
 
     def close_position(self, ticket: int) -> dict:
         """Closes an open position"""
-        if not self.connected:
-            return {"error": "Not connected"}
-
         if self.simulator_mode:
             if ticket in self.open_positions:
                 pos = self.open_positions.pop(ticket)
@@ -289,6 +287,8 @@ class MT5Service:
                 logger.info(f"[Simulator] Closed {ticket}. PnL: {pos['pnl']}")
                 return {"status": "success", "ticket": ticket, "pnl": pos['pnl']}
             return {"error": "Ticket not found"}
+        if not self.connected:
+            return {"error": "Not connected"}
 
         position = mt5.positions_get(ticket=ticket)
         if not position:

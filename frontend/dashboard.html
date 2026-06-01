@@ -20,6 +20,7 @@
         .alert-item { display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 12px; margin-bottom: 10px; border-right: 3px solid var(--accent-blue); }
         .session-timeout { position: fixed; bottom: 20px; right: 20px; background: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; padding: 10px 20px; border-radius: 10px; font-size: 0.8rem; color: #ff4d4d; z-index: 1000; display: flex; align-items: center; gap: 10px; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -37,7 +38,7 @@
             </nav>
         </aside>
 
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="welcome-section card">
                 <div>
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; margin-bottom:18px;">
@@ -332,8 +333,13 @@
     <script src="js/api.js"></script>
     <script>
         function formatNumber(value) {
-            if (value === undefined || value === null || Number.isNaN(value)) return '-';
+            if (value === undefined || value === null || Number.isNaN(value)) return '--';
             return Number(value).toLocaleString('ar-EG');
+        }
+
+        function safeText(value) {
+            if (value === undefined || value === null || value === '') return '--';
+            return value;
         }
 
         function renderNewsTicker(items) {
@@ -448,17 +454,17 @@
             [totalEl, winsEl, lossesEl, rateEl, pnlEl].forEach(el => el.innerHTML = '<span class="skeleton skeleton-inline"></span>');
             try {
                 const stats = await api.getTodayStats();
-                totalEl.innerText = stats.total_trades;
-                winsEl.innerText = stats.wins;
-                lossesEl.innerText = stats.losses;
-                rateEl.innerText = `${stats.win_rate}%`;
-                pnlEl.innerText = `${stats.profit_loss >= 0 ? '+' : ''}${stats.profit_loss.toFixed(2)}$`;
+                totalEl.innerText = safeText(stats.total_trades);
+                winsEl.innerText = safeText(stats.wins);
+                lossesEl.innerText = safeText(stats.losses);
+                rateEl.innerText = stats.win_rate !== undefined && stats.win_rate !== null ? `${stats.win_rate}%` : '--';
+                pnlEl.innerText = stats.profit_loss !== undefined && stats.profit_loss !== null ? `${stats.profit_loss >= 0 ? '+' : ''}${stats.profit_loss.toFixed(2)}$` : '--';
             } catch (err) {
-                totalEl.innerText = '-';
-                winsEl.innerText = '-';
-                lossesEl.innerText = '-';
-                rateEl.innerText = '-';
-                pnlEl.innerText = '-';
+                totalEl.innerText = '--';
+                winsEl.innerText = '--';
+                lossesEl.innerText = '--';
+                rateEl.innerText = '--';
+                pnlEl.innerText = '--';
                 console.error('Today summary load error', err);
             }
         }
@@ -474,19 +480,19 @@
                 const stats = await api.getPerformanceStats();
                 periods.forEach(prefix => {
                     const data = stats[prefix] || {};
-                    document.getElementById(`${prefix}Total`).innerText = data.total;
-                    document.getElementById(`${prefix}Wins`).innerText = data.wins;
-                    document.getElementById(`${prefix}Losses`).innerText = data.losses;
-                    document.getElementById(`${prefix}Rate`).innerText = `${data.rate}%`;
-                    document.getElementById(`${prefix}PnL`).innerText = `${data.pnl >= 0 ? '+' : ''}${(data.pnl || 0).toFixed(2)}$`;
+                    document.getElementById(`${prefix}Total`).innerText = safeText(data.total);
+                    document.getElementById(`${prefix}Wins`).innerText = safeText(data.wins);
+                    document.getElementById(`${prefix}Losses`).innerText = safeText(data.losses);
+                    document.getElementById(`${prefix}Rate`).innerText = data.rate !== undefined && data.rate !== null ? `${data.rate}%` : '--';
+                    document.getElementById(`${prefix}PnL`).innerText = data.pnl !== undefined && data.pnl !== null ? `${data.pnl >= 0 ? '+' : ''}${data.pnl.toFixed(2)}$` : '--';
                 });
             } catch (err) {
                 ['weekly', 'monthly', 'yearly'].forEach(prefix => {
-                    document.getElementById(`${prefix}Total`).innerText = '-';
-                    document.getElementById(`${prefix}Wins`).innerText = '-';
-                    document.getElementById(`${prefix}Losses`).innerText = '-';
-                    document.getElementById(`${prefix}Rate`).innerText = '-';
-                    document.getElementById(`${prefix}PnL`).innerText = '-';
+                    document.getElementById(`${prefix}Total`).innerText = '--';
+                    document.getElementById(`${prefix}Wins`).innerText = '--';
+                    document.getElementById(`${prefix}Losses`).innerText = '--';
+                    document.getElementById(`${prefix}Rate`).innerText = '--';
+                    document.getElementById(`${prefix}PnL`).innerText = '--';
                 });
                 console.error('Performance summary load error', err);
             }
@@ -724,13 +730,36 @@
         document.getElementById('refreshTradeMoverBtn').addEventListener('click', loadTradeMover);
 
         async function loadAccountSummary() {
+            const accountEl = document.getElementById('accountBalanceDisplay');
+            const modeEl = document.getElementById('tradingModeDisplay');
+            const reportMessageEl = document.getElementById('dailyReportMessage');
+
+            accountEl.innerText = '--';
+            modeEl.innerText = '--';
+            reportMessageEl.innerText = 'جاري جلب بيانات الحساب...';
+
             try {
                 const summary = await api.getAccountSummary();
-                document.getElementById('accountBalanceDisplay').innerText = `$${Number(summary.account_balance || 0).toFixed(2)}`;
-                document.getElementById('tradingModeDisplay').innerText = summary.trading_mode || 'day';
+                accountEl.innerText = summary.account_balance !== undefined && summary.account_balance !== null ? `$${Number(summary.account_balance).toFixed(2)}` : '--';
+                modeEl.innerText = summary.trading_mode || '--';
+
+                const dailyReportSummary = summary.daily_report?.summary;
+                if (dailyReportSummary) {
+                    reportMessageEl.innerText = dailyReportSummary;
+                } else if (summary.daily_report?.report_date) {
+                    reportMessageEl.innerText = `تقرير ${summary.daily_report.report_date} جاهز.`;
+                } else {
+                    reportMessageEl.innerText = 'لا يوجد تقرير اليوم.';
+                }
+
                 await loadWatchlist();
-                await loadDailyReport();
+                if (!dailyReportSummary) {
+                    await loadDailyReport();
+                }
             } catch (err) {
+                accountEl.innerText = '--';
+                modeEl.innerText = '--';
+                reportMessageEl.innerText = 'فشل جلب بيانات الحساب.';
                 console.error('Account summary load error', err);
             }
         }
@@ -914,5 +943,6 @@
             });
         }
     </script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

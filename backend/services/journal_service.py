@@ -19,6 +19,18 @@ class JournalService:
             db.add(entry)
             db.commit()
             db.refresh(entry)
+            try:
+                from services.internal_brain import InternalBrain
+                InternalBrain().log_event_experience(
+                    component="journal",
+                    event_type="journal_entry",
+                    event_key=market,
+                    event_value=float(profit_loss or 0.0),
+                    metadata={"result": result},
+                    success=(str(result or "").lower() == "win")
+                )
+            except Exception:
+                pass
             return entry
         finally:
             db.close()

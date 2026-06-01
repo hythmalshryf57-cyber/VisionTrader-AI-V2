@@ -103,23 +103,9 @@ async def learn(payload: dict, db: Session = Depends(get_db), current_user: mode
     return {"status": "ok", "updated_strategies": len(supporting)}
 
 
-@router.get('/analysis/{analysis_id}')
-async def get_analysis(analysis_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    a = db.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
-    if not a:
-        raise HTTPException(status_code=404, detail='Analysis not found')
-    # Only owner or admin can view deleted analyses
-    if a.user_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail='Access denied')
-    return {
-        'id': a.id,
-        'user_id': a.user_id,
-        'market': a.market,
-        'description': a.description,
-        'result_json': a.result_json,
-        'is_deleted': bool(getattr(a, 'is_deleted', False)),
-        'created_at': a.created_at
-    }
+# NOTE: GET /analysis/latest and GET /analysis/{analysis_id} are defined in main.py
+# They are intentionally NOT duplicated here to avoid routing conflicts.
+# (A path-param route registered before a literal route would intercept it.)
 
 
 @router.post('/analysis/{analysis_id}/delete')

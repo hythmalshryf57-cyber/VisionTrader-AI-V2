@@ -497,3 +497,130 @@ img, video { max-width: 100%; height: auto; }
     box-shadow: 0 15px 40px rgba(0, 242, 254, 0.35);
 }
 
+/* =========================================================
+   Cyberpunk Cosmic Ocean Enhancements
+   ========================================================= */
+
+/* Body Background Update */
+body {
+    background: radial-gradient(circle at center, #0a0e1a 0%, #02030a 100%) !important;
+    background-attachment: fixed !important;
+}
+
+/* Cosmic Stars */
+.cosmic-star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 4px white, 0 0 10px var(--neon-aqua);
+    animation: twinkle linear infinite;
+}
+
+@keyframes twinkle {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(0.5); }
+}
+
+/* Glass & Neon for Cards */
+.card, .memory-card, .result-glass, .history-card, .login-card {
+    background: rgba(2, 3, 10, 0.45) !important;
+    backdrop-filter: blur(22px) !important;
+    -webkit-backdrop-filter: blur(22px) !important;
+    border: 1px solid rgba(0, 242, 254, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 242, 254, 0.05) !important;
+}
+.card:hover, .memory-card:hover, .history-card:hover {
+    border-color: rgba(0, 242, 254, 0.6) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 242, 254, 0.1) !important;
+}
+
+/* Neon Buttons Update */
+.btn-primary {
+    background: linear-gradient(135deg, var(--neon-aqua), var(--neon-purple)) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4), 0 0 10px rgba(0, 242, 254, 0.4) !important;
+    color: white !important;
+    text-shadow: 0 0 5px rgba(255,255,255,0.5) !important;
+}
+
+/* Ripple Effect */
+.ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple-animation 0.6s linear;
+    background-color: rgba(255, 255, 255, 0.7);
+    pointer-events: none;
+    width: 100px;
+    height: 100px;
+    margin-top: -50px;
+    margin-left: -50px;
+}
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Tables styling */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+tr {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+tr:hover {
+    background: rgba(0, 242, 254, 0.1);
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+    transform: scale(1.01);
+}
+td, th {
+    padding: 12px 16px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Shimmer on Load */
+.shimmer-card {
+    position: relative;
+    overflow: hidden;
+}
+.shimmer-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -150%;
+    width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+    transform: skewX(-20deg);
+    animation: shimmer-swipe 0.8s ease-out;
+    pointer-events: none;
+    z-index: 10;
+}
+@keyframes shimmer-swipe {
+    100% { left: 150%; }
+}
+
+/* Pulse alert */
+.pulse-alert {
+    animation: alert-pulse 2s infinite;
+}
+@keyframes alert-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+}
+
+/* Fade in for main content */
+.app-layout > main, .fade-in-container {
+    animation: fadeInPage 0.8s ease-out forwards;
+}
+@keyframes fadeInPage {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+

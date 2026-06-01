@@ -1,14 +1,18 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 import uuid
 from config import settings
-from database import get_db
-from models import InviteCode
+from database import get_db, SessionLocal
+from models import InviteCode, JournalEntry
 from sqlalchemy.orm import Session
+from services.auto_scanner import auto_scanner
+from services.voting_engine import voting_engine
+import models
 
 logging.basicConfig(level=logging.INFO)
 
@@ -53,14 +57,121 @@ async def payment_methods(message: types.Message):
 @dp.message_handler(commands=['help'])
 async def help(message: types.Message):
     await message.reply(
-        "أسئلة شائعة:\n\n"
-        "❓ كيف أحصل على التطبيق؟\n"
-        "أرسل إثبات الدفع بعد /buy\n\n"
-        "❓ كم يستغرق المراجعة؟\n"
-        "24 ساعة كحد أقصى\n\n"
-        "❓ مشكلة في الدفع؟\n"
-        "اتصل بالدعم: @support"
+        "بوت VisionTrader AI جاهز للعمل.\n\n"
+        "الأوامر المدعومة:\n"
+        "/start - ابدأ المحادثة\n"
+        "/status - حالة الماسح الضوئي\n"
+        "/scan <رمز> - فحص سريع لسوق محدد\n"
+        "/top - أفضل 3 فرص حالياً\n"
+        "/performance - أداء التداول الأخير\n"
+        "/daily - تقرير الأداء اليومي\n"
+        "\nللدفع: /buy"
     )
+
+@dp.message_handler(commands=['status'])
+async def status(message: types.Message):
+    is_running = getattr(auto_scanner, 'is_running', False)
+    await message.reply(f"حالة الماسح الضوئي: {'قيد التشغيل' if is_running else 'متوقف'}")
+
+@dp.message_handler(commands=['top'])
+async def top_opportunities(message: types.Message):
+    opportunities = auto_scanner.get_top_opportunities()
+    if not opportunities:
+        await message.reply("لا توجد فرص مميزة حالياً.")
+        return
+    lines = ["أفضل 3 فرص حالياً:"]
+    for item in opportunities:
+        lines.append(
+            f"{item['market']}: {item['recommendation']} ({item['confidence']}%)\n"
+            f"Entry: {item['entry']} SL: {item['sl']} TP: {item['tp']}"
+        )
+    await message.reply("\n\n".join(lines))
+
+@dp.message_handler(commands=['scan'])
+async def scan(message: types.Message):
+    args = message.get_args().strip() if hasattr(message, 'get_args') else ''
+    symbol = args.split()[0].upper() if args else ''
+    if not symbol:
+        await message.reply("يرجى استخدام /scan <رمز>. مثال: /scan XAUUSD")
+        return
+
+    if symbol not in auto_scanner.MARKETS:
+        await message.reply(f"السوق '{symbol}' غير مدعوم. استخدم رمز واحد من: {', '.join(auto_scanner.MARKETS)}")
+        return
+
+    try:
+        simulated_visual = [{"description": f"Manual scan for {symbol}."}]
+        result = voting_engine.analyze(simulated_visual)
+        rec = result.get('recommendation', 'محايد')
+        conf = int(result.get('confidence', 0))
+
+        if rec not in ['شراء', 'بيع'] or conf < 60:
+            await message.reply(f"لا يوجد إشارة قوية على {symbol} الآن. ({rec} - {conf}%)")
+            return
+
+        levels = auto_scanner._build_trade_levels(symbol, rec)
+        await message.reply(
+            f"🔎 نتيجة الفحص السريع لـ {symbol}:\n"
+            f"توصية: {rec}\n"
+            f"ثقة: {conf}%\n"
+            f"السعر الحالي: {levels['entry']}\n"
+            f"SL: {levels['sl']}\n"
+            f"TP: {levels['tp']}"
+        )
+    except Exception as e:
+        await message.reply(f"فشل الفحص السريع: {e}")
+
+def _build_trading_stats(period_days: int):
+    session = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=period_days)
+        entries = session.query(JournalEntry).filter(JournalEntry.date >= cutoff).all()
+        total = len(entries)
+        wins = len([e for e in entries if str(e.result).lower() == 'win'])
+        losses = len([e for e in entries if str(e.result).lower() == 'loss'])
+        pnl = sum((e.profit_loss or 0.0) for e in entries)
+        return {
+            'total': total,
+            'wins': wins,
+            'losses': losses,
+            'win_rate': int((wins / total * 100) if total else 0),
+            'pnl': pnl,
+        }
+    finally:
+        session.close()
+
+@dp.message_handler(commands=['performance'])
+async def performance(message: types.Message):
+    weekly = _build_trading_stats(7)
+    monthly = _build_trading_stats(30)
+    await message.reply(
+        f"📊 أداء التداول:\n"
+        f"هذا الأسبوع: {weekly['total']} صفقات، {weekly['wins']} رابحة، {weekly['losses']} خاسرة، نسبة نجاح {weekly['win_rate']}%، PnL {weekly['pnl']:.2f}$\n"
+        f"هذا الشهر: {monthly['total']} صفقات، {monthly['wins']} رابحة، {monthly['losses']} خاسرة، نسبة نجاح {monthly['win_rate']}%، PnL {monthly['pnl']:.2f}$"
+    )
+
+@dp.message_handler(commands=['daily'])
+async def daily_report(message: types.Message):
+    session = SessionLocal()
+    try:
+        since = datetime.utcnow() - timedelta(days=1)
+        entries = session.query(JournalEntry).filter(JournalEntry.date >= since).all()
+        if not entries:
+            await message.reply("لا توجد بيانات تداول خلال الـ 24 ساعة الماضية.")
+            return
+        total = len(entries)
+        wins = len([e for e in entries if str(e.result).lower() == 'win'])
+        losses = len([e for e in entries if str(e.result).lower() == 'loss'])
+        pnl = sum((e.profit_loss or 0.0) for e in entries)
+        await message.reply(
+            f"📅 تقرير يومي:\n"
+            f"الصفقات: {total}\n"
+            f"رابحة: {wins}\n"
+            f"خاسرة: {losses}\n"
+            f"PnL: {pnl:.2f}$"
+        )
+    finally:
+        session.close()
 
 @dp.message_handler(content_types=['photo'])
 async def handle_payment_proof(message: types.Message):

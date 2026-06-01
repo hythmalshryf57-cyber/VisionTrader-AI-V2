@@ -23,6 +23,7 @@
         .performance-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
         .metric { text-align: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -37,7 +38,7 @@
             </nav>
         </aside>
 
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="welcome-section">
                 <div>
                     <h1><i class="fas fa-industry"></i> مصنع الاستراتيجيات المتقدم</h1>
@@ -118,6 +119,7 @@
                                 وزن: <span id="powerWeightDisplay">40%</span>
                             </span>
                         </div>
+                        <div id="strategyError" style="display: none; margin-bottom: 16px; padding: 12px; border-radius: 10px; background: rgba(255, 75, 75, 0.12); color: #ff5e5e; font-size: 0.95rem;"></div>
                         <div class="strategy-grid" id="powerStrategies">
                             <!-- سيتم تعبئته بالجافا سكريبت -->
                         </div>
@@ -166,84 +168,98 @@
         let killSwitchActive = false;
         let ghostTestingActive = false;
 
-        // بيانات الاستراتيجيات لكل عنقود
-        const strategies = {
-            power: [
-                { name: 'ICT Strategy', description: 'Smart Money Concepts', performance: 89 },
-                { name: 'Crypto Whales', description: 'Large order tracking', performance: 76 },
-                { name: 'Liquidation Heatmap', description: 'Stop loss clustering', performance: 82 },
-                { name: 'VSA', description: 'Volume Spread Analysis', performance: 91 },
-                { name: 'Order Flow', description: 'Tape reading', performance: 78 },
-                { name: 'Composite Operator', description: 'Dark pool activity', performance: 85 },
-                { name: 'VPIN Toxicity', description: 'Market toxicity index', performance: 73 }
-            ],
-            geometric: [
-                { name: 'Elliott Wave', description: 'Wave pattern analysis', performance: 84 },
-                { name: 'Fibonacci', description: 'Golden ratio levels', performance: 88 },
-                { name: 'Harmonic Patterns', description: 'Geometric patterns', performance: 79 },
-                { name: 'Wyckoff', description: 'Accumulation/Distribution', performance: 86 },
-                { name: 'Market Profile', description: 'Volume profile', performance: 81 },
-                { name: 'Auction Market', description: 'Fair value analysis', performance: 77 }
-            ],
-            momentum: [
-                { name: 'RSI', description: 'Relative Strength Index', performance: 83 },
-                { name: 'MACD', description: 'Moving Average Convergence', performance: 87 },
-                { name: 'Stochastic', description: 'Oscillator analysis', performance: 80 },
-                { name: 'Bollinger Bands', description: 'Volatility bands', performance: 85 },
-                { name: 'Moving Averages', description: 'Trend following', performance: 82 },
-                { name: 'Mean Reversion', description: 'Price normalization', performance: 75 },
-                { name: 'Price Action', description: 'Raw price movement', performance: 89 }
-            ]
-        };
+        function getSavedStrategyWeight(cluster, strategyName) {
+            const weights = JSON.parse(localStorage.getItem(`strategyWeights_${cluster}`) || '{}');
+            return weights[strategyName] !== undefined ? parseFloat(weights[strategyName]) : 1.0;
+        }
 
-        function loadStrategies() {
-            // Power Cluster
+        function renderStrategyCards(container, cluster, list) {
+            container.innerHTML = list.map(strategy => {
+                const performance = Number(strategy.win_rate ?? strategy.performance ?? 0);
+                const description = strategy.description || (strategy.total_trades ? `${strategy.total_trades} صفقة سجلت` : 'أداء الاستراتيجية في النظام.');
+                const idName = strategy.name.replace(/\s+/g, '-');
+                const savedWeight = getSavedStrategyWeight(cluster, strategy.name);
+                return `
+                    <div class="strategy-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <h4 style="margin: 0; font-size: 1rem;">${strategy.name}</h4>
+                            <input type="range" min="0" max="2" step="0.1" value="${savedWeight}" style="width: 60px;" onchange="updateStrategyWeight('${cluster}', '${strategy.name}', this.value)">
+                        </div>
+                        <p style="color: #888; font-size: 0.8rem; margin: 5px 0;">${description}</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <small style="color: ${performance > 80 ? '#00ff88' : performance > 70 ? '#ffd700' : '#ff4d4d'};">${performance}% دقة</small>
+                            <span style="font-size: 0.8rem; color: #666;">وزن: <span id="weight-${cluster}-${idName}">${savedWeight.toFixed(1)}x</span></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function assignCluster(name) {
+            const keyword = (name || '').toLowerCase();
+            if (/ict|order flow|vsa|liquidity|dark pool|whale|composite|toxic|tape|volume|smart money|price action|relative strength|moving average|macd|stochastic|bollinger/.test(keyword)) {
+                return 'power';
+            }
+            if (/elliott|fibonacci|harmonic|wyckoff|market profile|auction|pattern|geometric|fractal|fair value|structure|levels/.test(keyword)) {
+                return 'geometric';
+            }
+            return 'momentum';
+        }
+
+        async function loadStrategies() {
             const powerContainer = document.getElementById('powerStrategies');
-            powerContainer.innerHTML = strategies.power.map(strategy => `
-                <div class="strategy-card">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                        <h4 style="margin: 0; font-size: 1rem;">${strategy.name}</h4>
-                        <input type="range" min="0" max="2" step="0.1" value="1.0" style="width: 60px;" onchange="updateStrategyWeight('power', '${strategy.name}', this.value)">
-                    </div>
-                    <p style="color: #888; font-size: 0.8rem; margin: 5px 0;">${strategy.description}</p>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <small style="color: ${strategy.performance > 80 ? '#00ff88' : strategy.performance > 70 ? '#ffd700' : '#ff4d4d'};">${strategy.performance}% دقة</small>
-                        <span style="font-size: 0.8rem; color: #666;">وزن: <span id="weight-power-${strategy.name.replace(/\s+/g, '-')}">1.0x</span></span>
-                    </div>
-                </div>
-            `).join('');
-
-            // Geometric Cluster
             const geometricContainer = document.getElementById('geometricStrategies');
-            geometricContainer.innerHTML = strategies.geometric.map(strategy => `
-                <div class="strategy-card">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                        <h4 style="margin: 0; font-size: 1rem;">${strategy.name}</h4>
-                        <input type="range" min="0" max="2" step="0.1" value="1.0" style="width: 60px;" onchange="updateStrategyWeight('geometric', '${strategy.name}', this.value)">
-                    </div>
-                    <p style="color: #888; font-size: 0.8rem; margin: 5px 0;">${strategy.description}</p>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <small style="color: ${strategy.performance > 80 ? '#00ff88' : strategy.performance > 70 ? '#ffd700' : '#ff4d4d'};">${strategy.performance}% دقة</small>
-                        <span style="font-size: 0.8rem; color: #666;">وزن: <span id="weight-geometric-${strategy.name.replace(/\s+/g, '-')}">1.0x</span></span>
-                    </div>
-                </div>
-            `).join('');
-
-            // Momentum Cluster
             const momentumContainer = document.getElementById('momentumStrategies');
-            momentumContainer.innerHTML = strategies.momentum.map(strategy => `
-                <div class="strategy-card">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                        <h4 style="margin: 0; font-size: 1rem;">${strategy.name}</h4>
-                        <input type="range" min="0" max="2" step="0.1" value="1.0" style="width: 60px;" onchange="updateStrategyWeight('momentum', '${strategy.name}', this.value)">
-                    </div>
-                    <p style="color: #888; font-size: 0.8rem; margin: 5px 0;">${strategy.description}</p>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <small style="color: ${strategy.performance > 80 ? '#00ff88' : strategy.performance > 70 ? '#ffd700' : '#ff4d4d'};">${strategy.performance}% دقة</small>
-                        <span style="font-size: 0.8rem; color: #666;">وزن: <span id="weight-momentum-${strategy.name.replace(/\s+/g, '-')}">1.0x</span></span>
-                    </div>
-                </div>
-            `).join('');
+            const errorElement = document.getElementById('strategyError');
+
+            const loadingHtml = '<div class="strategy-card" style="opacity:0.85;"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الاستراتيجيات...</div>';
+            powerContainer.innerHTML = loadingHtml;
+            geometricContainer.innerHTML = loadingHtml;
+            momentumContainer.innerHTML = loadingHtml;
+            if (errorElement) {
+                errorElement.style.display = 'none';
+                errorElement.textContent = '';
+            }
+
+            try {
+                const response = await api.getSystemStrategies();
+                const strategyList = Array.isArray(response.strategies) ? response.strategies : [];
+                if (!strategyList.length) {
+                    throw new Error('لا توجد استراتيجيات متاحة.');
+                }
+
+                const groups = { power: [], geometric: [], momentum: [] };
+                strategyList.forEach(strategy => {
+                    const cluster = assignCluster(strategy.name);
+                    groups[cluster].push(strategy);
+                });
+
+                const unassigned = strategyList.filter(strategy => !groups.power.includes(strategy) && !groups.geometric.includes(strategy) && !groups.momentum.includes(strategy));
+                unassigned.forEach((strategy, idx) => {
+                    const cluster = idx % 3 === 0 ? 'power' : idx % 3 === 1 ? 'geometric' : 'momentum';
+                    groups[cluster].push(strategy);
+                });
+
+                if (!groups.power.length && !groups.geometric.length && !groups.momentum.length) {
+                    powerContainer.innerHTML = geometricContainer.innerHTML = momentumContainer.innerHTML = '<div class="strategy-card" style="opacity:0.85;">لا توجد استراتيجيات متاحة.</div>';
+                    return;
+                }
+
+                renderStrategyCards(powerContainer, 'power', groups.power);
+                renderStrategyCards(geometricContainer, 'geometric', groups.geometric);
+                renderStrategyCards(momentumContainer, 'momentum', groups.momentum);
+            } catch (error) {
+                const message = error?.message || 'تعذر تحميل الاستراتيجيات. حاول مرة أخرى لاحقاً.';
+                const fallbackHtml = `<div class="strategy-card" style="opacity:0.85;">${message}</div>`;
+                powerContainer.innerHTML = fallbackHtml;
+                geometricContainer.innerHTML = fallbackHtml;
+                momentumContainer.innerHTML = fallbackHtml;
+                if (errorElement) {
+                    errorElement.style.display = 'block';
+                    errorElement.textContent = message;
+                }
+                console.warn('Strategy load error:', error);
+            }
         }
 
         function updateWeights() {
@@ -351,5 +367,6 @@
             });
         }
     </script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

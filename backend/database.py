@@ -34,8 +34,25 @@ def _test_engine(engine):
 
 
 def _resolve_engine():
-    db_url = settings.DATABASE_URL
+    db_url = (settings.DATABASE_URL or "").strip()
 
+    # If DATABASE_URL is empty, allow explicit development fallback only.
+    if not db_url:
+        env = os.getenv("ENV", os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "production"))).lower()
+        if env in ("development", "dev", "local", "testing"):
+            fallback_url = DEFAULT_SQLITE_URL
+            print("No DATABASE_URL set. Using local SQLite database for development:", fallback_url)
+            return _create_sqlalchemy_engine(fallback_url)
+        raise RuntimeError(
+            "DATABASE_URL is not configured. In production a PostgreSQL DATABASE_URL must be provided."
+        )
+
+    # If a sqlite URL is explicitly provided, use it (development).
+    if _is_sqlite_url(db_url):
+        print("Using local SQLite database:", db_url)
+        return _create_sqlalchemy_engine(db_url)
+
+    # At this point we expect a PostgreSQL-style URL. Try Supabase/Postgres first if available.
     if supabase_client and not _is_sqlite_url(db_url):
         try:
             engine = _create_sqlalchemy_engine(db_url)
@@ -43,20 +60,27 @@ def _resolve_engine():
             print("Using Supabase/PostgreSQL database:", db_url)
             return engine
         except Exception as exc:
-            print("Supabase/PostgreSQL connection failed:", str(exc))
+            env = os.getenv("ENV", os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "production"))).lower()
+            if env in ("development", "dev", "local", "testing"):
+                print("Supabase/PostgreSQL connection failed; falling back to local SQLite for development:", str(exc))
+                return _create_sqlalchemy_engine(DEFAULT_SQLITE_URL)
+            raise RuntimeError(f"Supabase/PostgreSQL connection failed in production: {exc}")
 
-    if not _is_sqlite_url(db_url):
-        try:
-            engine = _create_sqlalchemy_engine(db_url)
-            _test_engine(engine)
-            print("Using configured PostgreSQL database:", db_url)
-            return engine
-        except Exception as exc:
-            print("PostgreSQL connection failed:", str(exc))
-
-    fallback_url = DEFAULT_SQLITE_URL
-    print("Falling back to local SQLite database:", fallback_url)
-    return _create_sqlalchemy_engine(fallback_url)
+    # Try connecting to the configured PostgreSQL database directly.
+    try:
+        engine = _create_sqlalchemy_engine(db_url)
+        _test_engine(engine)
+        print("Using configured PostgreSQL database:", db_url)
+        return engine
+    except Exception as exc:
+        env = os.getenv("ENV", os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "production"))).lower()
+        if env in ("development", "dev", "local", "testing"):
+            print("PostgreSQL connection failed; falling back to local SQLite for development:", str(exc))
+            return _create_sqlalchemy_engine(DEFAULT_SQLITE_URL)
+        # In production do not silently fallback — raise a clear error.
+        raise RuntimeError(
+            f"PostgreSQL connection failed in production: {exc}. Please verify DATABASE_URL and database availability."
+        )
 
 
 engine = _resolve_engine()

@@ -26,6 +26,7 @@
         .agent-icon { font-size: 1.5rem; margin-bottom: 10px; }
         .agent-status { font-size: 0.8rem; margin-top: 5px; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -42,7 +43,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="welcome-section">
                 <h1><i class="fas fa-dna"></i> Evolution Dashboard</h1>
                 <p>مراقبة التطور الذاتي للاستراتيجيات والوكلاء (Cosmic Ocean Design)</p>
@@ -263,5 +264,6 @@
             })
             .catch(err => console.log("Mock data used for history table."));
     </script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

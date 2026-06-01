@@ -135,6 +135,8 @@ def deploy(strategy_path: str, cluster_name: str = "default", original_to_archiv
             "cluster": cluster_name,
             "deployed_path": str(dest)
         })
+        from services.voting_engine import strategy_loader
+        strategy_loader.refresh_if_needed(force=True)
         return True
     except Exception as e:
         logger.error(f"Failed to deploy strategy {strategy_path}: {e}")
@@ -165,15 +167,12 @@ def request_approval(strategy_name: str, report: Dict[str, Any], new_path: str, 
     msg += f"Sharpe: {sharpe}\nWin Rate: {win_rate}%\nThreshold: {dynamic_threshold}\n"
 
     if sharpe > dynamic_threshold:
-        auto_approve = True
-        msg += f"✅ *Auto-Approved* (Sharpe > {dynamic_threshold})"
-        logger.info(f"Auto-approved based on Sharpe > {dynamic_threshold}")
+        # Eligible by sharpe but auto-approval is disabled to ensure manual confirmation.
+        msg += f"ℹ️ Eligible for auto-approval (Sharpe > {dynamic_threshold}) but manual approval is REQUIRED."
+        logger.info(f"Eligible for approval but auto-approve disabled; awaiting explicit manual approval (Sharpe > {dynamic_threshold})")
     else:
         msg += "⚠️ *Manual Approval Required*\nPlease approve deployment."
-        logger.info("Requires manual approval. Simulating manual approval for demo purposes.")
-        # هنا في النظام الحقيقي، سنرسل تلغرام وننتظر الموافقة. 
-        # للمحاكاة سنوافق عليها.
-        auto_approve = True
+        logger.info("Requires manual approval. Auto-approval disabled — will NOT deploy without explicit consent.")
 
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     if telegram_service and chat_id:
@@ -181,26 +180,8 @@ def request_approval(strategy_name: str, report: Dict[str, Any], new_path: str, 
     else:
         logger.info(f"[Telegram Notification Mock]\n{msg}")
 
-    if auto_approve:
-        success = deploy(new_path, cluster_name, original_to_archive=original_path)
-        
-        if brain:
-            brain.log_event_experience(
-                component="controlled_deployer",
-                event_type="deployment_threshold",
-                event_key=strategy_name,
-                event_value=dynamic_threshold,
-                metadata={"sharpe": sharpe, "win_rate": win_rate},
-                success=success
-            )
-
-        if success:
-            logger.info("Deployment successful.")
-            return True
-        else:
-            logger.error("Deployment failed.")
-            return False
-    
+    # Auto-approve is disabled to enforce explicit manual approval before deployment.
+    logger.info("Deployment not executed automatically. Awaiting explicit manual approval to proceed.")
     return False
 
 

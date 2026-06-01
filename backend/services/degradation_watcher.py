@@ -283,6 +283,14 @@ class DegradationWatcher:
         # 2. Test (Sandbox Tester)
         logger.info("[Step 2] Testing evolved strategy in Sandbox...")
         new_results = test_strategy(str(saved_path), days=5)
+
+        # 2.5. Code Review
+        logger.info("[Step 2.5] Reviewing evolved strategy with Code Review Agent...")
+        from services.code_review_agent import CodeReviewAgent
+        review_result = CodeReviewAgent().review(str(saved_path))
+        if review_result.get("status") == "rejected":
+            logger.error("Evolved strategy failed code review. Halting evolution cycle.")
+            return
         
         # 3. Deploy (Controlled Deployer)
         logger.info("[Step 3] Requesting deployment approval...")

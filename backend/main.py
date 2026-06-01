@@ -43,6 +43,8 @@ from services.binance_service import BinanceService
 from services.internal_brain import InternalBrain
 from services.tradingview_service import TradingViewService
 from services.telegram_service import telegram_service
+from services.agent_manager import AgentManager
+from services.backtest_engine import backtest_engine
 
 # Temporarily disable social sentiment service due to recursion error
 # from services.social_sentiment import social_sentiment_service
@@ -104,6 +106,7 @@ smart_orders_service = SmartOrdersService()
 binance_service = BinanceService()
 tradingview_service = TradingViewService()
 internal_brain_service = InternalBrain()
+agent_manager = AgentManager()
 
 # Create tables
 models.Base.metadata.create_all(bind=engine)
@@ -295,6 +298,59 @@ async def track_request_metrics(request: Request, call_next):
     except Exception as exc:
         SYSTEM_METRICS["last_error"] = f"{datetime.utcnow().isoformat()} - {type(exc).__name__}: {str(exc)}"
         raise
+
+
+# Start a shared BinanceWebSocketService at app startup and attach it to module-level binance_service
+shared_ws = None
+
+@app.on_event("startup")
+async def start_shared_ws():
+    global shared_ws, binance_service
+    try:
+        from services.websocket_service import BinanceWebSocketService
+        import services.binance_service as bin_mod
+
+        symbols_env = os.getenv("WS_SYMBOLS", "BTCUSDT,ETHUSDT,BNBUSDT")
+        symbols = [s.strip().upper() for s in symbols_env.split(",") if s.strip()]
+        if not symbols:
+            logger.info("No WS_SYMBOLS configured; skipping shared websocket startup")
+            return
+
+        shared_ws = BinanceWebSocketService(symbols)
+        try:
+            bin_mod.binance_service.ws_service = shared_ws
+        except Exception:
+            logger.exception("Failed to attach ws_service to module-level binance_service")
+        try:
+            # Prefer module-level instance for main module usage
+            binance_service = bin_mod.binance_service
+        except Exception:
+            pass
+
+        asyncio.create_task(shared_ws.start())
+        logger.info("Started shared BinanceWebSocketService for symbols: %s", symbols)
+    except Exception as e:
+        logger.exception("Failed to initialize shared websocket: %s", e)
+
+    # Start DegradationWatcher if available
+    try:
+        from services.degradation_watcher import DegradationWatcher
+        degr = DegradationWatcher()
+        degr.start()
+        logger.info("DegradationWatcher started")
+    except Exception:
+        logger.exception("Failed to start DegradationWatcher (optional)")
+
+
+@app.on_event("shutdown")
+async def stop_shared_ws():
+    global shared_ws
+    try:
+        if shared_ws:
+            await shared_ws.stop()
+            logger.info("Shared BinanceWebSocketService stopped")
+    except Exception as e:
+        logger.exception("Error stopping shared websocket: %s", e)
 
 # Mount Frontend later so API routes are registered before the static catch-all
 candidate_frontend_paths = [
@@ -627,12 +683,33 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
             "chart_data": payload.get("chart_data")
         })
 
+    if binance_service.ws_service:
+        symbol = market.upper().replace("/", "").replace("-", "")
+        live_data = binance_service.ws_service.get_live_data(symbol)
+        if live_data:
+            visual_context.append({
+                "order_book": {
+                    "bids": live_data.get("bids", []),
+                    "asks": live_data.get("asks", [])
+                },
+                "recent_trades": live_data.get("recent_trades", [])
+            })
+
     memory_matches = vector_memory.find_similar(visual_description, top_k=3, db=db)
     memory_insight = vector_memory.get_insight(visual_description, db=db)
 
+    # Run AgentManager first and use orchestrator weights for VotingEngine
+    orchestrator_weights = None
+    try:
+        unified_data = voting_engine.data_adapter.normalize_input(visual_context, market)
+        agent_payload = agent_manager.run(unified_data)
+        orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
+    except Exception:
+        logger.exception("AgentManager pre-analysis failed")
+
     try:
         result = await asyncio.wait_for(
-            asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id),
+            asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id, orchestrator_weights=orchestrator_weights),
             timeout=12
         )
     except asyncio.TimeoutError:
@@ -677,6 +754,57 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
     cache_service.cache_analysis(market, payload_hash, result)
     return result
 
+@app.get("/api/analysis/latest")
+def get_latest_analysis(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    analysis = db.query(models.Analysis).filter(
+        models.Analysis.user_id == current_user.id,
+        models.Analysis.is_deleted == False
+    ).order_by(models.Analysis.created_at.desc(), models.Analysis.id.desc()).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="No analysis found")
+
+    result_data = analysis.result_json
+    if result_data:
+        try:
+            result_data = json.loads(result_data)
+        except Exception:
+            pass
+
+    return {
+        "id": analysis.id,
+        "market": analysis.market,
+        "image_path": analysis.image_path,
+        "description": analysis.description,
+        "result": result_data,
+        "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
+    }
+
+@app.get("/api/analysis/{analysis_id}")
+def get_analysis_by_id(analysis_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    analysis = db.query(models.Analysis).filter(
+        models.Analysis.id == analysis_id,
+        models.Analysis.user_id == current_user.id,
+        models.Analysis.is_deleted == False
+    ).first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="No analysis found")
+
+    result_data = analysis.result_json
+    if result_data:
+        try:
+            result_data = json.loads(result_data)
+        except Exception:
+            pass
+
+    return {
+        "id": analysis.id,
+        "market": analysis.market,
+        "image_path": analysis.image_path,
+        "description": analysis.description,
+        "result": result_data,
+        "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
+    }
+
 @app.post("/api/analysis/mentor")
 async def mentor_chat(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
     return {
@@ -707,17 +835,20 @@ def clear_cache(current_user: models.User = Depends(auth.get_current_user)):
 # --- Journal & Stats ---
 @app.post("/api/journal")
 def add_journal(entry: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    required = ['market','recommendation','result']
+    required = ['market', 'result']
     for k in required:
         if k not in entry:
             raise HTTPException(status_code=400, detail=f"Field {k} is required")
+
+    recommendation = entry.get('recommendation') or "No recommendation provided"
     profit = entry.get('pnl') if 'pnl' in entry else entry.get('profit_loss')
     if profit is None:
-        raise HTTPException(status_code=400, detail="Field pnl or profit_loss is required")
+        profit = 0.0
+
     return journal_service.add_entry(
         user_id=current_user.id,
         market=entry['market'],
-        recommendation=entry['recommendation'],
+        recommendation=recommendation,
         result=entry['result'],
         profit_loss=profit,
         notes=entry.get('notes'),
@@ -1331,6 +1462,50 @@ def tradingview_fetch(payload: dict, current_user: models.User = Depends(auth.ge
     return tradingview_service.fetch_and_analyze(url)
 
 
+@app.get("/api/debug/integration")
+def debug_integration():
+    """Return minimal integration status for local testing.
+
+    - Whether shared websocket is attached
+    - Subset of symbols and their cumulative delta (if available)
+    - List of registered agent names
+    """
+    try:
+        import services.binance_service as bin_mod
+        ws = getattr(bin_mod.binance_service, "ws_service", None)
+        ws_present = ws is not None
+        symbols = getattr(ws, "symbols", []) if ws_present else []
+        sample = {}
+        if ws_present and hasattr(ws, 'get_live_data'):
+            for s in symbols[:8]:
+                try:
+                    d = ws.get_live_data(s) or {}
+                    sample[s] = {
+                        "cumulative_delta": d.get("cumulative_delta"),
+                        "price": d.get("price")
+                    }
+                except Exception:
+                    sample[s] = None
+    except Exception:
+        ws_present = False
+        symbols = []
+        sample = {}
+
+    try:
+        from services.agent_manager import AgentManager
+        mgr = AgentManager()
+        agent_names = [a.name for a in mgr.agents]
+    except Exception:
+        agent_names = []
+
+    return {
+        "ws_attached": ws_present,
+        "symbols": symbols,
+        "sample_live": sample,
+        "agents": agent_names
+    }
+
+
 # === نظام تتبع الصفقات الحية ===
 
 @app.get("/api/trade/active")
@@ -1587,23 +1762,26 @@ def calendar_high_impact(minutes: int = 15, current_user: models.User = Depends(
 
 @app.post("/api/backtest/run")
 def run_backtest(payload: dict, current_user: models.User = Depends(auth.get_current_user)):
-    market = payload.get("market", "Unknown")
-    timeframe = payload.get("timeframe", "1d")
+    market = payload.get("market")
+    timeframe = payload.get("timeframe")
     start_date = payload.get("start_date")
     end_date = payload.get("end_date")
-    trades_count = max(0, int(abs(hash(market + timeframe + str(start_date) + str(end_date))) % 50))
-    win_rate = round(40 + (trades_count % 60) * 0.8, 1)
-    profit_loss = round((trades_count * (win_rate / 100.0) - trades_count * ((100 - win_rate) / 100.0)) * 10, 2)
-    return {
-        "market": market,
-        "timeframe": timeframe,
-        "start_date": start_date,
-        "end_date": end_date,
-        "trades_count": trades_count,
-        "win_rate": min(100.0, win_rate),
-        "profit_loss": profit_loss,
-        "note": "هذه نتائج اختبار تاريخي تجريبية. يمكن استبدالها بمنطق backtest واقعي لاحقاً."
-    }
+    if not market or not start_date or not end_date:
+        raise HTTPException(status_code=400, detail="market, start_date, and end_date are required")
+
+    try:
+        report = backtest_engine.run_backtest(
+            market=market,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=float(payload.get("initial_capital", 10000.0)),
+            simulations=int(payload.get("simulations", 1000)),
+            n_windows=int(payload.get("n_windows", 5)),
+        )
+        return report
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 # --- New Features 2.0 ---
 @app.post("/api/voice/command")

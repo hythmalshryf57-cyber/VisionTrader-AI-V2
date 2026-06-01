@@ -20,6 +20,7 @@ class BinanceWebSocketService:
         self.running = False
         self.data = defaultdict(dict)  # Store live data per symbol
         self.cumulative_delta = defaultdict(float)
+        self.recent_trades = defaultdict(list)
         self.callbacks = defaultdict(list)  # Callbacks for different events
         self.reconnect_delay = 5  # seconds
         self.ping_interval = 30  # seconds
@@ -122,6 +123,7 @@ class BinanceWebSocketService:
 
         self.data[symbol]['bids'] = bids
         self.data[symbol]['asks'] = asks
+        self.data[symbol]['order_book'] = {'bids': bids, 'asks': asks}
 
         # Monitor spread
         if bids and asks:
@@ -141,6 +143,16 @@ class BinanceWebSocketService:
         delta = qty if not is_buyer_maker else -qty
         self.cumulative_delta[symbol] += delta
         self.data[symbol]['cumulative_delta'] = self.cumulative_delta[symbol]
+        self.recent_trades[symbol].append({
+            'price': price,
+            'qty': qty,
+            'delta': delta,
+            'timestamp': data.get('T'),
+            'is_buyer_maker': is_buyer_maker
+        })
+        if len(self.recent_trades[symbol]) > 200:
+            self.recent_trades[symbol] = self.recent_trades[symbol][-200:]
+        self.data[symbol]['recent_trades'] = list(self.recent_trades[symbol])
 
         # Whale alert
         usd_value = price * qty

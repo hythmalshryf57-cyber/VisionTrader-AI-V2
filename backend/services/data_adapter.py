@@ -44,7 +44,9 @@ class DataAdapter:
             'trend_strength': None,
             'source_types': [],
             'raw_text': [],
-            'image_paths': []
+            'image_paths': [],
+            'cumulative_delta': None,
+            'delta_series': []
         }
         issues: List[str] = []
 
@@ -63,6 +65,23 @@ class DataAdapter:
                 chart_data['raw_text'].append(entry['description'])
             if 'text' in entry and entry['text']:
                 chart_data['raw_text'].append(entry['text'])
+            if 'recent_trades' in entry and isinstance(entry['recent_trades'], list):
+                chart_data['recent_trades'] = entry['recent_trades']
+            if 'order_book' in entry and isinstance(entry['order_book'], dict):
+                chart_data['order_book'] = entry['order_book']
+
+            # Accept cumulative delta or delta series from live data sources
+            # e.g., websocket_service.get_live_data(symbol) may include 'cumulative_delta'
+            if 'cumulative_delta' in entry:
+                try:
+                    chart_data['cumulative_delta'] = float(entry.get('cumulative_delta'))
+                except Exception:
+                    pass
+            if 'delta_series' in entry and isinstance(entry.get('delta_series'), (list, tuple)):
+                try:
+                    chart_data['delta_series'] = list(entry.get('delta_series'))
+                except Exception:
+                    pass
 
             if 'ohlcv' in entry and isinstance(entry['ohlcv'], dict):
                 self._merge_series(chart_data, entry['ohlcv'])
@@ -125,6 +144,8 @@ class DataAdapter:
 
         return {
             'chart_data': chart_data,
+            'recent_trades': chart_data.get('recent_trades', []),
+            'order_book': chart_data.get('order_book', {}),
             'valid': valid,
             'quality_score': quality_score,
             'issues': issues,

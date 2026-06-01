@@ -30,6 +30,7 @@
         
         .calendar-warning { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; padding: 15px; border-radius: 10px; margin-top: 20px; display: flex; align-items: center; gap: 10px; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -45,7 +46,7 @@
                 <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
             </div>
         </aside>
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="card result-glass">
                 <div class="main-signal">
             <span style="color: #888; font-size: 0.9rem;">التوصية النهائية لـ <span id="marketName">XAUUSD</span></span>
@@ -129,6 +130,15 @@
             </div>
         </div>
 
+        <div class="market-thesis-box" style="margin: 25px 0; background: rgba(0, 189, 255, 0.05); border: 1px solid rgba(0, 189, 255, 0.2); border-radius: 20px; padding: 25px;">
+            <h4 style="color: #00bdff; margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-scroll"></i> أطروحة السوق (Market Thesis)
+            </h4>
+            <p id="marketThesisText" style="font-size: 0.95rem; line-height: 1.7; color: #ccc;">
+                جاري توليد أطروحة السوق...
+            </p>
+        </div>
+
         <div class="what-if-box">
             <h4><i class="fas fa-lightbulb"></i> سيناريو البديل (What-if):</h4>
             <p style="font-size: 0.95rem; line-height: 1.7;" id="whatIfText">
@@ -195,6 +205,8 @@
         </div>
 
         <div style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+            <button class="btn" id="acceptBtn" style="flex: 1; min-width: 160px; background: #00ff88; color: #111;"><i class="fas fa-check"></i> موافق</button>
+            <button class="btn" id="rejectBtn" style="flex: 1; min-width: 160px; background: #ff4d4d; color: white;"><i class="fas fa-times"></i> رافض</button>
             <button class="btn btn-secondary" style="flex: 1; min-width: 160px;" onclick="downloadResultPdf()"><i class="fas fa-file-pdf"></i> حفظ PDF</button>
             <button class="btn btn-primary" style="flex: 1; min-width: 160px;" onclick="shareAnalysis()"><i class="fas fa-share-alt"></i> مشاركة التحليل</button>
             <button class="btn btn-ghost" style="flex: 1; min-width: 160px;" onclick="window.location.href='dashboard.html'"><i class="fas fa-home"></i> العودة للرئيسية</button>
@@ -203,20 +215,17 @@
 
     <script src="js/api.js"></script>
     <script>
-        window.onload = () => {
-            const data = JSON.parse(localStorage.getItem('lastAnalysis'));
-            if (data) {
-                // تحديث التوصية الرئيسية
+        async function applyResult(data) {
+            if (!data) return;
+            try {
                 const badge = document.getElementById('signalBadge');
                 badge.innerText = data.recommendation === 'شراء' ? 'شراء قوي' : data.recommendation === 'بيع' ? 'بيع قوي' : 'انتظار';
-                document.getElementById('confidenceScore').innerText = data.confidence + '%';
-                badge.classList.toggle('golden-glow', data.confidence >= 90);
-                document.getElementById('confidenceScore').classList.toggle('golden-glow', data.confidence >= 90);
+                document.getElementById('confidenceScore').innerText = (data.confidence !== undefined && data.confidence !== null) ? `${data.confidence}%` : '0%';
+                badge.classList.toggle('golden-glow', (data.confidence || 0) >= 90);
+                document.getElementById('confidenceScore').classList.toggle('golden-glow', (data.confidence || 0) >= 90);
 
-                // تحديث خريطة التوافق
                 updateConfluenceMap(data);
 
-                // تحديث الأصوات القديمة (للتوافق)
                 const votes = { buy: 0, sell: 0, neutral: 0 };
                 if (data.details) {
                     data.details.forEach(d => {
@@ -225,15 +234,18 @@
                         else votes.neutral++;
                     });
                 }
-
                 document.getElementById('buyVotes').innerText = votes.buy;
                 document.getElementById('sellVotes').innerText = votes.sell;
                 document.getElementById('neutralVotes').innerText = votes.neutral;
 
-                document.getElementById('whatIfText').innerText = `في حال كسر السعر لمستويات السيولة القريبة، ينصح بالخروج الفوري. الاتجاه العام ${data.recommendation} مدعوم بـ ${data.top_3_strategies ? data.top_3_strategies.join(', ') : 'الاستراتيجيات الرئيسية'}.`;
+                document.getElementById('whatIfText').innerText = `في حال كسر السعر لمستويات السيولة القريبة، ينصح بالخروج الفوري. الاتجاه العام ${data.recommendation || '-'} مدعوم بـ ${data.top_3_strategies ? data.top_3_strategies.join(', ') : 'الاستراتيجيات الرئيسية'}.`;
+                
+                if (document.getElementById('marketThesisText')) {
+                    document.getElementById('marketThesisText').innerText = data.market_thesis || data.thesis || data.reason || 'الاعتماد على تحركات السيولة والبنية السوقية.';
+                }
 
-                const lot = (data.confidence / 100) * 0.2;
-                document.getElementById('lotSize').innerText = lot.toFixed(2) + ' Lot';
+                const lot = ((data.confidence || 0) / 100) * 0.2;
+                document.getElementById('lotSize').innerText = `${lot.toFixed(2)} Lot`;
 
                 if (data.memory_insight) {
                     document.getElementById('memoryInsight').innerText = data.memory_insight;
@@ -252,16 +264,59 @@
                     document.getElementById('memorySection').style.display = 'block';
                 }
 
-                saveDraft(data);
+                // persist for other pages
+                try { localStorage.setItem('lastAnalysis', JSON.stringify(data)); } catch (e) {}
+                // save draft (non-blocking)
+                try { saveDraft(data); } catch (e) { console.warn('saveDraft failed', e); }
+            } catch (e) {
+                console.error('applyResult error', e);
+            }
+        }
+
+        async function loadResult() {
+            // Priority: localStorage.analysis_id -> GET /api/analysis/{id} -> GET /api/analysis/latest -> localStorage fallback -> show message
+            const storedRaw = localStorage.getItem('lastAnalysis');
+            let stored = null;
+            try { stored = storedRaw ? JSON.parse(storedRaw) : null; } catch (e) { stored = null; }
+
+            // try by analysis_id from localStorage
+            if (stored && stored.analysis_id) {
+                try {
+                    const res = await api.request('GET', `/api/analysis/${encodeURIComponent(stored.analysis_id)}`, null, true);
+                    if (res) { await applyResult(res); return; }
+                } catch (err) {
+                    console.warn('Failed to load analysis by id', err);
+                }
             }
 
+            // try latest endpoint
+            try {
+                const res = await api.request('GET', '/api/analysis/latest', null, true);
+                if (res) { await applyResult(res); return; }
+            } catch (err) {
+                console.warn('Failed to load latest analysis', err);
+            }
+
+            // fallback to stored local result if present
+            if (stored) {
+                await applyResult(stored);
+                return;
+            }
+
+            // nothing available
+            const badge = document.getElementById('signalBadge');
+            badge.innerText = 'لا توجد نتيجة. ارفع شارت أولاً.';
+            document.getElementById('confidenceScore').innerText = '-';
+            document.getElementById('whatIfText').innerText = '';
+            document.getElementById('lotSize').innerText = '-';
+        }
+
+        window.onload = () => {
+            loadResult();
+
             // Attach learning buttons
-            document.getElementById('tradeWinBtn').addEventListener('click', async () => {
-                await sendLearn('win');
-            });
-            document.getElementById('tradeLossBtn').addEventListener('click', async () => {
-                await sendLearn('loss');
-            });
+            document.getElementById('tradeWinBtn').addEventListener('click', async () => { await sendLearn('win'); });
+            document.getElementById('tradeLossBtn').addEventListener('click', async () => { await sendLearn('loss'); });
 
             // Shadow recommendation button
             const shadowBtn = document.getElementById('shadowRecBtn');
@@ -479,5 +534,6 @@
     </script>
         </main>
     </div>
+    <script src="js/theme.js"></script>
 </body>
 </html>

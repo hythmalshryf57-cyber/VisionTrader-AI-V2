@@ -55,11 +55,35 @@
       "success": true,
       "context": "user_1",
       "timestamp": "2026-05-23T16:28:39.613168"
+    },
+    {
+      "type": "alert_sent",
+      "key": "test_cat",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-31T10:36:32.755105"
+    },
+    {
+      "type": "alert_sent",
+      "key": "trading",
+      "value": 2,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-31T10:36:44.010980"
+    },
+    {
+      "type": "alert_sent",
+      "key": "system",
+      "value": 1,
+      "success": true,
+      "context": "user_1",
+      "timestamp": "2026-05-31T10:36:44.226734"
     }
   ],
   "acknowledge_stats": {
-    "total_sent": 7,
-    "total_acknowledged": 5
+    "total_sent": 10,
+    "total_acknowledged": 7
   },
   "ack_speeds": [
     {
@@ -86,6 +110,16 @@
       "category": "test_cat",
       "seconds": 0.6,
       "ts": "2026-05-23T16:28:40.129783"
+    },
+    {
+      "category": "test_cat",
+      "seconds": 0.2,
+      "ts": "2026-05-31T10:36:32.935777"
+    },
+    {
+      "category": "trading",
+      "seconds": 0.4,
+      "ts": "2026-05-31T10:36:44.437004"
     }
   ]
 }

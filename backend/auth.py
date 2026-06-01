@@ -52,8 +52,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        sub = payload.get("sub")
+        if sub is None:
             raise credentials_exception
     except JWTError:
         # Log security event
@@ -61,8 +61,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         db.add(log)
         db.commit()
         raise credentials_exception
-    
-    user = db.query(models.User).filter(models.User.email == email).first()
+
+    user = None
+    if isinstance(sub, int):
+        user = db.query(models.User).filter(models.User.id == sub).first()
+    elif isinstance(sub, str) and sub.isdigit():
+        user = db.query(models.User).filter(models.User.id == int(sub)).first()
+    elif isinstance(sub, str):
+        user = db.query(models.User).filter(models.User.email == sub).first()
+
     if user is None:
         raise credentials_exception
     return user
@@ -120,7 +127,7 @@ def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     db.add(default_prefs)
     db.commit()
     
-    access_token = create_access_token(data={"sub": new_user.email})
+    access_token = create_access_token(data={"sub": str(new_user.id), "user_id": new_user.id, "email": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 class LoginRequest(BaseModel):
@@ -152,7 +159,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             db.add(user)
             db.commit()
 
-    access_token = create_access_token(data={"sub": user.email})
+    access_token = create_access_token(data={"sub": str(user.id), "user_id": user.id, "email": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me")

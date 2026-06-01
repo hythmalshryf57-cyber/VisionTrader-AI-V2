@@ -1,0 +1,1516 @@
+[
+  {
+    "name": "Server available",
+    "status": 200,
+    "payload": {
+      "status": "online",
+      "version": "Professional 2.0"
+    },
+    "response": null,
+    "error": null
+  },
+  {
+    "name": "Environment secret checks",
+    "status": "OK",
+    "payload": null,
+    "response": {
+      "SECRET_KEY_present": true,
+      "MASTER_ENCRYPTION_KEY_present": true,
+      "TELEGRAM_BOT_TOKEN_present": false,
+      "ADMIN_EMAIL_present": false,
+      "ADMIN_PASSWORD_present": false,
+      "SECRET_KEY_value": "yoursecretkey1234567890"
+    },
+    "error": null
+  },
+  {
+    "name": "/api/system/pulse",
+    "status": 200,
+    "payload": {
+      "status": "online",
+      "refresh_time": "2026-06-01T11:41:47.973644",
+      "active_strategies": 35,
+      "system_healthy": true,
+      "health_details": {
+        "active_strategies": 35,
+        "clusters": {
+          "power": {
+            "count": 13,
+            "strategies": [
+              "chaos_fractal_theory.ChaosFractalStrategy",
+              "composite_operator_tracking.CompositeOperatorStrategy",
+              "crypto_whales.CryptoWhalesStrategy",
+              "hft_simulation.HFTSpoofingStrategy",
+              "liquidation_heatmap.LiquidationHeatmapStrategy",
+              "market_making.MarketMakingStrategy",
+              "options_flow.OptionsFlowStrategy",
+              "order_flow_tape_reading.OrderFlowStrategy",
+              "psychological_engineering.PsychologicalEngineeringStrategy",
+              "smc_ict.ICTStrategy",
+              "social_sentiment.SocialSentimentStrategy",
+              "volume_spread_analysis.VSAStrategy",
+              "vpin_toxicity.VPINToxicityStrategy"
+            ]
+          },
+          "geometric": {
+            "count": 7,
+            "strategies": [
+              "auction_market_theory.AuctionMarketStrategy",
+              "elliott_wave.ElliottWaveStrategy",
+              "fibonacci.DynamicFibonacciStrategy",
+              "harmonic_patterns.HarmonicPatternStrategy",
+              "market_profile.MarketProfileStrategy",
+              "seasonality.SeasonalityStrategy",
+              "wyckoff.WyckoffStrategy"
+            ]
+          },
+          "momentum": {
+            "count": 15,
+            "strategies": [
+              "adaptive_ai.AdaptiveAIStrategy",
+              "bollinger.DynamicBollingerStrategy",
+              "candlestick_patterns.CandlestickPatternsStrategy",
+              "cot_analysis.COTAnalysisStrategy",
+              "currency_strength.CurrencyStrengthStrategy",
+              "dynamic_price_action.PriceActionStrategy",
+              "hybrid_modern.HybridModernStrategy",
+              "intermarket.IntermarketStrategy",
+              "macd.DynamicMACDStrategy",
+              "mean_reversion.MeanReversionStrategy",
+              "moving_averages.DynamicMovingAverageStrategy",
+              "regime_detector.RegimeDetectionStrategy",
+              "rsi.DynamicRSIStrategy",
+              "stochastic.DynamicStochasticStrategy",
+              "time_sessions.TimeSessionsStrategy"
+            ]
+          }
+        },
+        "overall_system_win_rate": 100.0,
+        "total_performance_records": 2,
+        "memory_entries": 1,
+        "external_api_state": {
+          "binance": "ok",
+          "tradingview": "failed",
+          "deepseek": "missing_api_key"
+        },
+        "last_auto_tune": "2026-06-01T11:38:59.947999",
+        "last_cluster_tune": "2026-06-01T10:50:16.060660",
+        "last_monthly_review": "2026-06-01T10:50:16.060660",
+        "cluster_weights": {
+          "power": 0.4,
+          "geometric": 0.3,
+          "momentum": 0.3
+        },
+        "judge_performance": {
+          "total_decisions": 0,
+          "correct_decisions": 0,
+          "accuracy_rate": 0.0,
+          "confidence_threshold": 60,
+          "last_adjustment": null
+        },
+        "disabled_strategies": {
+          "active_disabled": {},
+          "expired_and_reenabled": []
+        },
+        "trade_counter": 0,
+        "strategy_weights_summary": {
+          "total_strategies": 8,
+          "weight_distribution": {
+            "high": 2,
+            "medium": 0,
+            "low": 6
+          }
+        }
+      }
+    },
+    "response": null,
+    "error": null
+  },
+  {
+    "name": "/api/system/strategies",
+    "status": 200,
+    "payload": {
+      "strategies": [],
+      "total_strategies": 0
+    },
+    "response": null,
+    "error": null
+  },
+  {
+    "name": "Register new user",
+    "status": 200,
+    "payload": {
+      "email": "visiontrader_test_0db2c97e@example.com"
+    },
+    "response": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMiIsInVzZXJfaWQiOjMyLCJlbWFpbCI6InZpc2lvbnRyYWRlcl90ZXN0XzBkYjJjOTdlQGV4YW1wbGUuY29tIiwiZXhwIjoxNzgwMzE1OTEwfQ.FuNXA3Luj1qsUlzLYa6t15pOzN3EZfTHEXRs_Pdpy7I",
+      "token_type": "bearer"
+    },
+    "error": null
+  },
+  {
+    "name": "Login new user",
+    "status": 200,
+    "payload": {
+      "email": "visiontrader_test_0db2c97e@example.com"
+    },
+    "response": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMiIsInVzZXJfaWQiOjMyLCJlbWFpbCI6InZpc2lvbnRyYWRlcl90ZXN0XzBkYjJjOTdlQGV4YW1wbGUuY29tIiwiZXhwIjoxNzgwMzE1OTEwfQ.FuNXA3Luj1qsUlzLYa6t15pOzN3EZfTHEXRs_Pdpy7I",
+      "token_type": "bearer"
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/calendar/events",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "GET /api/calendar/high-impact",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "GET /api/user/preferences",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "theme": "dark",
+      "language": "ar",
+      "telegram_chat_id": null,
+      "email_notifications": false,
+      "demo_mode": false,
+      "demo_balance": 1000000.0,
+      "trading_mode": "day",
+      "capital": 10000.0,
+      "account_balance": 10000.0,
+      "risk_percentage": 1.0,
+      "favorite_strategies": [],
+      "watchlist": [],
+      "daily_profit_target_percent": 30.0,
+      "daily_loss_limit_percent": 5.0,
+      "trading_locked_today": false,
+      "lock_reason": null,
+      "notification_markets": [
+        "XAUUSD",
+        "EURUSD",
+        "GBPUSD"
+      ],
+      "enable_smart_notifications": true,
+      "custom_indicators": []
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/market/session",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "session": "London",
+      "label": "لندن 🟢",
+      "note": "جلسة لندن: تقلب أعلى، استخدم وقف أوسع.",
+      "timestamp": "2026-06-01T11:41:52.402780Z"
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/trade/active",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "active_trades": []
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/protection/status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "analysis_locked": false,
+      "trading_locked": false,
+      "analysis_locked_until": null,
+      "trading_locked_until": null,
+      "analysis_message": null,
+      "trading_message": null,
+      "daily_drawdown_pct": 0.0,
+      "weekly_drawdown_pct": 0.0,
+      "daily_loss_usd": 0,
+      "daily_loss_limit_pct": 5.0,
+      "daily_loss_limit_amount": null
+    },
+    "error": null
+  },
+  {
+    "name": "GET /api/daily-limits/status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "analysis_locked": false,
+      "trading_locked": false,
+      "analysis_locked_until": null,
+      "trading_locked_until": null,
+      "analysis_message": null,
+      "trading_message": null,
+      "daily_drawdown_pct": 0.0,
+      "weekly_drawdown_pct": 0.0,
+      "daily_loss_usd": 0,
+      "daily_loss_limit_pct": 5.0,
+      "daily_loss_limit_amount": null,
+      "daily_loss_limit_percent": 5.0,
+      "capital": 10000.0
+    },
+    "error": null
+  },
+  {
+    "name": "Process XAUUSD analysis",
+    "status": 200,
+    "payload": {
+      "market": "XAUUSD",
+      "timeframe": "1h",
+      "notes": "Routine validation analysis"
+    },
+    "response": {
+      "recommendation": "بيانات غير كافية",
+      "confidence": 0,
+      "reason": "لم يتمكن النظام من توحيد بيانات السوق بشكل كافٍ.",
+      "issues": [
+        "Data quality below acceptable threshold: processing stopped."
+      ],
+      "data_quality": 0.0,
+      "market": "XAUUSD",
+      "timestamp": "2026-06-01T14:31:02.741389",
+      "analysis_id": 11,
+      "memory_matches": [
+        {
+          "analysis_id": "2",
+          "market": "XAUUSD",
+          "result": null,
+          "created_at": "2026-05-20T14:42:20.026142",
+          "description": "Analysis for XAUUSD based on uploaded charts.",
+          "score": 1.0
+        },
+        {
+          "analysis_id": "3",
+          "market": "XAUUSD",
+          "result": null,
+          "created_at": "2026-05-20T18:31:34.894567",
+          "description": "Analysis for XAUUSD based on uploaded charts.",
+          "score": 1.0
+        },
+        {
+          "analysis_id": "1",
+          "market": "EURUSD",
+          "result": null,
+          "created_at": "2026-05-16T16:45:51.784898",
+          "description": "Analysis for EURUSD based on uploaded charts.",
+          "score": 0.75
+        }
+      ],
+      "memory_insight": "هذا الشارت يشبه صفقة سابقة بتاريخ 2026-05-20T14:42:20.026142 على زوج XAUUSD، وكانت النتيجة غير معروف.",
+      "from_cache": true
+    },
+    "error": null
+  },
+  {
+    "name": "Get latest analysis",
+    "status": 404,
+    "payload": null,
+    "response": {
+      "detail": "No analysis found"
+    },
+    "error": null
+  },
+  {
+    "name": "Get analysis by id",
+    "status": 404,
+    "payload": {
+      "analysis_id": 11
+    },
+    "response": {
+      "detail": "Analysis not found"
+    },
+    "error": null
+  },
+  {
+    "name": "Quick recommendation XAUUSD",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "recommendation": "تحليل جديد مطلوب",
+      "confidence": 0,
+      "note": "لا توجد تحليل حديث لهذا السوق. الرجاء تشغيل تحليل جديد."
+    },
+    "error": null
+  },
+  {
+    "name": "Journal list before",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Journal add",
+    "status": 400,
+    "payload": {
+      "market": "XAUUSD",
+      "result": "win",
+      "notes": "Validation entry",
+      "date": "2026-06-01"
+    },
+    "response": {
+      "detail": "Field recommendation is required"
+    },
+    "error": null
+  },
+  {
+    "name": "Journal list after",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Update preferences",
+    "status": 200,
+    "payload": {
+      "theme": "light",
+      "language": "en",
+      "favorite_strategies": [
+        "momentum",
+        "macro"
+      ]
+    },
+    "response": {
+      "theme": "light",
+      "language": "en",
+      "telegram_chat_id": null,
+      "email_notifications": false,
+      "demo_mode": false,
+      "demo_balance": 1000000.0,
+      "trading_mode": "day",
+      "capital": 10000.0,
+      "account_balance": 10000.0,
+      "risk_percentage": 1.0,
+      "favorite_strategies": [
+        "momentum",
+        "macro"
+      ],
+      "watchlist": [],
+      "daily_profit_target_percent": 30.0,
+      "daily_loss_limit_percent": 5.0,
+      "trading_locked_today": false,
+      "lock_reason": null,
+      "notification_markets": [
+        "XAUUSD",
+        "EURUSD",
+        "GBPUSD"
+      ],
+      "enable_smart_notifications": true,
+      "custom_indicators": []
+    },
+    "error": null
+  },
+  {
+    "name": "Get preferences",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "theme": "light",
+      "language": "en",
+      "telegram_chat_id": null,
+      "email_notifications": false,
+      "demo_mode": false,
+      "demo_balance": 1000000.0,
+      "trading_mode": "day",
+      "capital": 10000.0,
+      "account_balance": 10000.0,
+      "risk_percentage": 1.0,
+      "favorite_strategies": [
+        "momentum",
+        "macro"
+      ],
+      "watchlist": [],
+      "daily_profit_target_percent": 30.0,
+      "daily_loss_limit_percent": 5.0,
+      "trading_locked_today": false,
+      "lock_reason": null,
+      "notification_markets": [
+        "XAUUSD",
+        "EURUSD",
+        "GBPUSD"
+      ],
+      "enable_smart_notifications": true,
+      "custom_indicators": []
+    },
+    "error": null
+  },
+  {
+    "name": "Scanner status",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "is_running": false
+    },
+    "error": null
+  },
+  {
+    "name": "Scanner alerts",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Debug integration",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "ws_attached": true,
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT"
+      ],
+      "sample_live": {
+        "BTCUSDT": {
+          "cumulative_delta": null,
+          "price": null
+        },
+        "ETHUSDT": {
+          "cumulative_delta": null,
+          "price": null
+        },
+        "BNBUSDT": {
+          "cumulative_delta": null,
+          "price": null
+        }
+      },
+      "agents": [
+        "Trend Agent",
+        "Structure Agent",
+        "Volatility Agent",
+        "Correlation Agent",
+        "SR Agent",
+        "Volume Agent",
+        "OrderFlow Agent",
+        "Footprint Agent",
+        "Bookmap Agent",
+        "Liquidity Agent",
+        "Market Manipulation Detector",
+        "Momentum Agent",
+        "Divergence Agent",
+        "Strength Agent",
+        "Candlestick Agent",
+        "Harmonic Agent",
+        "Elliott Agent",
+        "Price Pattern Agent",
+        "Long-term Agent",
+        "Medium-term Agent",
+        "Short-term Agent",
+        "Temporal Audit Agent",
+        "News Agent",
+        "Sentiment Agent",
+        "Adaptation Agent"
+      ]
+    },
+    "error": null
+  },
+  {
+    "name": "WebSocket /ws/live",
+    "status": "OK",
+    "payload": null,
+    "response": "{\"type\": \"update\", \"prices\": {\"BTC/USD\": 62950.84, \"ETH/USD\": 3336.06, \"XAU/USD\": 2331.32}, \"live_trades\": 25, \"pnl\": 832.28, \"status\": \"Active\", \"timestamp\": \"2026-06-01T11:41:57.456065\"}",
+    "error": null
+  },
+  {
+    "name": "Static frontend pages",
+    "status": "OK",
+    "payload": null,
+    "response": [
+      {
+        "page": "/",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html>\r\n<head>\r\n    <meta http-equiv=\"refresh\" content=\"0; url=/login.html\">\r\n    <title>VisionTrader AI</title>\r\n    <link href=\"https://fonts.googleapis.com/css2"
+      },
+      {
+        "page": "/index.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html>\r\n<head>\r\n    <meta http-equiv=\"refresh\" content=\"0; url=/login.html\">\r\n    <title>VisionTrader AI</title>\r\n    <link href=\"https://fonts.googleapis.com/css2"
+      },
+      {
+        "page": "/login.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html lang=\"ar\" dir=\"rtl\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    \r\n    <link rel=\"ma"
+      },
+      {
+        "page": "/dashboard.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html lang=\"ar\" dir=\"rtl\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <link rel=\"manifest"
+      },
+      {
+        "page": "/journal.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html lang=\"ar\" dir=\"rtl\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <link rel=\"manifest"
+      },
+      {
+        "page": "/backtest.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!doctype html>\r\n<html lang=\"ar\" dir=\"rtl\">\r\n<head>\r\n\t<meta charset=\"utf-8\" />\r\n\t<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\r\n\t<title>الاختبار التاريخي</t"
+      },
+      {
+        "page": "/admin.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html lang=\"ar\" dir=\"rtl\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <link rel=\"manifest"
+      },
+      {
+        "page": "/strategy_factory.html",
+        "status": 200,
+        "valid_html": true,
+        "body_snippet": "<!DOCTYPE html>\r\n<html lang=\"ar\" dir=\"rtl\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <link rel=\"manifest"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "Service availability",
+    "status": "OK",
+    "payload": null,
+    "response": {
+      "telegram_enabled": false,
+      "telegram_token": null,
+      "telegram_chat_id": "",
+      "self_healing_available": false,
+      "degradation_watcher_available": true,
+      "degradation_watcher_pipeline": true
+    },
+    "error": null
+  },
+  {
+    "name": "Admin login",
+    "status": 200,
+    "payload": {
+      "email": "hythmalshryf57@gmail.com"
+    },
+    "response": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2IiwidXNlcl9pZCI6NiwiZW1haWwiOiJoeXRobWFsc2hyeWY1N0BnbWFpbC5jb20iLCJleHAiOjE3ODAzMTU5MjF9.lnFXTc24A1AxJF9wijDCXG6Lkphur9jbO-j_gd4A9uI",
+      "token_type": "bearer"
+    },
+    "error": null
+  },
+  {
+    "name": "Admin system health",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "status": "online",
+      "cpu_percent": 100.0,
+      "ram_percent": 79.7,
+      "ram_used": 3262681088,
+      "ram_total": 4092243968,
+      "gemini_calls": 0,
+      "deepseek_calls": 0,
+      "request_count": 304,
+      "daily_requests": {
+        "2026-06-01": 304
+      },
+      "last_error": "No errors yet",
+      "uptime_seconds": 3101,
+      "uptime": "0:51:41"
+    },
+    "error": null
+  },
+  {
+    "name": "Admin users",
+    "status": 200,
+    "payload": null,
+    "response": [
+      {
+        "id": 32,
+        "email": "visiontrader_test_0db2c97e@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T11:41:49.660603"
+      },
+      {
+        "id": 31,
+        "email": "visiontrader_test_04f907aa@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T11:38:43.406011"
+      },
+      {
+        "id": 30,
+        "email": "visiontrader_test_2db8da3b@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T11:35:30.181349"
+      },
+      {
+        "id": 29,
+        "email": "visiontrader_test_71c4938f@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T11:32:30.802756"
+      },
+      {
+        "id": 28,
+        "email": "visiontrader_test_97cc4958@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T11:30:52.053295"
+      },
+      {
+        "id": 27,
+        "email": "testuser99@test.com",
+        "invite_code": "",
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-06-01T10:19:58.902340"
+      },
+      {
+        "id": 26,
+        "email": "testuser_1780252913@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-31T18:41:55.351175"
+      },
+      {
+        "id": 25,
+        "email": "testuser_1780252288@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-31T18:31:43.613796"
+      },
+      {
+        "id": 24,
+        "email": "integration_test@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-28T20:04:21.677819"
+      },
+      {
+        "id": 23,
+        "email": "trialuser_1779918019@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:40:23.382512"
+      },
+      {
+        "id": 22,
+        "email": "testuser_1779917598@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:33:31.553136"
+      },
+      {
+        "id": 21,
+        "email": "testuser_1779917310@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:28:33.062727"
+      },
+      {
+        "id": 20,
+        "email": "testuser_1779916958@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:22:51.072530"
+      },
+      {
+        "id": 19,
+        "email": "trialme_1779916305@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:11:57.280121"
+      },
+      {
+        "id": 18,
+        "email": "trialtest_1779916079@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:08:10.925755"
+      },
+      {
+        "id": 17,
+        "email": "trialtest_1779915920@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:05:31.936457"
+      },
+      {
+        "id": 16,
+        "email": "testuser_1779915742@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-27T21:02:24.271593"
+      },
+      {
+        "id": 15,
+        "email": "copilot_test_user@local.example",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-23T16:35:05.121956"
+      },
+      {
+        "id": 14,
+        "email": "copilot_user_22427@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T16:34:48.136191"
+      },
+      {
+        "id": 13,
+        "email": "copilot_test_048ac5@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T16:27:28.210638"
+      },
+      {
+        "id": 12,
+        "email": "testuser@example.com",
+        "invite_code": null,
+        "ip_address": "testclient",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T11:00:47.228209"
+      },
+      {
+        "id": 11,
+        "email": "testuser1779531241@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T10:14:03.345428"
+      },
+      {
+        "id": 10,
+        "email": "testuser1779531224@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-23T10:13:46.389276"
+      },
+      {
+        "id": 9,
+        "email": "admin@test.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-23T00:01:09.507182"
+      },
+      {
+        "id": 8,
+        "email": "test@test.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-23T00:01:09.483772"
+      },
+      {
+        "id": 7,
+        "email": "normal_test_user@example.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-20T10:34:28.539396"
+      },
+      {
+        "id": 6,
+        "email": "hythmalshryf57@gmail.com",
+        "invite_code": null,
+        "ip_address": null,
+        "is_active": true,
+        "is_admin": true,
+        "registered_at": "2026-05-20T10:34:28.369762"
+      },
+      {
+        "id": 5,
+        "email": "copilot_test_user@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-17T09:19:12.555008"
+      },
+      {
+        "id": 4,
+        "email": "learn2@test.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-16T18:42:39.392010"
+      },
+      {
+        "id": 3,
+        "email": "learn_test_1778956211@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-16T18:30:13.458408"
+      },
+      {
+        "id": 2,
+        "email": "testuser+1778950077@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": true,
+        "is_admin": false,
+        "registered_at": "2026-05-16T16:47:58.796748"
+      },
+      {
+        "id": 1,
+        "email": "testuser+1778949943@example.com",
+        "invite_code": null,
+        "ip_address": "127.0.0.1",
+        "is_active": false,
+        "is_admin": false,
+        "registered_at": "2026-05-16T16:45:45.435267"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "Admin stats",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "total_users": 32,
+      "active_users": 31,
+      "inactive_users": 1
+    },
+    "error": null
+  },
+  {
+    "name": "Admin security logs",
+    "status": 200,
+    "payload": null,
+    "response": [
+      {
+        "id": 22,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-28T20:11:34.115228"
+      },
+      {
+        "id": 21,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-28T20:06:57.432707"
+      },
+      {
+        "id": 20,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-28T20:05:04.460457"
+      },
+      {
+        "id": 19,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:28:34.246006"
+      },
+      {
+        "id": 18,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:23:03.512562"
+      },
+      {
+        "id": 17,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:12:09.735029"
+      },
+      {
+        "id": 16,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-27T21:08:23.166028"
+      },
+      {
+        "id": 15,
+        "user_id": 1,
+        "event_type": "shadow_monitor_start",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:20.243771"
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "event_type": "kill_switch",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:09.763370"
+      },
+      {
+        "id": 13,
+        "user_id": 1,
+        "event_type": "freeze_account",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:09.312989"
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "event_type": "force_logout",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:40:02.243693"
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "event_type": "shadow_monitor_start",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:25:14.039691"
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "event_type": "kill_switch",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:24:40.011998"
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "event_type": "freeze_account",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:24:36.929632"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "event_type": "force_logout",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:24:17.958725"
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "event_type": "shadow_monitor_start",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:22:19.891986"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "event_type": "kill_switch",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:22:10.274171"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "event_type": "freeze_account",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:22:09.309622"
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "event_type": "force_logout",
+        "ip_address": null,
+        "timestamp": "2026-05-23T10:21:59.055811"
+      },
+      {
+        "id": 3,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-16T19:47:11.463117"
+      },
+      {
+        "id": 2,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-16T19:18:15.618849"
+      },
+      {
+        "id": 1,
+        "user_id": null,
+        "event_type": "session_expired",
+        "ip_address": null,
+        "timestamp": "2026-05-16T18:43:08.995350"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "SOC dashboard",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "threat_map": [],
+      "suspicious_users": [
+        {
+          "id": 1,
+          "email": "testuser+1778949943@example.com",
+          "reason": "frozen"
+        }
+      ],
+      "api_usage": {
+        "gemini": 0,
+        "deepseek": 0
+      },
+      "server_status": {
+        "cpu": 88.4,
+        "ram": 79.2
+      },
+      "live_alerts": []
+    },
+    "error": null
+  },
+  {
+    "name": "System strategies",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "strategies": [],
+      "total_strategies": 0
+    },
+    "error": null
+  },
+  {
+    "name": "Calendar events",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Calendar high-impact",
+    "status": 200,
+    "payload": null,
+    "response": [],
+    "error": null
+  },
+  {
+    "name": "Journal list (admin)",
+    "status": 200,
+    "payload": null,
+    "response": [
+      {
+        "market": "BTCUSD",
+        "id": 7,
+        "result": "win",
+        "confidence": 80,
+        "screenshot_url": null,
+        "session": null,
+        "recommendation": "شراء",
+        "user_id": 6,
+        "date": "2026-05-23T10:50:39.629830",
+        "profit_loss": 100.0,
+        "notes": "test",
+        "mood": "calm -> happy",
+        "created_at": "2026-05-23T10:50:39.629830"
+      },
+      {
+        "market": "BTCUSD",
+        "id": 6,
+        "result": "win",
+        "confidence": 80,
+        "screenshot_url": null,
+        "session": null,
+        "recommendation": "شراء",
+        "user_id": 6,
+        "date": "2026-05-23T10:46:37.635598",
+        "profit_loss": 100.0,
+        "notes": "test",
+        "mood": "calm -> happy",
+        "created_at": "2026-05-23T10:46:37.635598"
+      },
+      {
+        "market": "",
+        "id": 5,
+        "result": "pending",
+        "confidence": null,
+        "screenshot_url": null,
+        "session": "London",
+        "recommendation": "بيع",
+        "user_id": 6,
+        "date": "2026-05-23T10:41:45.609289",
+        "profit_loss": 0.0,
+        "notes": "سجلت صفقة بسرعة مع SL=0.0, TP=0.0.",
+        "mood": null,
+        "created_at": "2026-05-23T10:41:45.626067"
+      },
+      {
+        "market": "",
+        "id": 4,
+        "result": "pending",
+        "confidence": null,
+        "screenshot_url": null,
+        "session": "London",
+        "recommendation": "بيع",
+        "user_id": 6,
+        "date": "2026-05-23T10:28:25.198761",
+        "profit_loss": 0.0,
+        "notes": "سجلت صفقة بسرعة مع SL=0.0, TP=0.0.",
+        "mood": null,
+        "created_at": "2026-05-23T10:28:25.198761"
+      },
+      {
+        "market": "",
+        "id": 3,
+        "result": "pending",
+        "confidence": null,
+        "screenshot_url": null,
+        "session": "London",
+        "recommendation": "بيع",
+        "user_id": 6,
+        "date": "2026-05-23T10:25:27.620636",
+        "profit_loss": 0.0,
+        "notes": "سجلت صفقة بسرعة مع SL=0.0, TP=0.0.",
+        "mood": null,
+        "created_at": "2026-05-23T10:25:27.620636"
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "Backtest run",
+    "status": 200,
+    "payload": {
+      "market": "EURUSD",
+      "timeframe": "1h",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-05",
+      "initial_capital": 1000,
+      "simulations": 5,
+      "n_windows": 1
+    },
+    "response": {
+      "generated_at": "2026-06-01T11:42:05.088309",
+      "initial_capital": 1000.0,
+      "total_trades": 30,
+      "metrics": {
+        "total_return": 1463.07,
+        "total_return_pct": 1.4630699999999999,
+        "annualized_return": 198924585226770.3,
+        "cagr": 198924585226770.3,
+        "total_trades": 30,
+        "winning_trades": 18,
+        "losing_trades": 12,
+        "win_rate": 0.6,
+        "avg_win": 139.3177777777778,
+        "avg_loss": -87.05416666666667,
+        "avg_trade": 48.769,
+        "expectancy": 48.769000000000005,
+        "profit_factor": 2.4005360647106686,
+        "sharpe_ratio": 6.693960176652114,
+        "sortino_ratio": 41.363213324762334,
+        "calmar_ratio": 1253278535463073.8,
+        "max_drawdown": 285.51,
+        "max_drawdown_pct": 0.15872336403915965,
+        "avg_drawdown": 126.789375,
+        "recovery_factor": 5.124408952400967,
+        "risk_of_ruin": 0.017341529915832633,
+        "max_win_streak": 5,
+        "max_loss_streak": 3,
+        "current_streak": 2,
+        "streak_type": "win",
+        "ulcer_index": 0.04223223107483191,
+        "serenity_ratio": 979.4228784993683,
+        "payoff_ratio": 1.600357376473779
+      },
+      "monte_carlo": {
+        "simulations": 5,
+        "success_probability": 1.0,
+        "avg_return": 1192.9700000000005,
+        "median_return": 1087.7800000000007,
+        "best_case_95": 1947.272,
+        "worst_case_5": 625.6600000000003,
+        "avg_max_drawdown": 326.97400000000005,
+        "worst_drawdown_95": 404.8460000000001,
+        "var_95": 0.0,
+        "cvar_95": 0.0,
+        "percentiles": {
+          "p5": 625.6600000000003,
+          "p10": 678.0700000000004,
+          "p25": 835.3000000000006,
+          "p50": 1087.7800000000007,
+          "p75": 1379.2400000000007,
+          "p90": 1805.2640000000001,
+          "p95": 1947.272
+        }
+      },
+      "walk_forward": {
+        "windows": 1,
+        "in_sample_return": 0.63449,
+        "out_sample_return": 0.8285800000000001,
+        "efficiency_ratio": 1.3058992261501365,
+        "is_overfit": false,
+        "overfit_score": 0.0,
+        "recommendation": "ممتاز: الاستراتيجية متسقة (كفاءة 131%) – النتائج خارج العينة قريبة من نتائج التدريب.",
+        "periods": [
+          {
+            "window": 1,
+            "trade_range": "0–30",
+            "train_trades": 21,
+            "test_trades": 9,
+            "in_sample_return": 63.45,
+            "out_sample_return": 82.86,
+            "efficiency": 1.306
+          }
+        ]
+      },
+      "bell_curve": "\n  [توزيع Monte Carlo – Bell Curve]\n         Range   Count  Chart\n  -------------------------------------------------------\n     +573.3→   +724.9       1  ##############################\n     +724.9→   +876.5       1  ##############################\n     +876.5→  +1028.1       0  \n    +1028.1→  +1179.7       1  ##############################\n    +1179.7→  +1331.3       0  \n    +1331.3→  +1482.9       1  ##############################\n    +1482.9→  +1634.5       0  \n    +1634.5→  +1786.1       0  \n    +1786.1→  +1937.7       0  \n    +1937.7→  +2089.3       1  ##############################",
+      "market": "EURUSD",
+      "timeframe": "1h",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-05",
+      "trades_count": 30,
+      "win_rate": 60.0,
+      "profit_loss": 1463.07,
+      "note": "تم إنشاء تقرير اختبار تاريخي حقيقي باستخدام backtest_engine."
+    },
+    "error": null
+  },
+  {
+    "name": "Manual tune weights",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "status": "ok",
+      "tuning_summary": {
+        "timestamp": "2026-06-01T11:42:05.207982",
+        "updated_strategies": [],
+        "weight_changes": {
+          "increased": 0,
+          "decreased": 0,
+          "disabled": 0,
+          "unchanged": 0
+        },
+        "total_strategies": 0,
+        "min_weight": 0.2,
+        "max_weight": 3.0,
+        "reenabled_strategies": []
+      }
+    },
+    "error": null
+  },
+  {
+    "name": "System health details",
+    "status": 200,
+    "payload": null,
+    "response": {
+      "status": "ok",
+      "system_health": {
+        "active_strategies": 35,
+        "clusters": {
+          "power": {
+            "count": 13,
+            "strategies": [
+              "chaos_fractal_theory.ChaosFractalStrategy",
+              "composite_operator_tracking.CompositeOperatorStrategy",
+              "crypto_whales.CryptoWhalesStrategy",
+              "hft_simulation.HFTSpoofingStrategy",
+              "liquidation_heatmap.LiquidationHeatmapStrategy",
+              "market_making.MarketMakingStrategy",
+              "options_flow.OptionsFlowStrategy",
+              "order_flow_tape_reading.OrderFlowStrategy",
+              "psychological_engineering.PsychologicalEngineeringStrategy",
+              "smc_ict.ICTStrategy",
+              "social_sentiment.SocialSentimentStrategy",
+              "volume_spread_analysis.VSAStrategy",
+              "vpin_toxicity.VPINToxicityStrategy"
+            ]
+          },
+          "geometric": {
+            "count": 7,
+            "strategies": [
+              "auction_market_theory.AuctionMarketStrategy",
+              "elliott_wave.ElliottWaveStrategy",
+              "fibonacci.DynamicFibonacciStrategy",
+              "harmonic_patterns.HarmonicPatternStrategy",
+              "market_profile.MarketProfileStrategy",
+              "seasonality.SeasonalityStrategy",
+              "wyckoff.WyckoffStrategy"
+            ]
+          },
+          "momentum": {
+            "count": 15,
+            "strategies": [
+              "adaptive_ai.AdaptiveAIStrategy",
+              "bollinger.DynamicBollingerStrategy",
+              "candlestick_patterns.CandlestickPatternsStrategy",
+              "cot_analysis.COTAnalysisStrategy",
+              "currency_strength.CurrencyStrengthStrategy",
+              "dynamic_price_action.PriceActionStrategy",
+              "hybrid_modern.HybridModernStrategy",
+              "intermarket.IntermarketStrategy",
+              "macd.DynamicMACDStrategy",
+              "mean_reversion.MeanReversionStrategy",
+              "moving_averages.DynamicMovingAverageStrategy",
+              "regime_detector.RegimeDetectionStrategy",
+              "rsi.DynamicRSIStrategy",
+              "stochastic.DynamicStochasticStrategy",
+              "time_sessions.TimeSessionsStrategy"
+            ]
+          }
+        },
+        "overall_system_win_rate": 100.0,
+        "total_performance_records": 2,
+        "memory_entries": 1,
+        "external_api_state": {
+          "binance": "ok",
+          "tradingview": "failed",
+          "deepseek": "missing_api_key"
+        },
+        "last_auto_tune": "2026-06-01T11:42:05.207982",
+        "last_cluster_tune": "2026-06-01T10:50:16.060660",
+        "last_monthly_review": "2026-06-01T10:50:16.060660",
+        "cluster_weights": {
+          "power": 0.4,
+          "geometric": 0.3,
+          "momentum": 0.3
+        },
+        "judge_performance": {
+          "total_decisions": 0,
+          "correct_decisions": 0,
+          "accuracy_rate": 0.0,
+          "confidence_threshold": 60,
+          "last_adjustment": null
+        },
+        "disabled_strategies": {
+          "active_disabled": {},
+          "expired_and_reenabled": []
+        },
+        "trade_counter": 0,
+        "strategy_weights_summary": {
+          "total_strategies": 8,
+          "weight_distribution": {
+            "high": 2,
+            "medium": 0,
+            "low": 6
+          }
+        }
+      },
+      "request_count": 315,
+      "daily_requests": {
+        "2026-06-01": 315
+      },
+      "last_error": "No errors yet"
+    },
+    "error": null
+  },
+  {
+    "name": "Admin pages",
+    "status": "OK",
+    "payload": null,
+    "response": [
+      {
+        "page": "/admin.html",
+        "status": 200,
+        "valid_html": true
+      },
+      {
+        "page": "/strategy_factory.html",
+        "status": 200,
+        "valid_html": true
+      },
+      {
+        "page": "/dashboard.html",
+        "status": 200,
+        "valid_html": true
+      }
+    ],
+    "error": null
+  },
+  {
+    "name": "Code publish/deploy scan",
+    "status": "OK",
+    "payload": null,
+    "response": {
+      "matches": [
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\full_validation.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\main.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\scripts\\test_dynamic_components.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\services\\news_adapter.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\services\\self_healing.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\six.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\threadpoolctl.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\dns\\message.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\dns\\zone.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\email_validator\\__init__.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\google\\api\\client_pb2.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\google\\api\\service_pb2.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\google\\api_core\\grpc_helpers.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\google\\api_core\\gapic_v1\\method.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\google\\auth\\jwt.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\google\\auth\\_jwt_async.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\greenlet\\tests\\leakcheck.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\greenlet\\tests\\test_greenlet.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\httptools\\_version.py",
+        "C:\\Users\\user\\Desktop\\visiontrader_ai\\backend\\venv\\Lib\\site-packages\\loguru\\_logger.py"
+      ]
+    },
+    "error": null
+  }
+]

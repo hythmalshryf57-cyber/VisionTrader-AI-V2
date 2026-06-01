@@ -76,17 +76,26 @@ class TrialMiddleware(BaseHTTPMiddleware):
 
         token = token[7:]  # Remove "Bearer "
         user_id = None
+        legacy_email = None
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id = payload.get("sub")
-            if user_id and not isinstance(user_id, int):
-                user_id = int(user_id)
+            sub = payload.get("sub")
+            if isinstance(sub, int):
+                user_id = sub
+            elif isinstance(sub, str) and sub.isdigit():
+                user_id = int(sub)
+            elif isinstance(sub, str):
+                legacy_email = sub.strip().lower()
         except (JWTError, ValueError):
             return await call_next(request)
 
-        if user_id:
+        if user_id or legacy_email:
             db = next(get_db())
-            user = db.query(User).filter(User.id == user_id).first()
+            if user_id:
+                user = db.query(User).filter(User.id == user_id).first()
+            else:
+                user = db.query(User).filter(User.email == legacy_email).first()
+
             if user:
                 today = date.today()
                 if user.last_analysis_date != today:

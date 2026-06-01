@@ -72,6 +72,7 @@ const api = {
   async getTodayStats() { return this.request('GET', '/api/stats/today', null, true); },
   async getPerformanceStats() { return this.request('GET', '/api/stats/performance', null, true); },
   async getScannerStats() { return this.request('GET', '/api/stats/scanner', null, true); },
+  async getSystemStrategies() { return this.request('GET', '/api/system/strategies', null, true); },
   async getTradeMoverRecommendation(analysisId, currentPrice = null) {
     let query = `/api/trade-mover/check?analysis_id=${encodeURIComponent(analysisId)}`;
     if (currentPrice !== null && currentPrice !== undefined) {

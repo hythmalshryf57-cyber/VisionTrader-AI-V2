@@ -21,6 +21,7 @@
         input:checked + .slider { background-color: var(--accent-blue); }
         input:checked + .slider:before { transform: translateX(24px); }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -36,7 +37,7 @@
                 <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
             </div>
         </aside>
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="settings-container">
                 <h1>إعدادات المنصة</h1>
         <p style="color: #888; margin-bottom: 30px;">خصص تجربتك في VisionTrader AI بما يناسب احتياجاتك</p>
@@ -249,5 +250,6 @@
     </script>
         </main>
     </div>
+    <script src="js/theme.js"></script>
 </body>
 </html>

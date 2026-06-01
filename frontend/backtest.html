@@ -19,6 +19,7 @@
 		.stat { display:inline-block; min-width:160px; padding:12px; margin:6px; border-radius:6px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.04); text-align:center }
 		.stat .num{ font-size:20px; font-weight:700 }
 	</style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
 	<div class="container">
@@ -59,6 +60,7 @@
 				<div class="stat"><div>نسبة النجاح</div><div class="num" id="winRate">-</div></div>
 				<div class="stat"><div>الربح / الخسارة</div><div class="num" id="pnl">-</div></div>
 			</div>
+			<div id="extraStats" style="display:none; margin-top:16px; color:#444;"></div>
 		</div>
 	</div>
 
@@ -71,12 +73,42 @@
 		const statusSpan = document.getElementById('status');
 		const placeholder = document.getElementById('placeholder');
 		const stats = document.getElementById('stats');
+		const extraStats = document.getElementById('extraStats');
 		const tradesCount = document.getElementById('tradesCount');
 		const winRate = document.getElementById('winRate');
 		const pnl = document.getElementById('pnl');
 
-		function showPlaceholder(text){ placeholder.textContent = text; placeholder.style.display='block'; stats.style.display='none' }
-		function showStats(obj){ placeholder.style.display='none'; stats.style.display='block'; tradesCount.textContent = obj.trades_count ?? '-'; winRate.textContent = (obj.win_rate!=null? obj.win_rate + '%':'-'); pnl.textContent = obj.profit_loss ?? '-'; }
+		function showPlaceholder(text){ placeholder.textContent = text; placeholder.style.display='block'; stats.style.display='none'; extraStats.style.display='none'; }
+		function showStats(obj){
+			const total = obj.trades_count ?? obj.total_trades ?? obj.metrics?.total_trades ?? '-';
+			const rate = obj.win_rate ?? (obj.metrics?.win_rate != null ? Number(obj.metrics.win_rate * 100).toFixed(1) : null);
+			const profitLoss = obj.profit_loss ?? obj.metrics?.total_return ?? '--';
+
+			placeholder.style.display='none';
+			stats.style.display='block';
+			tradesCount.textContent = total;
+			winRate.textContent = rate != null ? `${rate}%` : '-';
+			pnl.textContent = typeof profitLoss === 'number' ? `${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)}$` : profitLoss;
+
+			if (obj.monte_carlo || obj.walk_forward) {
+				extraStats.style.display = 'block';
+				extraStats.innerHTML = `
+				<div style="display:flex; gap:12px; flex-wrap:wrap;">
+					<div style="min-width:160px; background:#fff; padding:12px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+						<strong>Monte Carlo نجاح</strong><div>${obj.monte_carlo?.success_probability != null ? `${(obj.monte_carlo.success_probability * 100).toFixed(1)}%` : '--'}</div>
+					</div>
+					<div style="min-width:160px; background:#fff; padding:12px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+						<strong>Walk Forward فعالية</strong><div>${obj.walk_forward?.efficiency_ratio != null ? obj.walk_forward.efficiency_ratio.toFixed(2) : '--'}</div>
+					</div>
+					<div style="min-width:160px; background:#fff; padding:12px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+						<strong>Overfit</strong><div>${obj.walk_forward?.is_overfit ? 'نعم' : 'لا'}</div>
+					</div>
+				</div>
+			`;
+			} else {
+				extraStats.style.display = 'none';
+			}
+		}
 
 		startBtn.addEventListener('click', async ()=>{
 			const market = marketInput.value.trim();
@@ -102,6 +134,7 @@
 			setTimeout(()=> statusSpan.textContent='',3000);
 		})
 	</script>
+    <script src="js/theme.js"></script>
 </body>
 </html>
 

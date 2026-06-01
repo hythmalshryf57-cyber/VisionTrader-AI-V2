@@ -23,6 +23,14 @@
       "success": true,
       "context": "integration",
       "timestamp": "2026-05-23T16:28:38.365948"
+    },
+    {
+      "type": "test_event",
+      "key": "test_key",
+      "value": 42.0,
+      "success": true,
+      "context": "integration",
+      "timestamp": "2026-05-31T10:36:32.199492"
     }
   ]
 }

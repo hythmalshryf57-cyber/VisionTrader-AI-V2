@@ -12,7 +12,7 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
 
 logger = logging.getLogger(__name__)
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-046971017e5f4efbb60a6408a056e478")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/analyze")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -70,6 +70,8 @@ class MarketThesisGenerator:
         )
 
     def _call_deepseek(self, prompt: str) -> str:
+        if not self.api_key:
+            raise OrchestratorError("DEEPSEEK_API_KEY not configured")
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         payload = {"prompt": prompt, "max_tokens": 200}
         response = requests.post(self.api_url, json=payload, headers=headers, timeout=15)

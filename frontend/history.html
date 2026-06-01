@@ -18,7 +18,9 @@
         .outcome-btn.active-loss { background: rgba(255,77,77,0.1); color: #ff4d4d; border-color: #ff4d4d; }
         
         .prediction-vs-real { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+        .hidden { display: none; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
@@ -34,7 +36,7 @@
                 <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
             </div>
         </aside>
-        <main class="main-content">
+        <main class="main-content fade-in">
             <div class="settings-container">
                 <h1>سجل التحليلات الذكي</h1>
         <p style="color: #888; margin-bottom: 30px;">قارن توقعات الذكاء الاصطناعي بالنتائج الحقيقية لتحسين دقتك</p>
@@ -133,9 +135,15 @@
                             <div style="font-weight: bold;">${accuracy}</div>
                             <div style="font-weight: bold;">${confidence}</div>
                             <div>
+                                <button class="outcome-btn" onclick="this.parentElement.parentElement.nextElementSibling.classList.toggle('hidden')">توسيع / تفاصيل</button>
                                 <button class="outcome-btn ${isWin ? 'active-win' : ''}">Win</button>
                                 <button class="outcome-btn ${isLoss ? 'active-loss' : ''}">Loss</button>
                             </div>
+                        </div>
+                        <div class="history-details hidden" style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; border-right: 3px solid #00bdff;">
+                            <strong>تفاصيل التحليل:</strong>
+                            <p>${entry.reason || entry.description || 'لا توجد تفاصيل إضافية لهذا التحليل.'}</p>
+                            <p><strong>استراتيجيات مدعومة:</strong> ${entry.strategies || 'غير متوفر'}</p>
                         </div>`;
             }).join('');
         }
@@ -183,5 +191,6 @@
     </script>
         </main>
     </div>
+    <script src="js/theme.js"></script>
 </body>
 </html>

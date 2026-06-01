@@ -471,11 +471,20 @@ class ClusterVoting:
         self.geometric_cluster = GeometricCluster()
         self.momentum_cluster = MomentumCluster()
 
-    def vote_clusters(self, chart_data: Dict[str, Any], market: str, strategy_weights: Dict[str, float]) -> Dict:
+    def vote_clusters(self, chart_data: Dict[str, Any], market: str, strategy_weights: Dict[str, float], orchestrator_weights: Optional[Dict[str, int]] = None) -> Dict:
         """تصويت العناقيد الثلاثة"""
         power_result = self.power_cluster.analyze(chart_data, market, strategy_weights)
         geometric_result = self.geometric_cluster.analyze(chart_data, market, strategy_weights)
         momentum_result = self.momentum_cluster.analyze(chart_data, market, strategy_weights)
+
+        if orchestrator_weights:
+            power_result["cluster_weight"] = orchestrator_weights.get("Power", 40)
+            geometric_result["cluster_weight"] = orchestrator_weights.get("Geometric", 30)
+            momentum_result["cluster_weight"] = orchestrator_weights.get("Momentum", 30)
+        else:
+            power_result["cluster_weight"] = 40
+            geometric_result["cluster_weight"] = 30
+            momentum_result["cluster_weight"] = 30
 
         return {
             "power": power_result,
@@ -790,9 +799,14 @@ class DecisionMatrix:
     def calculate_final_score(self, cluster_results: Dict, judge_result: Dict) -> Dict:
         """حساب النتيجة النهائية"""
 
-        power_weight = 0.4
-        geometric_weight = 0.3
-        momentum_weight = 0.3
+        power_weight = cluster_results['power'].get('cluster_weight', 40) / 100.0
+        geometric_weight = cluster_results['geometric'].get('cluster_weight', 30) / 100.0
+        momentum_weight = cluster_results['momentum'].get('cluster_weight', 30) / 100.0
+
+        total_weight = max(0.001, power_weight + geometric_weight + momentum_weight)
+        power_weight /= total_weight
+        geometric_weight /= total_weight
+        momentum_weight /= total_weight
 
         # حساب النتيجة المرجحة
         # normalize scores to -1..1 range before weighting
@@ -861,7 +875,7 @@ class VotingEngine:
         self.calendar_service = CalendarService()
         self.data_adapter = DataAdapter()
 
-    def analyze(self, visual_context: List[Dict], market: str = "XAUUSD", user_id: Optional[int] = None) -> Dict:
+    def analyze(self, visual_context: List[Dict], market: str = "XAUUSD", user_id: Optional[int] = None, orchestrator_weights: Optional[Dict[str, int]] = None) -> Dict:
         """التحليل الكامل بالنظام الجديد مع الذكاء الاصطناعي"""
 
         # الحصول على تفضيلات المستخدم
@@ -902,7 +916,9 @@ class VotingEngine:
             }
 
         strategy_weights = self.internal_brain.get_strategy_weights(user_id=user_id)
-        cluster_results = self.cluster_voting.vote_clusters(unified_data["chart_data"], market, strategy_weights)
+        cluster_results = self.cluster_voting.vote_clusters(
+            unified_data["chart_data"], market, strategy_weights, orchestrator_weights=orchestrator_weights
+        )
 
         judge_result = self.brain_judge.judge(cluster_results, market)
         final_decision = self.decision_matrix.calculate_final_score(cluster_results, judge_result)
