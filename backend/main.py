@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
-from database import get_db, engine, SessionLocal
+from database import get_db, engine, SessionLocal, create_tables
 from supabase_client import supabase_client, SUPABASE_CONFIGURED
 from config import settings
 import models
@@ -108,8 +108,8 @@ tradingview_service = TradingViewService()
 internal_brain_service = InternalBrain()
 agent_manager = AgentManager()
 
-# Create tables
-models.Base.metadata.create_all(bind=engine)
+# Create or verify tables on startup
+create_tables(models.Base)
 
 # Ensure admin user exists by environment variables
 def ensure_admin_user():
@@ -2268,8 +2268,14 @@ async def retrieve_sensitive(db: Session = Depends(get_db), current_user: models
 
 # Mount frontend static files after API path registration to avoid swallowing /api routes
 if frontend_path:
+    app.mount("/frontend", StaticFiles(directory=frontend_path), name="frontend_alias")
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
     print(f"Frontend mounted from: {frontend_path}")
+
+    @app.get("/frontend", include_in_schema=False)
+    @app.get("/frontend/", include_in_schema=False)
+    async def frontend_index_redirect():
+        return RedirectResponse("/")
 
 # Serve index or login page at root if available
 @app.get("/", include_in_schema=False)

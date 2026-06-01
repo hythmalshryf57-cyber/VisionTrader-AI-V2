@@ -1,6 +1,8 @@
-import re
+import os
 import time
+import tempfile
 import traceback
+import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from config import settings
@@ -81,18 +83,29 @@ class VectorMemoryService:
             print("Vector memory disabled: chromadb package not installed.")
             return
 
+        persist_dir = os.getenv("CHROMA_PERSIST_DIRECTORY") or os.path.join(os.getcwd(), ".chromadb")
+        try:
+            os.makedirs(persist_dir, exist_ok=True)
+        except Exception:
+            persist_dir = os.path.join(tempfile.gettempdir(), "visiontrader_chromadb")
+            try:
+                os.makedirs(persist_dir, exist_ok=True)
+            except Exception as exc:
+                print("Vector memory disabled: unable to create persistence directory:", exc)
+                return
+
         try:
             try:
-                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb", anonymized_telemetry=False)
+                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=persist_dir, anonymized_telemetry=False)
             except TypeError:
-                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=".chromadb")
+                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=persist_dir)
             self.client = chromadb.Client(settings)
             try:
                 self.collection = self.client.get_collection(name=DEFAULT_COLLECTION_NAME)
             except Exception:
                 self.collection = self.client.create_collection(name=DEFAULT_COLLECTION_NAME)
             self.use_chroma = True
-            print("Vector memory initialized with ChromaDB.")
+            print(f"Vector memory initialized with ChromaDB at {persist_dir}.")
         except Exception as exc:
             print("Failed to initialize ChromaDB vector memory:", exc)
             traceback.print_exc()

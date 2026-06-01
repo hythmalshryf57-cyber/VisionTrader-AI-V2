@@ -88,6 +88,15 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+def create_tables(base):
+    try:
+        base.metadata.create_all(bind=engine)
+        print("Database tables created or verified.")
+    except Exception as exc:
+        print(f"Database table creation failed: {exc}")
+        raise
+
+
 def get_db():
     db = SessionLocal()
     try:
