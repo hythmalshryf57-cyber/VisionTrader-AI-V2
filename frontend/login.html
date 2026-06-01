@@ -246,7 +246,7 @@
                 <div class="actions-grid">
                     <button id="loginBtn" class="btn btn-primary" type="submit"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</button>
                     <button type="button" class="btn btn-google" id="googleBtn" onclick="googleSignIn()"><i class="fab fa-google"></i> تسجيل الدخول بـ Google</button>
-                    <button type="button" class="btn btn-secondary" id="inviteBtn" onclick="requestInviteCode()"><i class="fas fa-key"></i> الحصول على رمز الدعوة</button>
+                    <button type="button" class="btn btn-secondary" id="inviteBtn" onclick="openInviteBot()"><i class="fas fa-key"></i> الحصول على رمز الدعوة</button>
                 </div>
 
                 <div id="loginMessage" class="message-bar"></div>
@@ -317,30 +317,14 @@
             }
         }
 
-        async function requestInviteCode() {
-            const email = document.getElementById('email').value.trim();
-            const inviteBtn = document.getElementById('inviteBtn');
-            if (!email) {
-                showMessage('اكتب بريدك الإلكتروني لطلب رمز الدعوة.', 'error');
-                return;
-            }
-
-            inviteBtn.disabled = true;
-            inviteBtn.innerHTML = '<span class="spinner-sm"></span> جاري الطلب...';
-
-            try {
-                await api.requestInvite(email);
-                showMessage('تم إرسال طلب رمز الدعوة إلى فريقنا. سنجيبك قريباً.', 'success');
-            } catch (err) {
-                showMessage(err.message || 'فشل طلب رمز الدعوة. حاول مجدداً.', 'error');
-            } finally {
-                inviteBtn.disabled = false;
-                inviteBtn.innerHTML = '<i class="fas fa-key"></i> الحصول على رمز الدعوة';
-            }
+        function openInviteBot() {
+            window.open('https://t.me/VisionTraderAI_Bot', '_blank');
+            showMessage('سيتم فتح بوت Telegram لطلب رمز الدعوة.', 'success');
         }
 
         function googleSignIn() {
-            showMessage('ميزة تسجيل دخول Google قيد التطوير.', 'error');
+            showMessage('جاري إعادة التوجيه إلى Google...', 'success');
+            window.location.href = '/api/auth/google/login';
         }
 
         document.getElementById('loginForm').addEventListener('submit', handleLogin);

@@ -11,12 +11,16 @@ import models
 from config import settings
 from services.telegram_service import telegram_service
 from pydantic import BaseModel
+import httpx
+import secrets
+from fastapi.responses import HTMLResponse, RedirectResponse
+from urllib.parse import urlencode
 
 router = APIRouter()
 FREE_ANALYSIS_LIMIT = 3
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 class Token(BaseModel):
     access_token: str
@@ -113,15 +117,16 @@ def _apply_invite_code_to_user(user: models.User, code: str, db: Session, client
 
 @router.post("/register", response_model=Token)
 def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    normalized_email = user.email.strip().lower()
+    db_user = db.query(models.User).filter(models.User.email == normalized_email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="هذا الإيميل مسجل بالفعل. هل تريد تسجيل الدخول؟")
     
     hashed_password = get_password_hash(user.password)
     trial_start = datetime.utcnow()
     trial_end = trial_start + timedelta(days=7)
     new_user = models.User(
-        email=user.email,
+        email=normalized_email,
         hashed_password=hashed_password,
         invite_code=user.invite_code,
         ip_address=request.client.host,
@@ -157,7 +162,7 @@ def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     db.add(default_prefs)
     db.commit()
     
-    access_token = create_access_token(data={"sub": str(new_user.id), "user_id": new_user.id, "email": new_user.email})
+    access_token = create_access_token(data={"sub": str(new_user.id), "user_id": new_user.id, "email": normalized_email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -170,6 +175,106 @@ def request_invite(payload: dict, request: Request, db: Session = Depends(get_db
         f"الرجاء إرسال رمز الدعوة إلى هذا الدردشة الخاصة.")
     telegram_service.send_message("6380833552", message)
     return {"status": "ok", "message": "تم إرسال طلب رمز الدعوة إلى تيليجرام."}
+
+
+@router.get('/google/login')
+def google_login():
+    if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+        raise HTTPException(status_code=501, detail="Google OAuth is not configured yet.")
+    params = {
+        'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
+        'redirect_uri': settings.GOOGLE_OAUTH_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'access_type': 'offline',
+        'prompt': 'select_account'
+    }
+    url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+    return RedirectResponse(url)
+
+
+@router.get('/google/callback')
+async def google_callback(code: str = None, error: str = None, db: Session = Depends(get_db)):
+    if error:
+        raise HTTPException(status_code=400, detail=f"Google OAuth failed: {error}")
+    if not code:
+        raise HTTPException(status_code=400, detail="Google authorization code is missing.")
+
+    token_url = 'https://oauth2.googleapis.com/token'
+    payload = {
+        'code': code,
+        'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
+        'client_secret': settings.GOOGLE_OAUTH_CLIENT_SECRET,
+        'redirect_uri': settings.GOOGLE_OAUTH_REDIRECT_URI,
+        'grant_type': 'authorization_code'
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        token_res = await client.post(token_url, data=payload)
+    if token_res.status_code != 200:
+        raise HTTPException(status_code=400, detail='فشل مصادقة Google. الرجاء المحاولة لاحقاً.')
+    token_data = token_res.json()
+    id_token = token_data.get('id_token')
+    access_token = token_data.get('access_token')
+    if not id_token or not access_token:
+        raise HTTPException(status_code=400, detail='لم يتم استلام بيانات المصادقة من Google.')
+    userinfo_url = 'https://openidconnect.googleapis.com/v1/userinfo'
+    async with httpx.AsyncClient(timeout=15) as client:
+        userinfo_res = await client.get(userinfo_url, headers={'Authorization': f'Bearer {access_token}'})
+    if userinfo_res.status_code != 200:
+        raise HTTPException(status_code=400, detail='فشل جلب بيانات المستخدم من Google.')
+    userinfo = userinfo_res.json()
+    email = (userinfo.get('email') or '').strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail='لم يتم الحصول على البريد الإلكتروني من Google.')
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        trial_start = datetime.utcnow()
+        trial_end = trial_start + timedelta(days=7)
+        user = models.User(
+            email=email,
+            hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+            invite_code=None,
+            ip_address=None,
+            is_active=True,
+            is_admin=False,
+            trial_start=trial_start,
+            trial_end=trial_end,
+            has_used_trial=False,
+            daily_analyses_count=0
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        default_prefs = models.UserPreferences(
+            user_id=user.id,
+            theme='dark',
+            language='ar',
+            demo_mode=False,
+            demo_balance=1000000.0,
+            trading_mode='day',
+            capital=10000.0,
+            account_balance=10000.0,
+            risk_percentage=1.0,
+            favorite_strategies='[]',
+            watchlist='[]'
+        )
+        db.add(default_prefs)
+        db.commit()
+    access_token_value = create_access_token(data={"sub": str(user.id), "user_id": user.id, "email": user.email})
+    html = f"""
+    <!DOCTYPE html>
+    <html lang='ar'>
+    <head><meta charset='UTF-8'><title>جاري تسجيل الدخول...</title></head>
+    <body>
+      <script>
+        localStorage.setItem('token', '{access_token_value}');
+        window.location.href = '/upload.html';
+      </script>
+      <p>يتم تحويلك إلى VisionTrader AI...</p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html, status_code=200)
 
 
 @router.post('/validate-invite')
@@ -185,9 +290,10 @@ class LoginRequest(BaseModel):
 
 @router.post("/login", response_model=Token)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    normalized_email = payload.email.strip().lower()
+    user = db.query(models.User).filter(models.User.email == normalized_email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
 
     # If the stored hash uses an older/other scheme, re-hash with the preferred scheme
     try:
@@ -208,7 +314,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             db.add(user)
             db.commit()
 
-    access_token = create_access_token(data={"sub": str(user.id), "user_id": user.id, "email": user.email})
+    access_token = create_access_token(data={"sub": str(user.id), "user_id": user.id, "email": normalized_email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me")

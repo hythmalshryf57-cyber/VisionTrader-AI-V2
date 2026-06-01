@@ -4,303 +4,446 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="/manifest.json">
-
-    <title>Upload Chart - VisionTrader AI</title>
+    <title>الرئيسية - VisionTrader AI</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { direction: rtl; font-family: Arial, sans-serif; background: #090b16; color: #eee; margin: 0; padding: 0; }
-        .container { max-width: 1120px; margin: 0 auto; padding: 24px; }
-        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 22px; padding: 24px; margin-bottom: 24px; }
-        .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-        .page-header h1 { margin: 0; font-size: 2rem; }
-        .field-group { display: grid; gap: 12px; margin-bottom: 18px; }
-        .field-group label { color: #a7b0cc; font-size: 0.95rem; }
-        .field-group input, .field-group select, .field-group textarea { width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #f1f5f9; }
-        .field-group input::placeholder, .field-group textarea::placeholder { color: #8b98b1; }
-        .button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-        .btn { border: none; border-radius: 12px; padding: 13px 22px; cursor: pointer; font-weight: 700; transition: transform 0.2s ease, opacity 0.2s ease; }
-        .btn-primary { background: linear-gradient(135deg, #22c55e, #0ea5e9); color: white; }
-        .btn-secondary { background: rgba(255,255,255,0.06); color: #f8fafc; }
+        :root {
+            --bg: #090b16;
+            --panel: rgba(15, 23, 42, 0.95);
+            --panel-border: rgba(255,255,255,0.08);
+            --text: #eef2ff;
+            --muted: #9ca3af;
+            --accent: #22c55e;
+            --accent-soft: rgba(34,197,94,0.12);
+            --danger: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Cairo', 'Inter', sans-serif;
+            color: var(--text);
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 18%),
+                        radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent 20%),
+                        var(--bg);
+        }
+        .app-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: rgba(10, 14, 24, 0.96);
+            border-right: 1px solid rgba(255,255,255,0.06);
+            padding: 28px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: #bde5ff;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+        .brand i {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(34,197,94,0.2));
+            border-radius: 14px;
+        }
+        .nav {
+            display: grid;
+            gap: 10px;
+        }
+        .nav a {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            text-decoration: none;
+            color: var(--text);
+            background: rgba(255,255,255,0.02);
+            transition: background 0.2s ease;
+        }
+        .nav a.active, .nav a:hover {
+            background: rgba(34,197,94,0.15);
+        }
+        .nav i { width: 24px; }
+        .sidebar .logout {
+            margin-top: auto;
+        }
+        .main-content {
+            padding: 24px;
+        }
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .page-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 0.3px;
+        }
+        .page-header p {
+            color: var(--muted);
+            margin: 8px 0 0;
+            max-width: 720px;
+            line-height: 1.7;
+        }
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .btn {
+            border: none;
+            border-radius: 16px;
+            padding: 12px 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
         .btn:hover { transform: translateY(-1px); }
-        .upload-dropzone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease; }
-        .upload-dropzone.dragover { border-color: #38bdf8; background: rgba(56,189,248,0.08); }
-        .upload-preview { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-        .upload-preview img { max-width: 180px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); }
-        .analysis-output { display: grid; gap: 16px; }
-        .alert { padding: 14px 16px; border-radius: 14px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); }
-        .status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: rgba(34,197,94,0.12); color: #a7f3d0; }
-        .hidden { display: none; }
-        pre { white-space: pre-wrap; word-break: break-word; color: #dbeafe; background: rgba(15,23,42,0.95); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
-        .laser-scanner { display: none; width: 100%; height: 4px; background: #38bdf8; box-shadow: 0 0 15px #38bdf8; position: absolute; top: 0; left: 0; animation: scan-effect 2s linear infinite; z-index: 10; }
-        @keyframes scan-effect { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
-        .upload-dropzone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 20px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease; position: relative; overflow: hidden; }
+        .btn-primary { background: linear-gradient(135deg, #22c55e, #0ea5e9); color: white; }
+        .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 20px;
+        }
+        .chat-card, .panel-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            box-shadow: 0 28px 80px rgba(0,0,0,0.18);
+            overflow: hidden;
+        }
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .chat-messages {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: calc(100vh - 280px);
+            overflow-y: auto;
+        }
+        .message {
+            max-width: 80%;
+            padding: 16px 18px;
+            border-radius: 20px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .user-msg { align-self: flex-end; background: linear-gradient(135deg, #0f766e, #2563eb); color: #fff; }
+        .ai-msg { align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.08); color: #e5e7eb; }
+        .system-msg { align-self: center; background: rgba(30,64,175,0.14); border: 1px solid rgba(59,130,246,0.2); color: #bfdbfe; padding: 14px 18px; border-radius: 18px; }
+        .chat-input-area {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            background: rgba(10, 14, 24, 0.95);
+        }
+        .chat-input {
+            width: 100%;
+            min-height: 56px;
+            max-height: 180px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            color: var(--text);
+            padding: 14px 16px;
+            resize: vertical;
+            font-size: 0.98rem;
+        }
+        .chat-input::placeholder { color: rgba(255,255,255,0.55); }
+        .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); color: #cbd5e1; cursor: pointer; }
+        .icon-btn:hover { background: rgba(255,255,255,0.08); }
+        .panel-card { display: grid; gap: 18px; padding: 22px; }
+        .panel-card h3 { margin: 0; font-size: 1.1rem; }
+        .panel-card p { color: var(--muted); line-height: 1.7; }
+        .status-chip { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 999px; background: var(--accent-soft); color: #d1fae5; font-size: 0.95rem; }
+        .upload-area { border: 2px dashed rgba(255,255,255,0.12); border-radius: 22px; padding: 22px; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background 0.2s ease; background: rgba(255,255,255,0.02); }
+        .upload-area:hover { border-color: #22c55e; }
+        .upload-area strong { display: block; font-size: 1rem; margin-bottom: 8px; }
+        .upload-preview { margin-top: 16px; display: grid; gap: 12px; }
+        .upload-preview img { width: 100%; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); }
+        .hidden { display: none !important; }
+        .message-row { display: flex; flex-wrap: wrap; gap: 12px; }
+        .suggestion-chip { border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.03); color: var(--text); border-radius: 16px; padding: 10px 14px; cursor: pointer; transition: background 0.2s ease; }
+        .suggestion-chip:hover { background: rgba(34,197,94,0.16); }
+        @media (max-width: 1080px) {
+            .app-layout { grid-template-columns: 1fr; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .sidebar { position: sticky; top: 0; z-index: 10; }
+        }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
         <aside class="sidebar">
-            <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
+            <div class="brand"><i class="fas fa-rocket"></i> <span>VisionTrader AI</span></div>
             <nav class="nav">
-                <a href="upload.html" class="active"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
-                <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
-                <a href="ask-ai.html"><i class="fas fa-robot"></i> <span>المساعد الذكي</span></a>
-                <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+                <a href="upload.html" class="active"><i class="fas fa-upload"></i> <span>💬 المحادثة</span></a>
+                <a href="history.html"><i class="fas fa-history"></i> <span>📋 السجل</span></a>
+                <a href="settings.html"><i class="fas fa-cog"></i> <span>⚙️ الإعدادات</span></a>
             </nav>
-            <div style="padding: 16px;">
-                <button class="btn btn-secondary" onclick="localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href='login.html';">تسجيل الخروج</button>
+            <div class="logout">
+                <button class="btn btn-secondary" onclick="logout()"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
             </div>
         </aside>
-        <main class="main-content fade-in">
-            <div class="container">
-                <div class="page-header">
-            <div>
-                <h1>رفع وتحليل الشارت</h1>
-                <p style="color:#9ca3af; margin-top: 8px;">ارفع صورة الشارت أو استخدم رابط TradingView لتحصل على تحليل فوري.</p>
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1>المساعد الذكي ورفع الشارت</h1>
+                    <p>اكتب سؤالك أو ارفع صورة الشارت. الوكيل يحلل السوق ويعطيك ردوداً سريعة مع نصائح تداولية.</p>
+                </div>
+                <div class="button-row">
+                    <button class="btn btn-secondary" onclick="clearConversation()"><i class="fas fa-broom"></i> ابدأ محادثة جديدة</button>
+                </div>
             </div>
-            <div class="button-row">
-                <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">العودة إلى لوحة التحكم</button>
-                <button class="btn btn-secondary" onclick="window.location.href='login.html'">تسجيل الخروج</button>
+            <div class="dashboard-grid">
+                <section class="chat-card">
+                    <div class="chat-header">
+                        <div>
+                            <div class="status-chip"><i class="fas fa-robot"></i> المحادثة المباشرة</div>
+                        </div>
+                        <div class="status-chip" id="statusChip"><i class="fas fa-eye"></i> جاهز للاستماع</div>
+                    </div>
+                    <div class="chat-messages" id="chatMessages"></div>
+                    <div class="chat-input-area">
+                        <button class="icon-btn" id="attachImageBtn" title="رفع صورة" onclick="triggerImageUpload()"><i class="fas fa-image"></i></button>
+                        <textarea id="userInput" class="chat-input" rows="2" placeholder="اكتب سؤالك التداولي هنا... (Shift+Enter لسطر جديد)"></textarea>
+                        <button class="btn btn-primary" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                        <input type="file" id="imageUploadInput" accept="image/*" class="hidden" onchange="handleImageSelected(event)">
+                    </div>
+                </section>
+                <aside class="panel-card">
+                    <div>
+                        <h3>رفع الشارت</h3>
+                        <div class="upload-area" id="uploadArea" onclick="triggerImageUpload()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                            <strong>اسحب صورة الشارت هنا</strong>
+                            <span>أو اضغط لرفعها من جهازك</span>
+                        </div>
+                        <div class="upload-preview hidden" id="imagePreviewCard"></div>
+                    </div>
+                    <div>
+                        <h3>نصائح سريعة</h3>
+                        <div class="message-row" id="suggestionsList"></div>
+                    </div>
+                    <div>
+                        <h3>حالة السوق</h3>
+                        <p id="liveMarketStatus">جارٍ تحميل حالة السوق...</p>
+                    </div>
+                </aside>
             </div>
-        </div>
-
-        <div class="card">
-            <div class="field-group">
-                <label for="marketSelect">رمز السوق</label>
-                <select class="cosmic-input" id="marketSelect">
-                    <option value="XAUUSD" selected>XAUUSD (الذهب)</option>
-                    <option value="BTCUSDT">BTCUSDT (البيتكوين)</option>
-                    <option value="EURUSD">EURUSD (اليورو/دولار)</option>
-                </select>
-            </div>
-            <div class="field-group">
-                <label for="timeframeSelect">الفريم الزمني</label>
-                <select class="cosmic-input" id="timeframeSelect">
-                    <option value="1m">1 دقيقة</option>
-                    <option value="5m">5 دقائق</option>
-                    <option value="15m">15 دقيقة</option>
-                    <option value="1h">ساعة</option>
-                    <option value="4h">4 ساعات</option>
-                    <option value="1d" selected>يومي</option>
-                </select>
-            </div>
-            <div class="upload-dropzone" id="dropZone">
-                <div class="laser-scanner" id="laserScanner"></div>
-                <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #38bdf8;"></i>
-                <h3 style="margin: 12px 0 6px;">قم بسحب الشارت هنا</h3>
-                <p style="color:#9ca3af;">أو انقر لرفع صورة. يدعم PNG/JPG.</p>
-                <input id="fileInput" type="file" accept="image/*" multiple class="hidden">
-            </div>
-            <div class="upload-preview" id="previewContainer"></div>
-            <div class="button-row" style="margin-top:18px;">
-                <button class="btn btn-primary" id="analyzeBtn">ابدأ التحليل</button>
-                <button class="btn btn-secondary" id="clearBtn">مسح الصور</button>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="field-group">
-                <label for="tvUrlInput">رابط TradingView</label>
-                <input class="cosmic-input" id="tvUrlInput" type="text" placeholder="https://www.tradingview.com/chart/...">
-            </div>
-            </div>
-            <div class="button-row">
-                <button class="btn btn-primary" id="fetchTvBtn">جلب وتحليل من TradingView</button>
-            </div>
-            <div class="alert" id="tvStatus" style="margin-top:12px; display:none;"></div>
-        </div>
-
-        <div class="card analysis-output hidden" id="resultCard">
-            <h2>نتائج التحليل</h2>
-            <div class="status-chip" id="resultRecommendation">—</div>
-            <div style="display:grid; gap:12px; margin-top:16px;">
-                <div><strong>السوق:</strong> <span id="resultMarket">-</span></div>
-                <div><strong>الثقة:</strong> <span id="resultConfidence">-</span>%</div>
-                <div><strong>التوصية:</strong> <span id="resultStrength">-</span></div>
-                <div><strong>السبب/الوصف:</strong> <span id="resultReason">-</span></div>
-                <div><strong>التفاصيل:</strong></div>
-                <pre id="resultDetails">-</pre>
-                <div><strong>نصيحة الذاكرة:</strong></div>
-                <pre id="memoryInsight">-</pre>
-            </div>
-        </div>
-
-        <div class="card hidden" id="errorCard" style="background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.35);">
-            <h3 style="margin-top:0; color:#fee2e2;">حدث خطأ</h3>
-            <p id="errorText" style="color:#fecaca;">-</p>
-        </div>
+        </main>
     </div>
 
     <script src="js/api.js"></script>
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const previewContainer = document.getElementById('previewContainer');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const tvUrlInput = document.getElementById('tvUrlInput');
-        const fetchTvBtn = document.getElementById('fetchTvBtn');
-        const resultCard = document.getElementById('resultCard');
-        const errorCard = document.getElementById('errorCard');
-        const errorText = document.getElementById('errorText');
-        const tvStatus = document.getElementById('tvStatus');
-        const previewFiles = [];
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const imageUploadInput = document.getElementById('imageUploadInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const imagePreviewCard = document.getElementById('imagePreviewCard');
+        const statusChip = document.getElementById('statusChip');
+        const liveMarketStatus = document.getElementById('liveMarketStatus');
+        const suggestionsList = document.getElementById('suggestionsList');
 
-        function redirectToLogin() {
+        let attachedImageFile = null;
+        let attachedImageUrl = null;
+        let isSending = false;
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
             window.location.href = 'login.html';
         }
 
-        function showError(message) {
-            errorText.textContent = message;
-            errorCard.classList.remove('hidden');
+        function appendMessage(text, role) {
+            const bubble = document.createElement('div');
+            bubble.className = `message ${role}`;
+            bubble.innerText = text;
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function clearError() {
-            errorCard.classList.add('hidden');
-            errorText.textContent = '';
+        function appendSystemMessage(text) {
+            const bubble = document.createElement('div');
+            bubble.className = 'system-msg';
+            bubble.innerText = text;
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function setLoading(isLoading) {
-            analyzeBtn.textContent = isLoading ? 'جاري التحليل...' : 'ابدأ التحليل';
-            analyzeBtn.disabled = isLoading;
-            document.getElementById('laserScanner').style.display = isLoading ? 'block' : 'none';
+        function setStatus(text) {
+            statusChip.innerHTML = `<i class="fas fa-eye"></i> ${text}`;
         }
 
-        function updatePreview() {
-            previewContainer.innerHTML = '';
-            previewFiles.forEach(file => {
-                const url = URL.createObjectURL(file);
-                const img = document.createElement('img');
-                img.src = url;
-                img.alt = file.name;
-                previewContainer.appendChild(img);
-            });
+        function triggerImageUpload() {
+            imageUploadInput.click();
         }
 
-        function addFiles(files) {
-            for (let file of files) {
-                if (!file.type.startsWith('image/')) continue;
-                if (previewFiles.length >= 3) break;
-                previewFiles.push(file);
-            }
-            updatePreview();
-        }
-
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', event => {
-            event.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        dropZone.addEventListener('drop', event => {
-            event.preventDefault();
-            dropZone.classList.remove('dragover');
-            addFiles(event.dataTransfer.files);
-        });
-
-        fileInput.addEventListener('change', () => {
-            addFiles(fileInput.files);
-        });
-
-        clearBtn.addEventListener('click', () => {
-            previewFiles.length = 0;
-            updatePreview();
-            clearError();
-            resultCard.classList.add('hidden');
-        });
-
-        async function convertFileToDataUrl(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error('فشل في قراءة الصورة'));
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function collectImages() {
-            const images = [];
-            for (let file of previewFiles) {
-                const dataUrl = await convertFileToDataUrl(file);
-                images.push({ name: file.name, data: dataUrl });
-            }
-            return images;
-        }
-
-        async function performAnalysis() {
-            clearError();
-            if (!localStorage.getItem('token')) return redirectToLogin();
-            if (previewFiles.length === 0) {
-                showError('يرجى رفع صورة واحدة على الأقل لتحليلها.');
+        function handleImageSelected(event) {
+            const file = event.target.files[0];
+            if (!file || !file.type.startsWith('image/')) {
+                setStatus('الرجاء اختيار صورة صالحة.');
                 return;
             }
-            setLoading(true);
+            attachedImageFile = file;
+            showImagePreview(file);
+            setStatus('تم إرفاق صورة الشارت. يمكنك الآن إرسال السؤال.');
+        }
+
+        function showImagePreview(file) {
+            if (attachedImageUrl) URL.revokeObjectURL(attachedImageUrl);
+            attachedImageUrl = URL.createObjectURL(file);
+            imagePreviewCard.classList.remove('hidden');
+            imagePreviewCard.innerHTML = `
+                <div class="upload-preview">
+                    <img src="${attachedImageUrl}" alt="صورة الشارت">
+                    <div class="message-row">
+                        <span>${file.name}</span>
+                        <button class="btn btn-secondary" type="button" onclick="removeAttachedImage()">إلغاء الصورة</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function removeAttachedImage() {
+            attachedImageFile = null;
+            if (attachedImageUrl) URL.revokeObjectURL(attachedImageUrl);
+            attachedImageUrl = null;
+            imagePreviewCard.classList.add('hidden');
+            imagePreviewCard.innerHTML = '';
+            setStatus('تمت إزالة الصورة. يمكنك الاستمرار بنص فقط.');
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            uploadArea.style.borderColor = '#22c55e';
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            uploadArea.style.borderColor = 'rgba(255,255,255,0.12)';
+            const file = event.dataTransfer.files[0];
+            if (!file || !file.type.startsWith('image/')) {
+                setStatus('الملف المرفوع ليس صورة.');
+                return;
+            }
+            attachedImageFile = file;
+            showImagePreview(file);
+            setStatus('تم إرفاق صورة الشارت عبر السحب والإفلات.');
+        }
+
+        function renderWelcome() {
+            chatMessages.innerHTML = '';
+            appendSystemMessage('مرحباً بك! ارفع صورة الشارت أو اكتب سؤالك التداولي. اضغط Enter للإرسال وShift+Enter لسطر جديد.');
+        }
+
+        function loadSuggestions() {
+            const suggestions = [
+                'حلل لي الشارت وأخبرني بأهم نقاط الدعم والمقاومة.',
+                'هل الوقت مناسب لصفقة شراء على الذهب؟',
+                'أعطني توقعًا سريعًا لمسار BTC خلال الساعات القادمة.',
+                'افحص الشارت وأخبرني إذا هناك فرصة تداولية واضحة.'
+            ];
+            suggestionsList.innerHTML = suggestions.map(item => `<button type="button" class="suggestion-chip" onclick="selectSuggestion('${item.replace(/'/g, "\\'")}')">${item}</button>`).join('');
+        }
+
+        function selectSuggestion(text) {
+            userInput.value = text;
+            userInput.focus();
+        }
+
+        async function sendMessage() {
+            const question = userInput.value.trim();
+            if (!question) {
+                setStatus('اكتب سؤالك أولاً ثم أرسل.');
+                return;
+            }
+            if (isSending) return;
+            isSending = true;
+            setStatus('جارٍ إرسال السؤال إلى الوكيل...');
+            appendMessage(question, 'user-msg');
+            userInput.value = '';
+
+            const formData = new FormData();
+            formData.append('question', question);
+            if (attachedImageFile) formData.append('image', attachedImageFile);
+
             try {
-                const market = document.getElementById('marketSelect').value || 'XAUUSD';
-                const images = await collectImages();
-                const payload = { market, timeframe: document.getElementById('timeframeSelect').value, images };
-                const result = await api.analyzeMarket(payload.market, payload.images);
-                displayResult(result);
+                const response = await api.askAgent(formData);
+                appendMessage(response.answer || 'تعذر الحصول على رد. حاول إعادة الصياغة.', 'ai-msg');
+                if (response.visual_analysis && response.visual_analysis.analysis) {
+                    appendSystemMessage(`تحليل الصورة: ${response.visual_analysis.analysis}`);
+                }
+                setStatus('تم الرد. يمكنك متابعة السؤال أو رفع صورة جديدة.');
             } catch (err) {
-                showError(err.message || 'حدث خطأ أثناء تحليل الشارت.');
+                appendSystemMessage(`تعذر التواصل مع الوكيل: ${err.message}`);
+                setStatus('فشل إرسال السؤال. تأكد من تسجيل الدخول أو حالة الاتصال.', true);
             } finally {
-                setLoading(false);
+                isSending = false;
             }
         }
 
-        function displayResult(result) {
-            localStorage.setItem('lastAnalysis', JSON.stringify(result));
-            resultCard.classList.remove('hidden');
-            document.getElementById('resultMarket').textContent = result.market || document.getElementById('marketSelect').value || 'غير محدد';
-            document.getElementById('resultConfidence').textContent = result.confidence || 0;
-            document.getElementById('resultStrength').textContent = result.strength || result.recommendation || 'غير مؤكد';
-            document.getElementById('resultReason').textContent = result.reason || result.notes || 'لا توجد بيانات إضافية.';
-            document.getElementById('resultRecommendation').textContent = (result.recommendation || 'غير محدد').toUpperCase();
-            document.getElementById('resultDetails').textContent = JSON.stringify(result, null, 2);
-            document.getElementById('memoryInsight').textContent = result.memory_insight || 'لا يوجد.';
-            setTimeout(() => {
-                window.location.href = 'result.html';
-            }, 500);
-        }
-
-        analyzeBtn.addEventListener('click', performAnalysis);
-
-        fetchTvBtn.addEventListener('click', async () => {
-            clearError();
-            if (!localStorage.getItem('token')) return redirectToLogin();
-            const url = tvUrlInput.value.trim();
-            if (!url) {
-                showError('يرجى إدخال رابط TradingView.');
-                return;
-            }
-            tvStatus.style.display = 'block';
-            tvStatus.textContent = 'جاري جلب التحليل من TradingView...';
-            try {
-                const response = await api.fetchTradingView(url);
-                tvStatus.textContent = response.summary || response.message || 'تم جلب البيانات بنجاح.';
-            } catch (err) {
-                tvStatus.textContent = err.message || 'فشل جلب رابط TradingView.';
+        userInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
             }
         });
+
+        async function loadMarketStatus() {
+            try {
+                const session = await api.getMarketSession();
+                const spread = await api.getMarketSpread();
+                liveMarketStatus.innerHTML = `حالة السوق: ${session.label || 'غير متاحة'} - ${session.note || 'لا توجد معلومات'}.`;
+            } catch (error) {
+                liveMarketStatus.innerHTML = `تعذر تحميل حالة السوق: ${error.message}`;
+            }
+        }
+
+        function clearConversation() {
+            renderWelcome();
+            removeAttachedImage();
+            userInput.focus();
+            setStatus('جاهز لاستقبال سؤالك التالي.');
+        }
 
         window.addEventListener('load', () => {
             if (!localStorage.getItem('token')) {
-                redirectToLogin();
+                window.location.href = 'login.html';
+                return;
             }
+            renderWelcome();
+            loadMarketStatus();
+            loadSuggestions();
         });
     </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('Service Worker registered:', reg.scope))
-                    .catch(err => console.warn('SW registration failed:', err));
-            });
-        }
-    </script>
-        </main>
-    </div>
     <script src="js/theme.js"></script>
 </body>
 </html>

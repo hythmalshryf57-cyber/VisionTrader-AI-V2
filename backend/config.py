@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     CALENDAR_API_KEY: str = os.getenv("CALENDAR_API_KEY", "")
     ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
+    GOOGLE_OAUTH_CLIENT_ID: str = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+    GOOGLE_OAUTH_CLIENT_SECRET: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+    GOOGLE_OAUTH_REDIRECT_URI: str = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback")
     
     # Telegram Bot config
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -71,6 +74,10 @@ def _validate_settings(settings: Settings):
     if not settings.TELEGRAM_BOT_TOKEN.strip():
         raise RuntimeError(
             "TELEGRAM_BOT_TOKEN must be configured for Telegram integration."
+        )
+    if settings.GOOGLE_OAUTH_CLIENT_ID.strip() and not settings.GOOGLE_OAUTH_CLIENT_SECRET.strip():
+        raise RuntimeError(
+            "GOOGLE_OAUTH_CLIENT_SECRET must be configured when GOOGLE_OAUTH_CLIENT_ID is set."
         )
 
 
