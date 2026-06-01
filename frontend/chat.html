@@ -61,9 +61,10 @@
 
         <footer class="chat-footer">
             <div class="input-group">
-                <input type="text" id="userInput" placeholder="اكتب اسم السوق (مثلاً: Gold)..." onkeypress="handleKey(event)">
-                <button class="upload-btn"><i class="fas fa-paperclip"></i></button>
-                <button onclick="sendMessage()" style="background: var(--accent-blue); border: none; color: white; width: 40px; height: 40px; border-radius: 10px; cursor: pointer;">
+                <textarea id="userInput" placeholder="اكتب اسم السوق (مثلاً: Gold) أو استفسار..." rows="1" style="resize: none;"></textarea>
+                <input type="file" id="chatImageInput" accept="image/*" hidden onchange="handleChatImageSelected(event)">
+                <button class="upload-btn" id="uploadBtn" onclick="triggerChatImageUpload()"><i class="fas fa-paperclip"></i></button>
+                <button id="sendBtn" onclick="sendMessage()" style="background: var(--accent-blue); border: none; color: white; width: 40px; height: 40px; border-radius: 10px; cursor: pointer;">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
@@ -77,7 +78,23 @@
         let step = 0;
         let selectedMarket = '';
 
-        function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
+        // Use Enter to send, Shift+Enter to insert newline
+        userInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function triggerChatImageUpload() {
+            document.getElementById('chatImageInput').click();
+        }
+
+        function handleChatImageSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            addMessage('تم إرفاق صورة. اضغط إرسال لتحليلها.', true);
+        }
 
         function addMessage(text, isUser = false) {
             const div = document.createElement('div');

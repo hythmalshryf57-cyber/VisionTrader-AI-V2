@@ -8,7 +8,7 @@ import io
 import csv
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -2137,6 +2137,367 @@ def ai_trade_assistant(payload: dict, db: Session = Depends(get_db), current_use
     answer = ai_core_service.answer_question(question, prompt)
 
     return {"answer": answer}
+
+# --- Super AI Agent Helpers ---
+
+def _normalize_text(value: str) -> str:
+    return re.sub(r"[^\w\s]", " ", (value or "").strip().lower())
+
+
+def _find_numbers(value: str):
+    if not value:
+        return []
+    numbers = re.findall(r"\d+[\.,]?\d*", value.replace("،", "."))
+    results = []
+    for n in numbers:
+        try:
+            results.append(float(n.replace(",", ".")))
+        except Exception:
+            continue
+    return results
+
+
+def _map_named_market(text: str) -> str:
+    name = _normalize_text(text)
+    mappings = {
+        "ذهب": "XAUUSD",
+        "الذهب": "XAUUSD",
+        "يورودولار": "EURUSD",
+        "يورو دولار": "EURUSD",
+        "يورو": "EURUSD",
+        "جنيه": "GBPUSD",
+        "باوند": "GBPUSD",
+        "بيتكوين": "BTCUSDT",
+        "بتكوين": "BTCUSDT",
+        "إيثيريوم": "ETHUSDT",
+        "إيثريوم": "ETHUSDT",
+        "دولار ين": "USDJPY",
+        "دولار/ين": "USDJPY",
+        "داوجونز": "US30",
+        "ناسداك": "US100",
+        "نفط": "WTI",
+        "ذهب": "XAUUSD",
+    }
+    for key, value in mappings.items():
+        if key in name:
+            return value
+    symbols = ["XAUUSD", "EURUSD", "GBPUSD", "BTCUSDT", "ETHUSDT", "USDJPY", "USDCAD", "AUDUSD", "US30", "US100", "SPX500"]
+    for symbol in symbols:
+        if symbol.lower() in name.replace("/", "").replace(" ", ""):
+            return symbol
+    return "XAUUSD"
+
+
+def _infer_intent(question: str) -> str:
+    q = _normalize_text(question)
+    if any(word in q for word in ["تنبيه", "alert", "سعر", "نبه", "target", "above", "below"]):
+        return "price_alert"
+    if any(word in q for word in ["backtest", "اختبار", "محاكاة", "walk", "عودة"]):
+        return "backtest"
+    if any(word in q for word in ["سجل", "تاريخ", "صفقات", "journal", "history"]):
+        return "trade_history"
+    if any(word in q for word in ["استراتيجية", "performance", "أداء", "win rate", "خسارة"]):
+        return "strategy_performance"
+    if any(word in q for word in ["إعدادات", "theme", "risk", "capital", "mode", "preferences", "preference"]):
+        return "settings"
+    if any(word in q for word in ["footprint", "bookmap", "سيولة", "مناطق السيولة", "شمعة", "نموذج"]):
+        return "visual_analysis"
+    return "market_analysis"
+
+
+def _infer_mood(question: str) -> str:
+    q = _normalize_text(question)
+    if any(word in q for word in ["قلق", "متوتر", "خائف", "خوف"]):
+        return "anxious"
+    if any(word in q for word in ["متحمس", "فخور", "confident", "حماس"]):
+        return "excited"
+    if any(word in q for word in ["متردد", "مش متأكد", "حائر"]):
+        return "uncertain"
+    return "neutral"
+
+
+def _build_user_profile(current_user: models.User, db: Session) -> dict:
+    prefs = db.query(models.UserPreferences).filter(models.UserPreferences.user_id == current_user.id).first()
+    journal = db.query(models.JournalEntry).filter(models.JournalEntry.user_id == current_user.id).order_by(models.JournalEntry.created_at.desc()).limit(40).all()
+    analyses = db.query(models.Analysis).filter(models.Analysis.user_id == current_user.id).order_by(models.Analysis.created_at.desc()).limit(40).all()
+    alerts = db.query(models.PriceAlert).filter(models.PriceAlert.user_id == current_user.id).order_by(models.PriceAlert.created_at.desc()).limit(20).all()
+
+    market_counts = {}
+    for entry in journal + analyses:
+        if getattr(entry, 'market', None):
+            market = entry.market.upper()
+            market_counts[market] = market_counts.get(market, 0) + 1
+
+    favorite_markets = [k for k, _ in sorted(market_counts.items(), key=lambda item: item[1], reverse=True)][:3]
+    recent_mistakes = [entry.market for entry in journal if entry.result and str(entry.result).lower() in ['loss', 'خاسر', 'losses', 'loss']][:3]
+    style = 'محافظ' if prefs and float(getattr(prefs, 'risk_percentage', 1.0)) <= 1.0 else 'معتدل' if prefs and float(getattr(prefs, 'risk_percentage', 1.0)) <= 2.0 else 'مغامر'
+
+    return {
+        'user_email': current_user.email,
+        'favorite_markets': favorite_markets,
+        'recent_questions': [a.description for a in analyses if a.description][:5],
+        'recent_mistakes': recent_mistakes,
+        'settings': {
+            'theme': getattr(prefs, 'theme', 'dark') if prefs else 'dark',
+            'risk_percentage': float(getattr(prefs, 'risk_percentage', 1.0)) if prefs else 1.0,
+            'capital': float(getattr(prefs, 'capital', 10000.0)) if prefs else 10000.0,
+            'trading_mode': getattr(prefs, 'trading_mode', 'day') if prefs else 'day',
+        },
+        'alert_count': len(alerts),
+        'journal_count': len(journal),
+        'analysis_count': len(analyses),
+        'style': style,
+    }
+
+
+def _summarize_visual_analysis(visual_analysis: dict) -> str:
+    if not visual_analysis:
+        return ''
+    analysis = visual_analysis.get('analysis') if isinstance(visual_analysis.get('analysis'), dict) else visual_analysis.get('analysis')
+    if isinstance(analysis, dict):
+        note = analysis.get('note') or analysis.get('recommendation') or ''
+        confidence = analysis.get('confidence')
+        return f"تحليل مرئي: {note} (ثقة {confidence}%)" if note else "تم إنشاء تحليل مرئي للصورة." 
+    return str(analysis)
+
+
+def _sanitize_string_for_user(s: str) -> str:
+    if not s or not isinstance(s, str):
+        return s
+    # Remove mentions of internal provider/model names and phrases that leak implementation
+    banned = [r"gemini", r"deepseek", r"openrouter", r"openai", r"anthropic", r"deepmind"]
+    pattern = re.compile(r"(" + r"|".join(banned) + r")", re.IGNORECASE)
+    s = pattern.sub("", s)
+    # Remove common leaked phrases in Arabic or English
+    s = re.sub(r"تَم\s+التحليل\s+بواسطة|تم التحليل بواسطة|وفقاً لـ\s+\w+|according to\s+\w+|powered by\s+\w+", "", s, flags=re.IGNORECASE)
+    # Clean up extra whitespace and stray punctuation
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    s = re.sub(r"\s+[,\.؛]", ",", s)
+    return s
+
+
+def _sanitize_obj_for_user(obj):
+    # Recursively sanitize strings in nested dict/list structures
+    if isinstance(obj, str):
+        return _sanitize_string_for_user(obj)
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            # drop explicit provider/model keys
+            if k.lower() in ("provider", "model", "engine", "source"):
+                continue
+            out[k] = _sanitize_obj_for_user(v)
+        return out
+    if isinstance(obj, list):
+        return [_sanitize_obj_for_user(x) for x in obj]
+    return obj
+
+
+def _record_agent_memory(db: Session, current_user: models.User, question: str, answer: str, visual_summary: str):
+    try:
+        analysis = models.Analysis(
+            user_id=current_user.id,
+            market='AGENT',
+            image_path=None,
+            description=question,
+            result_json=json.dumps({'answer': answer, 'visual_summary': visual_summary}, ensure_ascii=False),
+        )
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+        vector_memory.store_analysis(analysis.id, question, answer, db=db)
+    except Exception:
+        db.rollback()
+    try:
+        memory = internal_brain_service.get_component_memory('super_agent') or {}
+        conversations = memory.setdefault('conversations', [])
+        conversations.append({
+            'timestamp': datetime.utcnow().isoformat(),
+            'user_id': current_user.id,
+            'question': question,
+            'answer': answer,
+            'visual_summary': visual_summary,
+        })
+        if len(conversations) > 400:
+            conversations[:] = conversations[-400:]
+        internal_brain_service._save_component_memory('super_agent', memory)
+    except Exception:
+        pass
+
+
+def _build_agent_answer(question: str, intent: str, mood: str, profile: dict, market: str, market_data: dict, memory_matches: list, visual_analysis: dict, action_result: dict, quick_backtest: dict, session_info: dict) -> str:
+    greeting = 'مساء الخير' if 15 <= datetime.utcnow().hour < 21 else 'صباح الخير' if 6 <= datetime.utcnow().hour < 15 else 'مساء النور'
+    mood_sentence = ''
+    if mood == 'anxious':
+        mood_sentence = 'أشعر بأن لديك قلق خفيف، سأبقي النصيحة مركزة وحذرة.'
+    elif mood == 'excited':
+        mood_sentence = 'يبدو أنك متحمس، سأوازن النصيحة مع تحذير مخاطر واضح.'
+    elif mood == 'uncertain':
+        mood_sentence = 'واضح أنك متردد، سأعرض لك سيناريوهات واضحة لتسهيل القرار.'
+
+    base = [f"{greeting}، أنا الوكيل الخارق الخاص بك. {mood_sentence}".strip()]
+    base.append(f"ملاحظاتي عن أسلوبك: تداولك تميل لأن يكون {profile.get('style')} ويتركز حول {', '.join(profile.get('favorite_markets', [])) or 'الذهب وأسواق رئيسية'}." )
+
+    if memory_matches:
+        matches = ', '.join(f"{m.get('market', 'سوق غير محدد')}" for m in memory_matches[:2])
+        base.append(f"أسترجع حديثاً عن {matches}. سأبني عليه لإجابتك.")
+
+    if visual_analysis:
+        visual_text = _summarize_visual_analysis(visual_analysis)
+        base.append(visual_text)
+
+    if intent == 'price_alert' and action_result:
+        base.append(f"تم إنشاء تنبيه سعر ل {action_result.get('market')} عند {action_result.get('target_price')} ({action_result.get('direction')}). سأراقبه لك.")
+    elif intent == 'settings' and action_result:
+        updates = action_result.get('updated', {})
+        changes = ', '.join(f"{k} = {v}" for k, v in updates.items())
+        base.append(f"تم تحديث الإعدادات بنجاح: {changes}.")
+    elif intent == 'trade_history':
+        base.append('إليك ملخص سريع من سجل تداولاتك الأخيرة:')
+    elif intent == 'strategy_performance':
+        base.append('سأعرض لك أهم مقاييس أداء الاستراتيجيات الخاصة بك الآن.')
+    elif intent == 'backtest' and quick_backtest:
+        perf = quick_backtest.get('metrics', {})
+        base.append(f"إليك نتائج backtest السريع لـ {market}: معدل الفوز {perf.get('win_rate', 0.0):.1f}%, العائد الإجمالي {perf.get('total_return', 0.0):.1f}.")
+    else:
+        base.append(f"سأقدم لك تحليل السوق في {market} مع توصية واضحة ورؤية مبسطة.")
+
+    if market_data and market_data.get('price'):
+        base.append(f"السعر الحالي لـ {market} هو {market_data.get('price'):.4f}.")
+    if session_info:
+        base.append(f"جاري التداول في جلسة {session_info.get('label')}، {session_info.get('note')}")
+
+    if quick_backtest and isinstance(quick_backtest, dict) and quick_backtest.get('note'):
+        base.append(f"ملاحظة backtest: {quick_backtest.get('note')}")
+
+    return ' '.join(base)
+
+
+async def _analyze_image_file(image: UploadFile) -> dict:
+    try:
+        image_bytes = await image.read()
+        if not image_bytes:
+            return {}
+        raw = tradingview_service.analyze_with_gemini(image_bytes)
+        # sanitize any provider/model mentions from visual analysis
+        return _sanitize_obj_for_user(raw or {})
+    except Exception:
+        return {}
+
+
+@app.post("/api/ai/agent")
+async def super_ai_agent(
+    question: str = Form(...),
+    image: UploadFile = File(None),
+    market_hint: str = Form(None),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    question = question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+
+    intent = _infer_intent(question)
+    mood = _infer_mood(question)
+    profile = _build_user_profile(current_user, db)
+    memory_matches = vector_memory.find_similar(question, top_k=4, db=db)
+    visual_analysis = None
+    if image is not None:
+        visual_analysis = await _analyze_image_file(image)
+
+    market = market_hint or _map_named_market(question)
+    market_data = binance_service.scan(market)
+    session_info = market_protection_service.get_current_session()
+    spread_report = market_protection_service.get_spread_report()
+
+    action_result = None
+    quick_backtest = None
+
+    if intent == 'price_alert':
+        price_candidates = _find_numbers(question)
+        target_price = price_candidates[0] if price_candidates else market_data.get('price')
+        direction = 'above' if any(word in _normalize_text(question) for word in ['فوق', 'أعلى', 'ارتفاع', 'شراء', 'buy']) else 'below'
+        if target_price is None:
+            raise HTTPException(status_code=400, detail='Price target could not be extracted for alert')
+        action_result = market_protection_service.create_price_alert(
+            user_id=current_user.id,
+            market=market,
+            target_price=float(target_price),
+            direction=direction
+        )
+    elif intent == 'settings':
+        updates = {}
+        risk_numbers = [n for n in _find_numbers(question) if 0 < n < 100]
+        if risk_numbers and any(word in _normalize_text(question) for word in ['risk', 'مخاطر', 'نسبة']):
+            risk_value = risk_numbers[0]
+            if risk_value > 5:
+                risk_value = max(0.1, min(risk_value / 100.0, 5.0))
+            updates['risk_percentage'] = round(risk_value, 2)
+        if any(word in _normalize_text(question) for word in ['فاتح', 'light']):
+            updates['theme'] = 'light'
+        if any(word in _normalize_text(question) for word in ['داكن', 'dark']):
+            updates['theme'] = 'dark'
+        if updates:
+            prefs = _ensure_preferences(db, current_user)
+            for key, value in updates.items():
+                if hasattr(prefs, key):
+                    setattr(prefs, key, value)
+            db.add(prefs)
+            db.commit()
+            action_result = {'updated': updates}
+    elif intent == 'backtest':
+        try:
+            start_date = (datetime.utcnow() - timedelta(days=21)).date().isoformat()
+            end_date = datetime.utcnow().date().isoformat()
+            quick_backtest = backtest_engine.run_backtest(
+                market=market,
+                timeframe='1d',
+                start_date=start_date,
+                end_date=end_date,
+                initial_capital=profile.get('settings', {}).get('capital', 10000.0),
+                simulations=250,
+                n_windows=3,
+            )
+        except Exception as exc:
+            quick_backtest = {'error': str(exc)}
+
+    answer = _build_agent_answer(
+        question=question,
+        intent=intent,
+        mood=mood,
+        profile=profile,
+        market=market,
+        market_data=market_data,
+        memory_matches=memory_matches,
+        visual_analysis=visual_analysis,
+        action_result=action_result,
+        quick_backtest=quick_backtest,
+        session_info=session_info,
+    )
+
+    try:
+        _record_agent_memory(db, current_user, question, answer, _summarize_visual_analysis(visual_analysis))
+    except Exception:
+        pass
+
+    # Sanitize strings/objects before returning to the client to avoid leaking system/provider names
+    safe_answer = _sanitize_string_for_user(answer)
+    safe_visual = _sanitize_obj_for_user(visual_analysis or {})
+    safe_memory = _sanitize_obj_for_user(memory_matches or [])
+
+    return {
+        'answer': safe_answer,
+        'intent': intent,
+        'mood': mood,
+        'profile': _sanitize_obj_for_user(profile or {}),
+        'market_data': _sanitize_obj_for_user(market_data or {}),
+        'session_info': _sanitize_obj_for_user(session_info or {}),
+        'spread_report': _sanitize_obj_for_user(spread_report or {}),
+        'memory_matches': safe_memory,
+        'visual_analysis': safe_visual,
+        'action_result': _sanitize_obj_for_user(action_result or {}),
+        'quick_backtest': _sanitize_obj_for_user(quick_backtest or {}),
+    }
 
 @app.post("/api/chart/detect")
 async def detect_chart_screenshot(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
