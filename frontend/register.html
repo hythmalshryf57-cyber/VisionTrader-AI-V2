@@ -10,89 +10,297 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
-        .login-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 48px 40px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-            animation: fadeIn 0.6s ease;
+        :root {
+            --bg: radial-gradient(circle at top left, rgba(35, 125, 255, 0.18), transparent 35%),
+                   radial-gradient(circle at bottom right, rgba(0, 255, 212, 0.14), transparent 30%),
+                   #090b16;
+            --panel: rgba(12, 18, 38, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text: #f3f7ff;
+            --muted: rgba(243, 247, 255, 0.72);
+            --accent: #6dd5ed;
+            --accent-2: #1a73e8;
+            --danger: #ff6b6b;
         }
-        .login-card .brand-logo { text-align: center; margin-bottom: 32px; }
-        .login-card .brand-logo i { font-size: 2.5rem; background: linear-gradient(135deg, var(--accent), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .login-card .brand-logo h2 { margin-top: 8px; font-weight: 800; font-size: 1.6rem; }
-        .login-card .brand-logo p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
-        .form-group input { width: 100%; padding: 14px 16px; font-size: 1rem; }
-        .login-btn { width: 100%; padding: 14px; font-size: 1.05rem; margin-top: 8px; }
-        .login-error { color: var(--danger); font-size: 0.85rem; margin-top: 12px; text-align: center; display: none; }
-        .login-footer { text-align: center; margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
-        .secondary-action { display: inline-block; margin-top: 16px; padding: 12px 16px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); text-decoration: none; }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Cairo', 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .auth-shell {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .auth-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 32px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            backdrop-filter: blur(18px);
+            padding: 32px;
+        }
+
+        .auth-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .brand-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(109, 213, 237, 0.18), rgba(26, 115, 232, 0.22));
+            color: #76e1ff;
+            font-size: 1.9rem;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+        }
+
+        .brand-copy h1 {
+            margin: 0;
+            font-size: 1.55rem;
+            letter-spacing: 0.3px;
+        }
+
+        .brand-copy p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .auth-form {
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 10px;
+        }
+
+        .form-group label {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .form-group input {
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            padding: 16px 18px;
+            font-size: 1rem;
+        }
+
+        .password-group {
+            position: relative;
+        }
+
+        .password-group .toggle-password {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            left: 16px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1.05rem;
+            padding: 6px;
+        }
+
+        .password-group input {
+            padding-left: 46px;
+        }
+
+        .actions-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #59c5ff, #1d90ff);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.14);
+        }
+
+        .auth-note {
+            font-size: 0.92rem;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 18px;
+            line-height: 1.6;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .auth-footer a {
+            color: #8ad8ff;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .message-bar {
+            min-height: 22px;
+            margin-top: 10px;
+            text-align: center;
+            color: var(--text);
+            font-size: 0.92rem;
+            display: none;
+        }
+
+        .message-bar.success {
+            color: #9bffb8;
+            display: block;
+        }
+
+        .message-bar.error {
+            color: var(--danger);
+            display: block;
+        }
+
+        @media (max-width: 560px) {
+            .auth-card { padding: 24px 20px; }
+            .brand-icon { width: 60px; height: 60px; }
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
-    <div class="login-card fade-in">
-        <div class="brand-logo">
-            <i class="fas fa-user-plus"></i>
-            <h2>إنشاء حساب جديد</h2>
-            <p>سجل مباشرة بدون رمز دعوة</p>
-        </div>
-        <form id="registerForm" onsubmit="return false;">
-            <div class="form-group">
-                <label for="registerEmail"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
-                <input class="cosmic-input" type="email" id="registerEmail" placeholder="test@test.com" autocomplete="email" required>
+    <main class="auth-shell">
+        <section class="auth-card">
+            <div class="auth-header">
+                <div class="brand-icon"><i class="fas fa-user-plus"></i></div>
+                <div class="brand-copy">
+                    <h1>إنشاء حساب جديد</h1>
+                    <p>ابدأ بـ 3 تحليلات مجانية. أدخل رمز الدعوة إذا كنت تريد التفعيل المبكر.</p>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="registerPassword"><i class="fas fa-lock"></i> كلمة المرور</label>
-                <input class="cosmic-input" type="password" id="registerPassword" placeholder="••••••" autocomplete="new-password" required>
+
+            <form id="registerForm" class="auth-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="registerEmail"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                    <input type="email" id="registerEmail" autocomplete="email" required>
+                </div>
+                <div class="form-group password-group">
+                    <label for="registerPassword"><i class="fas fa-lock"></i> كلمة المرور</label>
+                    <input type="password" id="registerPassword" autocomplete="new-password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword('registerPassword', this)"><i class="fas fa-eye"></i></button>
+                </div>
+                <div class="form-group">
+                    <label for="registerInvite"><i class="fas fa-key"></i> رمز الدعوة (اختياري)</label>
+                    <input type="text" id="registerInvite" placeholder="إذا كان لديك رمز دعوة">
+                </div>
+
+                <div class="actions-grid">
+                    <button type="submit" class="btn btn-primary" id="registerBtn"><i class="fas fa-user-check"></i> إنشاء حساب جديد</button>
+                    <a href="login.html" class="btn btn-secondary">العودة إلى تسجيل الدخول</a>
+                </div>
+
+                <div id="registerMessage" class="message-bar"></div>
+            </form>
+
+            <div class="auth-note">
+                حسابك يمنحك 3 تحليلات مجانية مباشرة، ورمز الدعوة يفتح لك القدرة على الاستمرار بعد ذلك.
             </div>
-            <div class="form-group">
-                <label for="registerInvite"><i class="fas fa-key"></i> رمز الدعوة (اختياري)</label>
-                <input class="cosmic-input" type="text" id="registerInvite" placeholder="إذا كان لديك رمز دعوة">
-            </div>
-            <button type="submit" class="btn btn-primary login-btn" id="registerBtn">
-                <i class="fas fa-user-check"></i> إنشاء حساب جديد
-            </button>
-            <div class="login-error" id="registerError"></div>
-        </form>
-        <div class="login-footer">
-            <a class="btn btn-secondary secondary-action" href="login.html">العودة إلى تسجيل الدخول</a>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script src="js/api.js"></script>
     <script>
-        document.getElementById('registerForm').addEventListener('submit', async () => {
+        const registerMessage = document.getElementById('registerMessage');
+        const registerBtn = document.getElementById('registerBtn');
+
+        function showRegisterMessage(message, type = 'success') {
+            registerMessage.textContent = message;
+            registerMessage.className = `message-bar ${type}`;
+        }
+
+        function clearRegisterMessage() {
+            registerMessage.textContent = '';
+            registerMessage.className = 'message-bar';
+        }
+
+        function togglePassword(fieldId, button) {
+            const input = document.getElementById(fieldId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                button.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            clearRegisterMessage();
+
             const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value;
             const inviteCode = document.getElementById('registerInvite').value.trim();
-            const btn = document.getElementById('registerBtn');
-            const errEl = document.getElementById('registerError');
-            errEl.style.display = 'none';
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-sm"></span> جاري الإنشاء...';
+            if (!email || !password) {
+                showRegisterMessage('يرجى إدخال بريد إلكتروني وكلمة مرور صحيحة.', 'error');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<span class="spinner-sm"></span> جاري الإنشاء...';
 
             try {
                 const res = await api.register(email, password, inviteCode);
                 localStorage.setItem('token', res.access_token);
-                window.location.href = 'dashboard.html';
+                window.location.href = 'upload.html';
             } catch (err) {
-                errEl.textContent = err.message || 'فشل إنشاء الحساب';
-                errEl.style.display = 'block';
+                showRegisterMessage(err.message || 'حدث خطأ أثناء إنشاء الحساب.', 'error');
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-user-check"></i> إنشاء حساب جديد';
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i class="fas fa-user-check"></i> إنشاء حساب جديد';
             }
         });
 
         if (localStorage.getItem('token')) {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'upload.html';
         }
     </script>
     <script>

@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from config import settings
+from services.telegram_service import telegram_service
 from pydantic import BaseModel
 
 router = APIRouter()
+FREE_ANALYSIS_LIMIT = 3
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -74,39 +76,67 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
+
+def _validate_invite_code(code: str, db: Session, client_ip: Optional[str] = None):
+    if not code:
+        raise HTTPException(status_code=400, detail="رمز الدعوة مطلوب.")
+
+    invite = db.query(models.InviteCode).filter(models.InviteCode.code == code).first()
+    if not invite:
+        raise HTTPException(status_code=400, detail="رمز دعوة غير صالح")
+
+    if invite.expiry_date and invite.expiry_date < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="انتهت صلاحية رمز الدعوة")
+
+    if invite.max_uses and invite.uses_count >= invite.max_uses:
+        raise HTTPException(status_code=400, detail="تم استخدام رمز الدعوة بالكامل")
+
+    if client_ip and invite.used_ip and invite.used_ip != client_ip:
+        raise HTTPException(status_code=400, detail="تم استخدام رمز الدعوة على جهاز آخر")
+
+    if client_ip and not invite.used_ip:
+        invite.used_ip = client_ip
+
+    return invite
+
+
+def _apply_invite_code_to_user(user: models.User, code: str, db: Session, client_ip: Optional[str] = None):
+    invite = _validate_invite_code(code, db, client_ip=client_ip)
+    if user.invite_code != code:
+        user.invite_code = code
+        invite.uses_count = (invite.uses_count or 0) + 1
+    db.add(user)
+    db.add(invite)
+    db.commit()
+    return invite
+
+
 @router.post("/register", response_model=Token)
 def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Check invite code
-    if user.invite_code:
-        invite = db.query(models.InviteCode).filter(models.InviteCode.code == user.invite_code).first()
-        if not invite:
-            raise HTTPException(status_code=400, detail="Invalid invite code")
-        
-        client_ip = request.client.host
-        if invite.used_ip and invite.used_ip != client_ip:
-            raise HTTPException(status_code=400, detail="This invite code has been used on another device")
-        
-        if not invite.used_ip:
-            invite.used_ip = client_ip
-            db.commit()
-    
     hashed_password = get_password_hash(user.password)
     trial_start = datetime.utcnow()
     trial_end = trial_start + timedelta(days=7)
     new_user = models.User(
-        email=user.email, 
-        hashed_password=hashed_password, 
+        email=user.email,
+        hashed_password=hashed_password,
         invite_code=user.invite_code,
         ip_address=request.client.host,
         is_admin=(user.email.lower() == settings.ADMIN_EMAIL.lower() and settings.ADMIN_EMAIL),
         trial_start=trial_start,
         trial_end=trial_end,
-        has_used_trial=True
+        has_used_trial=False,
+        daily_analyses_count=0
     )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    if user.invite_code:
+        _apply_invite_code_to_user(new_user, user.invite_code, db=db, client_ip=request.client.host)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -129,6 +159,25 @@ def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": str(new_user.id), "user_id": new_user.id, "email": new_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post('/request-invite')
+def request_invite(payload: dict, request: Request, db: Session = Depends(get_db)):
+    email = (payload.get('email') or '').strip() or 'مستخدم غير مسجل'
+    message = (
+        f"طلب رمز دعوة جديد من: {email}\n"
+        f"IP: {request.client.host}\n"
+        f"الرجاء إرسال رمز الدعوة إلى هذا الدردشة الخاصة.")
+    telegram_service.send_message("6380833552", message)
+    return {"status": "ok", "message": "تم إرسال طلب رمز الدعوة إلى تيليجرام."}
+
+
+@router.post('/validate-invite')
+def validate_invite(payload: dict, request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    code = (payload.get('invite_code') or '').strip()
+    _apply_invite_code_to_user(current_user, code, db=db, client_ip=request.client.host)
+    return {"status": "ok", "message": "تم تفعيل رمز الدعوة بنجاح. يمكنك الاستمرار في التحليل."}
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -180,6 +229,6 @@ async def get_trial_status(current_user: models.User = Depends(get_current_user)
         "trial_active": trial_active,
         "days_left": days_left,
         "daily_analyses_used": current_user.daily_analyses_count,
-        "daily_limit": 10,
+        "daily_limit": FREE_ANALYSIS_LIMIT,
         "has_used_trial": current_user.has_used_trial
     }

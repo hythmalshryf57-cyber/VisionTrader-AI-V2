@@ -66,6 +66,7 @@ SYSTEM_METRICS = {
     "last_error": "No errors yet"
 }
 
+FREE_ANALYSIS_LIMIT = 3
 
 logger = logging.getLogger(__name__)
 
@@ -652,10 +653,22 @@ async def start_ws_broadcaster():
 
 # --- Analysis & Chat ---
 @app.post("/api/analysis/process")
-async def process_analysis(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+async def process_analysis(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user), request: Request = None):
     protection = trade_protection_service.check_protection(current_user.id)
     if protection.get("analysis_locked"):
         raise HTTPException(status_code=403, detail=protection.get("analysis_message") or "تحليل مغلق مؤقتاً.")
+
+    if current_user.daily_analyses_count >= FREE_ANALYSIS_LIMIT:
+        invite_code = (payload.get("invite_code") or "").strip() or (current_user.invite_code or "").strip()
+        if not invite_code:
+            raise HTTPException(
+                status_code=403,
+                detail="لقد تجاوزت الحد المجاني البالغ 3 تحليلات. الرجاء إدخال رمز دعوة صالح للمتابعة."
+            )
+        try:
+            auth._apply_invite_code_to_user(current_user, invite_code, db=db, client_ip=request.client.host if request else None)
+        except HTTPException as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
     market = payload.get("market", "Unknown")
     images = payload.get("images", [])

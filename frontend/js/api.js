@@ -24,6 +24,8 @@ const api = {
   },
   async login(email, password) { return this.request('POST', '/api/auth/login', { email, password }, false); },
   async register(email, password, invite_code) { return this.request('POST', '/api/auth/register', { email, password, invite_code: invite_code || '' }, false); },
+  async requestInvite(email) { return this.request('POST', '/api/auth/request-invite', { email: email || '' }, false); },
+  async validateInvite(invite_code) { return this.request('POST', '/api/auth/validate-invite', { invite_code }, true); },
   async me() { return this.request('GET', '/api/auth/me', null, true); },
   async calculateRisk(payload) { return this.request('POST', '/api/risk/calculate', payload, true); },
   

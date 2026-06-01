@@ -11,103 +11,342 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
-        .login-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 48px 40px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-            animation: fadeIn 0.6s ease;
+        :root {
+            --bg: radial-gradient(circle at top left, rgba(35, 125, 255, 0.18), transparent 35%),
+                   radial-gradient(circle at bottom right, rgba(0, 255, 212, 0.14), transparent 30%),
+                   #090b16;
+            --panel: rgba(12, 18, 38, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text: #f3f7ff;
+            --muted: rgba(243, 247, 255, 0.72);
+            --accent: #6dd5ed;
+            --accent-2: #1a73e8;
+            --danger: #ff6b6b;
+            --surface: rgba(14, 20, 45, 0.95);
+            --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
         }
-        .login-card .brand-logo { text-align: center; margin-bottom: 32px; }
-        .login-card .brand-logo i { font-size: 2.5rem; background: linear-gradient(135deg, var(--accent), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .login-card .brand-logo h2 { margin-top: 8px; font-weight: 800; font-size: 1.6rem; }
-        .login-card .brand-logo p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
-        .form-group input { width: 100%; padding: 14px 16px; font-size: 1rem; }
-        .login-btn { width: 100%; padding: 14px; font-size: 1.05rem; margin-top: 8px; }
-        .login-error { color: var(--danger); font-size: 0.85rem; margin-top: 12px; text-align: center; display: none; }
-        .login-footer { text-align: center; margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .spinner-sm { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-left: 8px; }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Cairo', 'Inter', sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .auth-shell {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .auth-card {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 32px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            backdrop-filter: blur(18px);
+            padding: 32px;
+        }
+
+        .auth-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .brand-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(109, 213, 237, 0.18), rgba(26, 115, 232, 0.22));
+            color: #76e1ff;
+            font-size: 1.9rem;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+        }
+
+        .brand-copy h1 {
+            margin: 0;
+            font-size: 1.55rem;
+            letter-spacing: 0.3px;
+        }
+
+        .brand-copy p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .auth-form {
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 10px;
+        }
+
+        .form-group label {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .form-group input {
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            padding: 16px 18px;
+            font-size: 1rem;
+        }
+
+        .password-group {
+            position: relative;
+        }
+
+        .password-group .toggle-password {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            left: 16px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 1.05rem;
+            padding: 6px;
+        }
+
+        .password-group input {
+            padding-left: 46px;
+        }
+
+        .actions-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .btn {
+            width: 100%;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 18px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #59c5ff, #1d90ff);
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.14);
+        }
+
+        .btn-google {
+            background: #fff;
+            color: #1b1f2d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .auth-note {
+            font-size: 0.92rem;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 18px;
+            line-height: 1.6;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .auth-footer a {
+            color: #8ad8ff;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .message-bar {
+            min-height: 22px;
+            margin-top: 10px;
+            text-align: center;
+            color: var(--text);
+            font-size: 0.92rem;
+            display: none;
+        }
+
+        .message-bar.success {
+            color: #9bffb8;
+            display: block;
+        }
+
+        .message-bar.error {
+            color: var(--danger);
+            display: block;
+        }
+
+        @media (max-width: 560px) {
+            .auth-card { padding: 24px 20px; }
+            .brand-icon { width: 60px; height: 60px; }
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
-    <div class="login-card fade-in">
-        <div class="brand-logo">
-            <i class="fas fa-eye"></i>
-            <h2>VisionTrader AI</h2>
-            <p>منصة التحليل المؤسسي الذكي</p>
-        </div>
-        <form id="loginForm" onsubmit="return false;">
-            <div class="form-group">
-                <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
-                <input class="cosmic-input" type="email" id="email" placeholder="test@test.com" autocomplete="email" required>
+    <main class="auth-shell">
+        <section class="auth-card">
+            <div class="auth-header">
+                <div class="brand-icon"><i class="fas fa-rocket"></i></div>
+                <div class="brand-copy">
+                    <h1>تسجيل الدخول</h1>
+                    <p>ابدأ رحلتك مع VisionTrader AI. سجل دخولك للحصول على 3 تحليلات مجانية.</p>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
-                <input class="cosmic-input" type="password" id="password" placeholder="••••••" autocomplete="current-password" required>
+
+            <form id="loginForm" class="auth-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="email"><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                    <input type="email" id="email" autocomplete="email" required>
+                </div>
+                <div class="form-group password-group">
+                    <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
+                    <input type="password" id="password" autocomplete="current-password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword('password', this)"><i class="fas fa-eye"></i></button>
+                </div>
+
+                <div class="actions-grid">
+                    <button id="loginBtn" class="btn btn-primary" type="submit"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</button>
+                    <button type="button" class="btn btn-google" id="googleBtn" onclick="googleSignIn()"><i class="fab fa-google"></i> تسجيل الدخول بـ Google</button>
+                    <button type="button" class="btn btn-secondary" id="inviteBtn" onclick="requestInviteCode()"><i class="fas fa-key"></i> الحصول على رمز الدعوة</button>
+                </div>
+
+                <div id="loginMessage" class="message-bar"></div>
+            </form>
+
+            <div class="auth-note">
+                احصل على 3 تحليلات مجانية مع كل حساب جديد. بعد انتهائها، اطلب رمز دعوة واستمر في استخدام المنصة.
             </div>
-            <button type="submit" class="btn btn-primary btn-cosmic login-btn" id="loginBtn">
-                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
-            </button>
-            <button type="button" class="btn btn-secondary" onclick="googleSignIn()">
-                <i class="fab fa-google"></i> تسجيل الدخول بـ Google
-            </button>
-            <div class="login-error" id="loginError"></div>
-        </form>
-        <div class="login-footer">
-            <a href="register.html" class="btn btn-secondary" style="display:inline-block; margin-bottom:12px;">إنشاء حساب جديد</a>
-            <br>
-            <a href="https://t.me/your_bot_username" target="_blank">الحصول على رمز الدعوة</a> | VisionTrader AI Pro &copy; 2026
-        </div>
-    </div>
+
+            <div class="auth-footer">
+                ليس لديك حساب؟ <a href="register.html">سجّل الآن</a>
+            </div>
+        </section>
+    </main>
 
     <script src="js/api.js"></script>
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async () => {
-            const adminEmail = 'hythmalshryf57@gmail.com';
+        const loginMessage = document.getElementById('loginMessage');
+        const loginBtn = document.getElementById('loginBtn');
+
+        function showMessage(message, type = 'success') {
+            loginMessage.textContent = message;
+            loginMessage.className = `message-bar ${type}`;
+        }
+
+        function clearMessage() {
+            loginMessage.textContent = '';
+            loginMessage.className = 'message-bar';
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            clearMessage();
+
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            const btn = document.getElementById('loginBtn');
-            const errEl = document.getElementById('loginError');
-            errEl.style.display = 'none';
+            if (!email || !password) {
+                showMessage('يرجى إدخال البريد الإلكتروني وكلمة المرور.', 'error');
+                return;
+            }
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-sm"></span> جاري الدخول...';
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner-sm"></span> جاري الدخول...';
 
             try {
                 const res = await api.login(email, password);
                 localStorage.setItem('token', res.access_token);
+                localStorage.removeItem('user');
+                const adminEmail = 'hythmalshryf57@gmail.com';
                 const destination = email.toLowerCase() === adminEmail ? 'admin.html' : 'upload.html';
                 window.location.href = destination;
             } catch (err) {
-                errEl.textContent = err.message || 'فشل تسجيل الدخول';
-                errEl.style.display = 'block';
+                showMessage(err.message || 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.', 'error');
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل الدخول';
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> تسجيل الدخول';
             }
-        });
+        }
 
-        // Clear any stale auth tokens before checking login state
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        function togglePassword(fieldId, button) {
+            const input = document.getElementById(fieldId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                button.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
 
-        // Auto-redirect if already logged in
-        if (localStorage.getItem('token')) {
-            window.location.href = 'dashboard.html';
+        async function requestInviteCode() {
+            const email = document.getElementById('email').value.trim();
+            const inviteBtn = document.getElementById('inviteBtn');
+            if (!email) {
+                showMessage('اكتب بريدك الإلكتروني لطلب رمز الدعوة.', 'error');
+                return;
+            }
+
+            inviteBtn.disabled = true;
+            inviteBtn.innerHTML = '<span class="spinner-sm"></span> جاري الطلب...';
+
+            try {
+                await api.requestInvite(email);
+                showMessage('تم إرسال طلب رمز الدعوة إلى فريقنا. سنجيبك قريباً.', 'success');
+            } catch (err) {
+                showMessage(err.message || 'فشل طلب رمز الدعوة. حاول مجدداً.', 'error');
+            } finally {
+                inviteBtn.disabled = false;
+                inviteBtn.innerHTML = '<i class="fas fa-key"></i> الحصول على رمز الدعوة';
+            }
         }
 
         function googleSignIn() {
-            alert('Google Sign-In قيد التطوير');
-            // Implement Google OAuth here
+            showMessage('ميزة تسجيل دخول Google قيد التطوير.', 'error');
         }
+
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
     </script>
     <script>
         if ('serviceWorker' in navigator) {
