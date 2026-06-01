@@ -38,7 +38,7 @@ class MarketThesisGenerator:
         try:
             return self._call_deepseek(prompt)
         except Exception:
-            logger.exception("DeepSeek thesis generation failed")
+            logger.exception("External model thesis generation failed")
             return self._fallback_thesis(agent_reports)
 
     def _build_prompt(self, reports: List[Dict[str, Any]], win_rate: float = 50.0) -> str:
@@ -71,12 +71,12 @@ class MarketThesisGenerator:
 
     def _call_deepseek(self, prompt: str) -> str:
         if not self.api_key:
-            raise OrchestratorError("DEEPSEEK_API_KEY not configured")
+            raise OrchestratorError("External model API key not configured")
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         payload = {"prompt": prompt, "max_tokens": 200}
         response = requests.post(self.api_url, json=payload, headers=headers, timeout=15)
         if response.status_code != 200:
-            raise OrchestratorError(f"DeepSeek error {response.status_code}: {response.text}")
+            raise OrchestratorError(f"External model error {response.status_code}: {response.text}")
         try:
             body = response.json()
             if isinstance(body, dict):
@@ -127,6 +127,42 @@ class WeightCalculator:
         if diff != 0:
             normalized["Momentum"] = max(0, normalized.get("Momentum", 0) + diff)
         return normalized
+
+
+class RiskManagerCoordinator:
+    def review(self, agent_reports: List[Dict[str, Any]], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        warnings = [r for r in agent_reports if str(r.get("agent", "")).lower().startswith("risk manager")]
+        if not warnings:
+            return {"summary": "لا توجد تنبيهات مخاطر إضافية.", "risk_mode": "normal"}
+        summary = " ".join([r.get("report", "") for r in warnings])
+        return {"summary": summary, "risk_mode": "review"}
+
+
+class PerformanceAdvisor:
+    def review(self, agent_reports: List[Dict[str, Any]], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        perf_reports = [r for r in agent_reports if str(r.get("agent", "")).lower().startswith("performance")]
+        if not perf_reports:
+            return {"summary": "لا توجد بيانات أداء كافية.", "focus": "standard"}
+        summary = " ".join([r.get("report", "") for r in perf_reports[:2]])
+        return {"summary": summary, "focus": "improvement"}
+
+
+class PsychologyMonitor:
+    def review(self, agent_reports: List[Dict[str, Any]], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        psycho = [r for r in agent_reports if str(r.get("agent", "")).lower().startswith("psychology")]
+        if not psycho:
+            return {"summary": "لا توجد إشارات نفسية واضحة.", "status": "stable"}
+        report = " ".join([r.get("report", "") for r in psycho])
+        return {"summary": report, "status": "needs_attention"}
+
+
+class ResearchTracker:
+    def review(self, agent_reports: List[Dict[str, Any]], market_data: Dict[str, Any]) -> Dict[str, Any]:
+        research = [r for r in agent_reports if str(r.get("agent", "")).lower().startswith("research")]
+        if not research:
+            return {"summary": "لا توجد اكتشافات بحثية جديدة.", "trend": "standard"}
+        report = " ".join([r.get("report", "") for r in research])
+        return {"summary": report, "trend": "innovation"}
 
 
 class AnalyzerAgent:
@@ -207,6 +243,10 @@ class Orchestrator:
         self.thesis_generator = MarketThesisGenerator()
         self.weight_calculator = WeightCalculator()
         self.deliberation = DeliberationLoop()
+        self.risk_coordinator = RiskManagerCoordinator()
+        self.performance_advisor = PerformanceAdvisor()
+        self.psychology_monitor = PsychologyMonitor()
+        self.research_tracker = ResearchTracker()
 
     def orchestrate(self, market_data: Dict[str, Any], agent_reports: List[Dict[str, Any]]) -> Dict[str, Any]:
         try:
@@ -220,7 +260,21 @@ class Orchestrator:
         except Exception:
             win_rate = 50.0
 
-        thesis = self.thesis_generator.generate(agent_reports, win_rate)
+        risk_review = self.risk_coordinator.review(agent_reports, market_data)
+        performance_review = self.performance_advisor.review(agent_reports, market_data)
+        psychology_review = self.psychology_monitor.review(agent_reports, market_data)
+        research_review = self.research_tracker.review(agent_reports, market_data)
+
+        meta_report = [
+            risk_review.get("summary", ""),
+            performance_review.get("summary", ""),
+            psychology_review.get("summary", ""),
+            research_review.get("summary", ""),
+        ]
+        context_report = [text for text in meta_report if text]
+        extended_reports = agent_reports + [{"agent": "Orchestrator Insight", "report": " ".join(context_report), "signal": "neutral", "confidence": 50}]
+
+        thesis = self.thesis_generator.generate(extended_reports, win_rate)
         weights = self.weight_calculator.calculate(thesis)
         deliberation_result = self.deliberation.run(thesis, weights, market_data, agent_reports)
         final_signal = deliberation_result["analysis"]["decision"]
@@ -233,6 +287,12 @@ class Orchestrator:
             "entry": deliberation_result["execution"]["entry"],
             "market_data": market_data,
             "agent_reports": agent_reports,
+            "orchestrator_insights": {
+                "risk_review": risk_review,
+                "performance_review": performance_review,
+                "psychology_review": psychology_review,
+                "research_review": research_review,
+            },
             "deliberation": deliberation_result,
             "timestamp": int(time.time()),
         }

@@ -6,6 +6,28 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
+from .risk_manager_agent import RiskManagerAgent
+from .performance_analyst import PerformanceAnalyst
+from .mistake_learner import MistakeLearner
+from .news_calendar_agent import NewsCalendarAgent
+from .psychology_agent import PsychologyAgent
+from .sync_backup_agent import SyncBackupAgent
+from .hidden_opportunity import HiddenOpportunity
+from .smart_zones import SmartZones
+from .timing_agent import TimingAgent
+from .trade_followup import TradeFollowup
+from .library_agent import LibraryAgent
+from .challenge_agent import ChallengeAgent
+from .correlation_agent import CorrelationAgent
+from .liquidity_flow import LiquidityFlow
+from .complex_pattern import ComplexPattern
+from .radar_agent import RadarAgent
+from .golden_trade import GoldenTrade
+from .recycle_agent import RecycleAgent
+from .brainstorm_agent import BrainstormAgent
+from .advanced_protection import AdvancedProtection
+from .research_agent import ResearchAgent
+
 logger = logging.getLogger(__name__)
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -53,7 +75,7 @@ class AgentBase:
         try:
             return self._call_deepseek(prompt)
         except Exception as e:
-            logger.exception("Agent %s DeepSeek failed, trying fallbacks", self.name)
+            logger.exception("Agent %s external model failed, trying fallbacks", self.name)
             try:
                 return self._fallback(prompt)
             except Exception:
@@ -71,12 +93,12 @@ except Exception:
 
     def _call_deepseek(self, prompt: str) -> Dict[str, Any]:
         if not DEEPSEEK_API_KEY:
-            raise AgentError("DEEPSEEK_API_KEY not configured")
+            raise AgentError("External model API key not configured")
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
         payload = {"prompt": prompt, "max_tokens": 400}
         resp = requests.post(DEEPSEEK_API_URL, json=payload, headers=headers, timeout=15)
         if resp.status_code != 200:
-            raise AgentError(f"DeepSeek API error {resp.status_code}: {resp.text}")
+            raise AgentError(f"External model API error {resp.status_code}: {resp.text}")
         try:
             data = resp.json()
         except Exception:
@@ -151,7 +173,7 @@ except Exception:
 
 class LiquidityAgent(AgentBase):
     """Agent specialized in measuring order book depth, spread, and instantaneous
-    volume vs average. Uses DeepSeek for advanced reasoning with local heuristics
+    volume vs average. Uses an external reasoning service with local heuristics
     as fallback.
     """
     def __init__(self):
@@ -230,7 +252,7 @@ class LiquidityAgent(AgentBase):
 
         slippage_risk = low_depth or high_spread or low_volume or news_soon or is_weekend
 
-        # Build prompt for DeepSeek with features
+        # Build prompt for external reasoning service with features
         features = {
             "bid_depth": bid_depth,
             "ask_depth": ask_depth,
@@ -261,7 +283,7 @@ class LiquidityAgent(AgentBase):
             report = raw.get("report") or raw.get("Report") or raw.get("explanation") or str(raw)
             signal = str(signal).lower()
         except Exception:
-            logger.exception("LiquidityAgent DeepSeek failed, using local heuristics")
+            logger.exception("LiquidityAgent external model failed, using local heuristics")
             # Local heuristic
             if slippage_risk:
                 signal = "neutral"
@@ -384,7 +406,7 @@ class TemporalAuditAgent(AgentBase):
                 raw = self._call_deepseek(self.build_prompt({"timeframe_entries": tf_entries}))
                 signal = raw.get("signal") or signal
                 conf = int(raw.get("confidence") or conf)
-                report_lines.append("DeepSeek refined decision used.")
+                report_lines.append("External model refined decision used.")
             except Exception:
                 report_lines.append("Insufficient agreement across timeframes; recommendation weakened.")
                 if agree_count == 0:
@@ -493,7 +515,7 @@ class ManipulationDetector(AgentBase):
         except Exception:
             pass
 
-        # Build prompt for DeepSeek
+        # Build prompt for external reasoning service
         features = {
             "spoof_candidates": len([e for e in order_events if str(e.get('action') or '').lower() == 'add' and float(e.get('size') or 0) > 0]),
             "top_bid_depth": sum(float(e[1]) for e in bids[:5]) if bids else 0.0,
@@ -515,7 +537,7 @@ class ManipulationDetector(AgentBase):
             report = raw.get('report') or raw.get('Report') or str(raw)
             manipulation_flag = bool(raw.get('manipulation_detected') or raw.get('manipulation') or False)
         except Exception:
-            logger.exception("ManipulationDetector DeepSeek failed, using heuristics")
+            logger.exception("ManipulationDetector external model failed, using heuristics")
             # Default heuristic decision: neutral unless manipulation true
             signal = 'neutral'
             conf = 60
@@ -616,26 +638,40 @@ AGENT_DEFINITIONS = [
     ("Adaptation Agent", "suggest weight adjustments to agents based on historical accuracy and market regime changes"),
 ]
 
+BUILTIN_AGENT_CLASSES = [
+    RiskManagerAgent,
+    PerformanceAnalyst,
+    MistakeLearner,
+    NewsCalendarAgent,
+    PsychologyAgent,
+    SyncBackupAgent,
+    HiddenOpportunity,
+    SmartZones,
+    TimingAgent,
+    TradeFollowup,
+    LibraryAgent,
+    ChallengeAgent,
+    CorrelationAgent,
+    LiquidityFlow,
+    ComplexPattern,
+    RadarAgent,
+    GoldenTrade,
+    RecycleAgent,
+    BrainstormAgent,
+    AdvancedProtection,
+    ResearchAgent,
+    LiquidityAgent,
+    ManipulationDetector,
+    FootprintAgent,
+    BookmapAgent,
+    TemporalAuditAgent,
+]
+
 
 class AgentManager:
     def __init__(self, agents: List[AgentBase] = None):
         if agents is None:
-            built = []
-            for name, prompt in AGENT_DEFINITIONS:
-                ln = (name or "").lower()
-                if ln.startswith("liquidity"):
-                    built.append(LiquidityAgent())
-                elif "manipulation" in ln:
-                    built.append(ManipulationDetector())
-                elif "footprint" in ln:
-                    built.append(FootprintAgent())
-                elif "bookmap" in ln or "dom" in ln:
-                    built.append(BookmapAgent())
-                elif ln.startswith("temporal") or "temporal audit" in ln:
-                    built.append(TemporalAuditAgent())
-                else:
-                    built.append(AgentBase(name, prompt))
-            self.agents = built
+            self.agents = [cls() for cls in BUILTIN_AGENT_CLASSES]
         else:
             self.agents = agents
 
