@@ -18,72 +18,112 @@ class TradingViewService:
         return response.content
 
     def analyze_with_gemini(self, image_bytes: bytes) -> Dict:
-        if not getattr(settings, 'GEMINI_API_KEY', None):
-            return {
-                "analysis": {
-                    "recommendation": "محايد",
-                    "confidence": 40,
-                    "note": "Gemini API key غير مضبوطة. تم إرجاع تحليل احتياطي." 
-                },
-                "source": "fallback"
-            }
+        # Try Gemini first (preferred)
         payload = {
             "image_base64": base64.b64encode(image_bytes).decode('utf-8'),
             "instructions": "حلل لقطة شاشة TradingView وقدم توصية سوقية، مستويات دعم ومقاومة، واتجاه عام."
         }
-        # Use API key as query parameter to match authentication method requested
-        url = f"{self.GEMINI_ENDPOINT}?key={settings.GEMINI_API_KEY}"
-        headers = {"Content-Type": "application/json"}
-        try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            response.raise_for_status()
-            return {"analysis": response.json(), "source": "gemini"}
-        except Exception as e:
-            return {
-                "analysis": {
-                    "recommendation": "محايد",
-                    "confidence": 40,
-                    "note": f"فشل الاتصال بـ Gemini: {e}. تم استخدام تحليل احتياطي."
-                },
-                "source": "fallback"
-            }
+
+        # Helper to return a standard fallback
+        def _fallback(note: str):
+            return {"analysis": {"recommendation": "محايد", "confidence": 40, "note": note}, "source": "fallback"}
+
+        # Gemini
+        gem_key = getattr(settings, 'GEMINI_API_KEY', None)
+        if gem_key:
+            url = f"{self.GEMINI_ENDPOINT}?key={gem_key}"
+            headers = {"Content-Type": "application/json"}
+            try:
+                response = requests.post(url, json=payload, headers=headers, timeout=30)
+                response.raise_for_status()
+                return {"analysis": response.json(), "source": "gemini"}
+            except Exception:
+                # try next fallback
+                pass
+
+        # DeepSeek fallback
+        deepseek_key = getattr(settings, 'DEEPSEEK_API_KEY', None)
+        if deepseek_key:
+            try:
+                ds_url = 'https://api.deepseek.ai/v1/vision/analyze'
+                ds_headers = {"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"}
+                ds_payload = {"image_base64": payload["image_base64"], "prompt": payload["instructions"]}
+                r = requests.post(ds_url, json=ds_payload, headers=ds_headers, timeout=30)
+                r.raise_for_status()
+                return {"analysis": r.json(), "source": "deepseek"}
+            except Exception:
+                pass
+
+        # OpenRouter fallback
+        openrouter_key = getattr(settings, 'OPENROUTER_API_KEY', None)
+        if openrouter_key:
+            try:
+                or_url = 'https://api.openrouter.ai/v1/vision/analyze'
+                or_headers = {"Authorization": f"Bearer {openrouter_key}", "Content-Type": "application/json"}
+                or_payload = {"image": payload["image_base64"], "instructions": payload["instructions"]}
+                r = requests.post(or_url, json=or_payload, headers=or_headers, timeout=30)
+                r.raise_for_status()
+                return {"analysis": r.json(), "source": "openrouter"}
+            except Exception:
+                pass
+
+        # No provider succeeded
+        return _fallback("Gemini/DeepSeek/OpenRouter غير متاحة أو فشلت. تم إرجاع تحليل احتياطي.")
 
     def fetch_and_analyze(self, url: str) -> Dict:
         image_bytes = self.fetch_chart_snapshot(url)
         return self.analyze_with_gemini(image_bytes)
 
     def detect_chart_details(self, image_bytes: bytes) -> Dict:
-        if not getattr(settings, 'GEMINI_API_KEY', None):
-            return {
-                "pair": "UNKNOWN",
-                "timeframe": "UNKNOWN",
-                "confidence": 0,
-                "note": "Gemini API key غير مضبوطة."
-            }
-
+        # Try same provider chain as analyze_with_gemini
         payload = {
             "image_base64": base64.b64encode(image_bytes).decode('utf-8'),
             "instructions": "حلل هذه الصورة للشارت واستخرج: الزوج التجاري (مثل XAU/USD, EUR/USD), الفريم الزمني (مثل 1H, 4H, Daily). أعد الإجابة بتنسيق JSON فقط."
         }
-        url = f"{self.GEMINI_ENDPOINT}?key={settings.GEMINI_API_KEY}"
-        headers = {"Content-Type": "application/json"}
-        try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            # Assume result has pair, timeframe, confidence
-            return {
-                "pair": result.get("pair", "UNKNOWN"),
-                "timeframe": result.get("timeframe", "UNKNOWN"),
-                "confidence": result.get("confidence", 50)
-            }
-        except Exception as e:
-            return {
-                "pair": "UNKNOWN",
-                "timeframe": "UNKNOWN",
-                "confidence": 0,
-                "note": f"فشل التعرف: {e}"
-            }
+
+        gem_key = getattr(settings, 'GEMINI_API_KEY', None)
+        if gem_key:
+            try:
+                url = f"{self.GEMINI_ENDPOINT}?key={gem_key}"
+                headers = {"Content-Type": "application/json"}
+                response = requests.post(url, json=payload, headers=headers, timeout=30)
+                response.raise_for_status()
+                result = response.json()
+                return {
+                    "pair": result.get("pair", "UNKNOWN"),
+                    "timeframe": result.get("timeframe", "UNKNOWN"),
+                    "confidence": result.get("confidence", 50)
+                }
+            except Exception:
+                pass
+
+        deepseek_key = getattr(settings, 'DEEPSEEK_API_KEY', None)
+        if deepseek_key:
+            try:
+                ds_url = 'https://api.deepseek.ai/v1/vision/analyze'
+                ds_headers = {"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"}
+                ds_payload = {"image_base64": payload["image_base64"], "prompt": payload["instructions"]}
+                r = requests.post(ds_url, json=ds_payload, headers=ds_headers, timeout=30)
+                r.raise_for_status()
+                result = r.json()
+                return {"pair": result.get('pair', 'UNKNOWN'), "timeframe": result.get('timeframe', 'UNKNOWN'), "confidence": result.get('confidence', 50)}
+            except Exception:
+                pass
+
+        openrouter_key = getattr(settings, 'OPENROUTER_API_KEY', None)
+        if openrouter_key:
+            try:
+                or_url = 'https://api.openrouter.ai/v1/vision/analyze'
+                or_headers = {"Authorization": f"Bearer {openrouter_key}", "Content-Type": "application/json"}
+                or_payload = {"image": payload["image_base64"], "instructions": payload["instructions"]}
+                r = requests.post(or_url, json=or_payload, headers=or_headers, timeout=30)
+                r.raise_for_status()
+                result = r.json()
+                return {"pair": result.get('pair', 'UNKNOWN'), "timeframe": result.get('timeframe', 'UNKNOWN'), "confidence": result.get('confidence', 50)}
+            except Exception:
+                pass
+
+        return {"pair": "UNKNOWN", "timeframe": "UNKNOWN", "confidence": 0, "note": "لم يتمكن أي مزود من تحليل الصورة."}
 
     def get_price_from_twelvedata(self, symbol: str) -> Optional[float]:
         """Fetch the latest price from Twelve Data for FX, gold, indices, and crypto."""
