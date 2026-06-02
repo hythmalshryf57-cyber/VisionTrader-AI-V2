@@ -234,6 +234,7 @@
                 <div class="actions-grid">
                     <button type="submit" class="btn btn-primary" id="registerBtn"><i class="fas fa-user-check"></i> إنشاء حساب جديد</button>
                     <a href="login.html" class="btn btn-secondary">العودة إلى تسجيل الدخول</a>
+                    <button type="button" class="btn btn-secondary" id="inviteBtn" onclick="openInviteBot()"><i class="fas fa-key"></i> الحصول على رمز الدعوة</button>
                 </div>
 
                 <div id="registerMessage" class="message-bar"></div>
@@ -301,6 +302,11 @@
 
         if (localStorage.getItem('token')) {
             window.location.href = 'upload.html';
+        }
+
+        function openInviteBot() {
+            window.open('https://t.me/VisionTraderAI_Bot', '_blank');
+            showRegisterMessage('سيتم فتح بوت Telegram لطلب رمز الدعوة.', 'success');
         }
     </script>
     <script>

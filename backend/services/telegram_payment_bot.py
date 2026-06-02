@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.dispatcher import FSMContext
 import uuid
 from config import settings
 from database import get_db, SessionLocal
@@ -23,15 +24,15 @@ dp = Dispatcher(bot, storage=storage)
 class PaymentStates(StatesGroup):
     waiting_for_payment_proof = State()
 
+
+class InviteStates(StatesGroup):
+    waiting_for_name = State()
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     await message.reply(
-        "مرحباً بك في بوت VisionTrader AI! 🎯\n\n"
-        "للحصول على التطبيق:\n"
-        "1. اضغط /buy لمعرفة طرق الدفع\n"
-        "2. أرسل إثبات الدفع\n"
-        "3. ستحصل على رمز الدعوة\n\n"
-        "استخدم /help للمساعدة"
+        "أهلاً! أنا بوت VisionTrader AI. أقدر أعطيك رمز دعوة للمنصة. اكتب /invite عشان تحصل على رمزك.\n\n"
+        "للمساعدة: استخدم /help"
     )
 
 @dp.message_handler(commands=['buy'])
@@ -60,12 +61,47 @@ async def help(message: types.Message):
         "بوت VisionTrader AI جاهز للعمل.\n\n"
         "الأوامر المدعومة:\n"
         "/start - ابدأ المحادثة\n"
+        "/invite - اطلب رمز دعوة\n"
         "/status - حالة الماسح الضوئي\n"
         "/scan <رمز> - فحص سريع لسوق محدد\n"
         "/top - أفضل 3 فرص حالياً\n"
         "/performance - أداء التداول الأخير\n"
         "/daily - تقرير الأداء اليومي\n"
         "\nللدفع: /buy"
+    )
+
+
+@dp.message_handler(commands=['invite'])
+async def invite(message: types.Message):
+    await message.reply("جميل — ايش اسمك؟")
+    await InviteStates.waiting_for_name.set()
+
+
+@dp.message_handler(state=InviteStates.waiting_for_name, content_types=types.ContentTypes.TEXT)
+async def receive_name(message: types.Message, state: FSMContext):
+    name = (message.text or '').strip()
+    if not name:
+        await message.reply('الرجاء إدخال اسم صالح.')
+        return
+
+    invite_code = str(uuid.uuid4())[:8].upper()
+
+    db: Session = next(get_db())
+    new_code = InviteCode(code=invite_code, created_by_admin=False)
+    db.add(new_code)
+    db.commit()
+
+    await message.reply(
+        f"أهلاً {name}! هذا رمز الدعوة الخاص بك:\n\n{invite_code}\n\n"
+        f"استخدم هذا الرمز في صفحة إنشاء الحساب: {invite_code}"
+    )
+    await state.finish()
+
+
+@dp.message_handler()
+async def fallback(message: types.Message):
+    await message.reply(
+        "الأوامر المتاحة:\n/start - ابدأ\n/invite - اطلب رمز دعوة\n/buy - طرق الدفع\n/help - مساعدة"
     )
 
 @dp.message_handler(commands=['status'])
