@@ -33,7 +33,8 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
     GOOGLE_OAUTH_CLIENT_ID: str = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
     GOOGLE_OAUTH_CLIENT_SECRET: str = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
-    GOOGLE_OAUTH_REDIRECT_URI: str = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback")
+    RENDER_EXTERNAL_URL: str = os.getenv("RENDER_EXTERNAL_URL", "")
+    GOOGLE_OAUTH_REDIRECT_URI: str = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", "")
     
     # Telegram Bot config
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -83,6 +84,13 @@ def _validate_settings(settings: Settings):
 
 try:
     settings = Settings()
+    if not settings.GOOGLE_OAUTH_REDIRECT_URI.strip():
+        if settings.RENDER_EXTERNAL_URL.strip():
+            settings.GOOGLE_OAUTH_REDIRECT_URI = settings.RENDER_EXTERNAL_URL.rstrip('/') + '/api/auth/google/callback'
+        elif settings.GOOGLE_OAUTH_CLIENT_ID.strip() and settings.GOOGLE_OAUTH_CLIENT_SECRET.strip():
+            settings.GOOGLE_OAUTH_REDIRECT_URI = 'https://visiontrader-ai-v2.onrender.com/api/auth/google/callback'
+        else:
+            settings.GOOGLE_OAUTH_REDIRECT_URI = 'http://localhost:8000/api/auth/google/callback'
     _validate_settings(settings)
 except Exception as exc:
     # Fail loudly with a clear message about required secrets

@@ -5,6 +5,7 @@ from passlib.context import CryptContext
 from passlib.exc import UnknownHashError
 from datetime import datetime, timedelta
 from typing import Optional
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -118,7 +119,7 @@ def _apply_invite_code_to_user(user: models.User, code: str, db: Session, client
 @router.post("/register", response_model=Token)
 def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
     normalized_email = user.email.strip().lower()
-    db_user = db.query(models.User).filter(models.User.email == normalized_email).first()
+    db_user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="هذا الإيميل مسجل بالفعل. هل تريد تسجيل الدخول؟")
     
@@ -223,10 +224,11 @@ async def google_callback(code: str = None, error: str = None, db: Session = Dep
     if userinfo_res.status_code != 200:
         raise HTTPException(status_code=400, detail='فشل جلب بيانات المستخدم من Google.')
     userinfo = userinfo_res.json()
-    email = (userinfo.get('email') or '').strip().lower()
-    if not email:
+    email = (userinfo.get('email') or '').strip()
+    normalized_email = email.lower()
+    if not normalized_email:
         raise HTTPException(status_code=400, detail='لم يتم الحصول على البريد الإلكتروني من Google.')
-    user = db.query(models.User).filter(models.User.email == email).first()
+    user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
     if not user:
         trial_start = datetime.utcnow()
         trial_end = trial_start + timedelta(days=7)
@@ -291,7 +293,7 @@ class LoginRequest(BaseModel):
 @router.post("/login", response_model=Token)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     normalized_email = payload.email.strip().lower()
-    user = db.query(models.User).filter(models.User.email == normalized_email).first()
+    user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
 
