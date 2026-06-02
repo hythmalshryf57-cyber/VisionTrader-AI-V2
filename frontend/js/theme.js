@@ -90,4 +90,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Mobile hamburger: inject button and toggle sidebar globally
+    const createMobileHamburger = () => {
+        const btn = document.createElement('button');
+        btn.className = 'mobile-hamburger';
+        btn.setAttribute('aria-label', 'قائمة');
+        btn.innerText = '☰';
+        btn.addEventListener('click', () => {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+            sidebar.classList.toggle('open');
+        });
+        document.body.appendChild(btn);
+
+        // close sidebar when clicking outside on small screens
+        document.addEventListener('click', (e) => {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+            if (window.innerWidth > 768) return;
+            const target = e.target;
+            if (!sidebar.contains(target) && !btn.contains(target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        // remove open state on resize to larger screens
+        window.addEventListener('resize', () => {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+            if (window.innerWidth > 768) sidebar.classList.remove('open');
+        });
+    };
+
+    createMobileHamburger();
 });
