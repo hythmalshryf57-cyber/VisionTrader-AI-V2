@@ -317,14 +317,52 @@
             }
         }
 
+        const googleBtn = document.getElementById('googleBtn');
+
         function openInviteBot() {
             window.open('https://t.me/VisionTraderAI_Bot', '_blank');
             showMessage('سيتم فتح بوت Telegram لطلب رمز الدعوة.', 'success');
         }
 
-        function googleSignIn() {
-            showMessage('جاري إعادة التوجيه إلى Google...', 'success');
-            window.location.href = '/api/auth/google/login';
+        async function googleSignIn() {
+            clearMessage();
+            if (!googleBtn) return;
+            googleBtn.disabled = true;
+            const originalText = googleBtn.innerHTML;
+            googleBtn.innerHTML = '<span class="spinner-sm"></span> جاري التحضير...';
+
+            try {
+                const response = await fetch('/api/auth/google/login', {
+                    method: 'GET',
+                    redirect: 'manual'
+                });
+
+                if (response.status >= 300 && response.status < 400) {
+                    const location = response.headers.get('location');
+                    if (location) {
+                        window.location.href = location;
+                        return;
+                    }
+                }
+
+                const errorText = 'تسجيل الدخول بـ Google غير متاح حالياً. يرجى استخدام البريد الإلكتروني أو رمز الدعوة.';
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    showMessage(errorText, 'error');
+                    console.warn('Google login failed', response.status, errorBody);
+                    return;
+                }
+
+                // This should normally redirect to Google via 3xx response.
+                showMessage('تم بدء المصادقة، جاري التحويل...', 'success');
+                window.location.href = '/api/auth/google/login';
+            } catch (err) {
+                showMessage('تسجيل الدخول بـ Google غير متاح حالياً. يرجى المحاولة لاحقاً أو استخدام البريد الإلكتروني.', 'error');
+                console.error('Google sign-in error:', err);
+            } finally {
+                googleBtn.disabled = false;
+                googleBtn.innerHTML = originalText;
+            }
         }
 
         document.getElementById('loginForm').addEventListener('submit', handleLogin);
