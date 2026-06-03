@@ -2258,7 +2258,18 @@ def _summarize_visual_analysis(visual_analysis: dict) -> str:
     if isinstance(analysis, dict):
         note = analysis.get('note') or analysis.get('recommendation') or ''
         confidence = analysis.get('confidence')
-        return f"تحليل مرئي: {note} (ثقة {confidence}%)" if note else "تم إنشاء تحليل مرئي للصورة." 
+        pair = visual_analysis.get('pair') or visual_analysis.get('symbol')
+        timeframe = visual_analysis.get('timeframe')
+        parts = []
+        if note:
+            parts.append(f"{note}")
+        if pair:
+            parts.append(f"زوج: {pair}")
+        if timeframe:
+            parts.append(f"فريم: {timeframe}")
+        if confidence is not None:
+            parts.append(f"ثقة {confidence}%")
+        return "تحليل مرئي: " + ", ".join(parts) if parts else "تم إنشاء تحليل مرئي للصورة."
     return str(analysis)
 
 
@@ -2379,9 +2390,52 @@ async def _analyze_image_file(image: UploadFile) -> dict:
         image_bytes = await image.read()
         if not image_bytes:
             return {}
+
         raw = tradingview_service.analyze_with_gemini(image_bytes)
-        # sanitize any provider/model mentions from visual analysis
-        return _sanitize_obj_for_user(raw or {})
+
+        # Standardize provider responses into a consistent shape the agent expects
+        standardized: dict = {}
+        source = raw.get('source') if isinstance(raw, dict) else None
+
+        # Extract analysis payload
+        analysis = None
+        if isinstance(raw, dict):
+            analysis = raw.get('analysis') or raw
+        else:
+            analysis = raw
+
+        # If analysis is a dict, pick common fields
+        if isinstance(analysis, dict):
+            recommendation = analysis.get('recommendation') or analysis.get('result') or ''
+            # Build a human-friendly note by looking for common keys
+            note = analysis.get('note') or analysis.get('text') or analysis.get('summary') or ''
+            if not note:
+                parts = [str(v) for v in analysis.values() if isinstance(v, str) and v.strip()]
+                note = ' '.join(parts[:3]).strip() if parts else ''
+            confidence = analysis.get('confidence') or analysis.get('score') or analysis.get('confidence_score') or 0
+            try:
+                confidence = int(float(confidence))
+            except Exception:
+                confidence = 0
+
+            standardized['analysis'] = {
+                'recommendation': recommendation or (note[:100] if note else 'محايد'),
+                'note': note,
+                'confidence': confidence
+            }
+        elif isinstance(analysis, str):
+            standardized['analysis'] = {'recommendation': analysis[:120], 'note': analysis, 'confidence': 0}
+        else:
+            standardized['analysis'] = {'recommendation': 'محايد', 'note': 'لم يتم الحصول على تحليل مفصل من المزود.', 'confidence': 0}
+
+        # Preserve metadata if present
+        if isinstance(raw, dict):
+            for k in ('pair', 'timeframe', 'source'):
+                if k in raw and raw.get(k):
+                    standardized[k] = raw.get(k)
+
+        # Sanitize provider/model mentions before returning
+        return _sanitize_obj_for_user(standardized)
     except Exception:
         return {}
 
