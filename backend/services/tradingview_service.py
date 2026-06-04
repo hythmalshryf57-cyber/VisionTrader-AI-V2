@@ -283,3 +283,69 @@ class TradingViewService:
                 return {'pair': pair or 'UNKNOWN', 'timeframe': timeframe or 'UNKNOWN', 'confidence': confidence}
 
         return {'pair': 'UNKNOWN', 'timeframe': 'UNKNOWN', 'confidence': 0, 'note': 'لم يتمكن أي مزود من تحليل الصورة.'}
+
+
+# Module-level instance for convenience (used by other services)
+try:
+    tradingview_service = TradingViewService()
+except Exception:
+    # If initialization fails, provide a fallback object with compatible methods
+    class _FallbackTV:
+        def get_price_from_twelvedata(self, symbol: str) -> Optional[float]:
+            return None
+
+        def get_symbol_price(self, symbol: str) -> Optional[float]:
+            return None
+
+        def fetch_chart_snapshot(self, url: str) -> bytes:
+            raise RuntimeError('TradingViewService not initialized')
+
+    tradingview_service = _FallbackTV()
+
+    def get_price_from_twelvedata(self, symbol: str) -> Optional[float]:
+        """Try to fetch a simple price from TwelveData API if configured. Returns None on failure."""
+        key = getattr(settings, 'TWELVEDATA_API_KEY', None) or os.getenv('TWELVEDATA_API_KEY')
+        if not key or not symbol:
+            return None
+        try:
+            params = {"symbol": symbol, "format": "JSON", "apikey": key}
+            r = requests.get("https://api.twelvedata.com/price", params=params, timeout=8)
+            r.raise_for_status()
+            data = r.json()
+            price = data.get("price") or data.get("close")
+            if price is None:
+                return None
+            return float(price)
+        except Exception:
+            return None
+
+    def get_symbol_price(self, symbol: str) -> Optional[float]:
+        """Resolve a symbol price using available providers. Prefer TwelveData, fallback to Yahoo Finance."""
+        if not symbol:
+            return None
+
+        # Try TwelveData first
+        try:
+            p = self.get_price_from_twelvedata(symbol)
+            if p is not None:
+                return p
+        except Exception:
+            pass
+
+        # Fallback to Yahoo Finance quote endpoint
+        try:
+            q = urllib.parse.quote(symbol, safe='')
+            url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={q}"
+            resp = requests.get(url, timeout=8)
+            resp.raise_for_status()
+            body = resp.json()
+            results = body.get("quoteResponse", {}).get("result", [])
+            if not results:
+                return None
+            item = results[0]
+            price = item.get("regularMarketPrice") or item.get("bid") or item.get("ask") or item.get("lastPrice")
+            if price is None:
+                return None
+            return float(price)
+        except Exception:
+            return None
