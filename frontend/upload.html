@@ -1,220 +1,281 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>المساعد الذكي - VisionTrader AI</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionTrader AI - المحادثة والتحليل</title>
     <style>
-        /* Minimal page-specific styles to ensure chat layout */
-        .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
-        .topbar { grid-column: 1 / -1; display:flex; align-items:center; gap:12px; padding:12px 20px; background: rgba(0,0,0,0.35); border-bottom:1px solid rgba(255,255,255,0.03); }
-        .topbar .title { font-weight:800; font-size:1.05rem; }
-        .sidebar { background: rgba(0,0,0,0.35); padding: 18px; }
-        .sidebar a { display:block; padding:10px 12px; margin-bottom:8px; border-radius:10px; color:var(--text-stellar); text-decoration:none; }
-        .chat-area { display:flex; flex-direction:column; height: calc(100vh - 64px); }
-        .messages { flex:1; padding:18px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
-        .bubble { max-width:72%; padding:12px 14px; border-radius:14px; white-space:pre-wrap; word-break:break-word; }
-        .bubble.user { align-self:flex-end; background:linear-gradient(135deg,#16a34a,#2563eb); color:#fff; border-bottom-right-radius:4px; }
-        .bubble.ai { align-self:flex-start; background:rgba(255,255,255,0.04); color:var(--text-stellar); border:1px solid rgba(255,255,255,0.04); }
-        .inputbar { display:flex; gap:8px; padding:12px; align-items:center; border-top:1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.3); }
-        .inputbar textarea { flex:1; min-height:48px; max-height:160px; padding:12px; border-radius:12px; resize:vertical; }
-        .icon-btn { width:44px; height:44px; display:inline-grid; place-items:center; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); cursor:pointer; }
-        .send-btn { padding:10px 14px; border-radius:12px; background:linear-gradient(135deg,#22c55e,#06b6d4); color:white; border:none; cursor:pointer; min-height:44px; }
-        .upload-preview { max-width:240px; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.06); }
-        .system-msg { align-self:center; background:rgba(59,130,246,0.1); padding:8px 12px; border-radius:12px; color:#bfdbfe; }
-        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { order:2; display:flex; flex-direction:row; gap:8px; overflow:auto; } .topbar { position:sticky; top:0; z-index:50; } .chat-area { height: calc(100vh - 112px); } }
-        @media (max-width:480px) { .bubble { max-width:100%; } .sidebar { display:flex; gap:6px; padding:8px; } }
+        :root {
+            color-scheme: dark;
+            color: #e5e7eb;
+            background: radial-gradient(circle at top right, rgba(56,189,248,0.18), transparent 20%),
+                        radial-gradient(circle at left bottom, rgba(236,72,153,0.16), transparent 20%),
+                        linear-gradient(180deg, #020617 0%, #060b1a 55%, #080d1f 100%);
+            font-family: 'Cairo', sans-serif;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; background: transparent; }
+        .page-shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; gap: 18px; padding: 18px; }
+        .topbar { position: fixed; left: 0; right: 0; top: 0; height: 68px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: rgba(3, 10, 23, 0.9); border-bottom: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(14px); z-index: 20; }
+        .topbar h1 { margin: 0; font-size: 1.18rem; letter-spacing: 0.08em; color: #f8fafc; }
+        .topbar .subtitle { color: #93c5fd; font-size: 0.92rem; }
+        .sidebar { margin-top: 86px; background: rgba(5,13,35,0.9); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; box-shadow: 0 30px 90px rgba(0,0,0,0.25); padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+        .sidebar nav a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 18px; color: #d1d5db; text-decoration: none; transition: 0.2s ease; border: 1px solid transparent; }
+        .sidebar nav a.active, .sidebar nav a:hover { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.18); color: #fff; }
+        .sidebar nav a i { width: 26px; text-align: center; color: #38bdf8; }
+        .sidebar .panel { border: 1px solid rgba(255,255,255,0.06); border-radius: 22px; padding: 18px; background: rgba(255,255,255,0.03); }
+        .sidebar .panel h2 { margin: 0 0 10px; font-size: 1rem; color: #f8fafc; }
+        .sidebar .panel p { margin: 0; color: #cbd5e1; line-height: 1.7; font-size: 0.94rem; }
+        .content { margin-top: 86px; display: flex; flex-direction: column; gap: 18px; }
+        .chat-card { border-radius: 28px; padding: 22px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 30px 90px rgba(0,0,0,0.2); display: grid; grid-template-rows: auto 1fr auto; min-height: calc(100vh - 146px); }
+        .chat-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+        .chat-header .title { margin: 0; font-size: 1.3rem; color: #f8fafc; }
+        .chat-header .welcome { margin: 8px 0 0; color: #cbd5e1; line-height: 1.75; }
+        .chat-header .mini-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .badge { display: inline-flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,0.06); color: #dbeafe; font-size: 0.92rem; border: 1px solid rgba(56,189,248,0.14); }
+        .messages-panel { position: relative; display: flex; flex-direction: column; gap: 14px; padding-right: 8px; overflow-y: auto; margin-top: 18px; }
+        .message { max-width: 74%; padding: 16px 20px; border-radius: 24px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; }
+        .message.ai { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); box-shadow: inset 0 0 0 1px rgba(56,189,248,0.06); }
+        .message.user { align-self: flex-end; background: linear-gradient(135deg,#0ea5e9,#9333ea); color: #f8fafc; border-radius: 24px 24px 6px 24px; }
+        .message.system { align-self: center; background: rgba(59,130,246,0.15); color: #bfdbfe; border-radius: 18px; padding: 12px 16px; font-size: 0.96rem; border: 1px solid rgba(59,130,246,0.18); }
+        .typing-indicator { display: none; align-items: center; gap: 12px; margin: 4px 0 0; padding: 12px 16px; border-radius: 18px; background: rgba(59,130,246,0.12); color: #dbeafe; font-size: 0.95rem; border: 1px solid rgba(59,130,246,0.18); }
+        .Typing-dot { width: 8px; height: 8px; border-radius: 50%; background: #c7d2fe; animation: blink 1.2s infinite ease-in-out; }
+        .typing-dots { display: flex; gap: 8px; }
+        @keyframes blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+        .quick-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .quick-pill { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #e2e8f0; padding: 10px 14px; border-radius: 14px; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease; }
+        .quick-pill:hover { transform: translateY(-1px); background: rgba(56,189,248,0.16); }
+        .input-row { display: grid; grid-template-columns: 52px 1fr 52px; gap: 12px; align-items: flex-end; margin-top: 18px; }
+        .message-input { width: 100%; min-height: 58px; max-height: 180px; padding: 16px 18px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #f8fafc; font-size: 0.98rem; resize: vertical; outline: none; }
+        .action-btn { width: 52px; height: 52px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #dbeafe; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.18s ease; }
+        .action-btn:hover { transform: translateY(-2px); border-color: rgba(56,189,248,0.22); }
+        .send-action { grid-column: 3 / 4; background: linear-gradient(135deg, #22c55e, #06b6d4); color: #fff; border: none; }
+        .drop-area { margin-top: 18px; border: 2px dashed rgba(255,255,255,0.16); border-radius: 24px; padding: 20px; text-align: center; color: #cbd5e1; transition: border-color 0.2s ease, background 0.2s ease; cursor: pointer; }
+        .drop-area.dragover { border-color: #22c55e; background: rgba(34,197,94,0.08); }
+        .drop-area strong { display: block; font-size: 1rem; margin-bottom: 8px; }
+        .preview-panel { border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 18px; background: rgba(255,255,255,0.04); margin-top: 16px; display: grid; gap: 12px; }
+        .preview-panel img { width: 100%; border-radius: 16px; object-fit: contain; }
+        .preview-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .preview-actions button { border: none; border-radius: 14px; padding: 10px 14px; background: rgba(255,255,255,0.08); color: #dbeafe; cursor: pointer; }
+        .bottom-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; color: #9ca3af; font-size: 0.92rem; }
+        .bottom-meta a { color: #38bdf8; text-decoration: none; }
+        @media (max-width: 1120px) { .page-shell { grid-template-columns: 1fr; } .sidebar { position: sticky; top: 86px; width: 100%; margin: 0 auto 18px; } .chat-card { min-height: auto; } }
+        @media (max-width: 780px) {
+            .page-shell { padding: 12px; }
+            .topbar { padding: 0 16px; }
+            .chat-header { flex-direction: column; align-items: stretch; }
+            .chat-header .mini-badges { justify-content: flex-start; }
+            .input-row { grid-template-columns: 1fr 52px; }
+            .send-action { grid-column: 2 / 3; }
+        }
     </style>
 </head>
 <body>
-    <div class="layout">
-        <div class="topbar">
-            <div class="title">💬 VisionTrader AI</div>
-            <div style="margin-left:auto; color:var(--muted); font-size:0.95rem">مستشارك التداولي الذكي</div>
+    <div class="topbar">
+        <div>
+            <h1>💬 VisionTrader AI</h1>
+            <div class="subtitle">المساعد التداولي الذكي للردود، تحليل الشارت، وتوصيات السوق.</div>
         </div>
-
+        <div class="subtitle">الصفحة المدمجة للمحادثة وتحليل الصور</div>
+    </div>
+    <div class="page-shell">
         <aside class="sidebar">
-            <a href="upload.html" class="active">💬 المحادثة</a>
-            <a href="history.html">📋 السجل</a>
-            <a href="settings.html">⚙️ الإعدادات</a>
-        </aside>
-
-        <main class="chat-area">
-            <div id="messages" class="messages"></div>
-
-            <div class="inputbar">
-                <button id="attachBtn" class="icon-btn" title="رفع صورة">📷</button>
-                <textarea id="userInput" placeholder="اكتب سؤالك أو ارفع صورة الشارت هنا (Shift+Enter لسطر جديد)"></textarea>
-                <button id="sendBtn" class="send-btn">إرسال</button>
-                <input id="fileInput" type="file" accept="image/*" style="display:none">
+            <nav>
+                <a href="upload.html" class="active"><i class="fas fa-comments"></i> <span>💬 المحادثة</span></a>
+                <a href="history.html"><i class="fas fa-clipboard-list"></i> <span>📋 السجل</span></a>
+                <a href="settings.html"><i class="fas fa-cog"></i> <span>⚙️ الإعدادات</span></a>
+            </nav>
+            <div class="panel">
+                <h2>نظرة سريعة</h2>
+                <p>يمكنك الآن الدردشة مباشرة مع المستشار الذكي، رفع صورة الشارت، والحصول على تحليل سوقي عملي في مكان واحد.</p>
             </div>
-        </main>
+            <div class="panel">
+                <h2>كيف يعمل</h2>
+                <p>يفهم الذهب كـ XAUUSD، والبيتكوين كـ BTCUSD. إذا كتبت "حلل" بدون صورة، سيطلب منك شارت.</p>
+            </div>
+        </aside>
+        <section class="content">
+            <div class="chat-card">
+                <div class="chat-header">
+                    <div>
+                        <div class="title">محادثة الوكيل</div>
+                        <div class="welcome">أهلاً! أنا مستشارك الذكي. تقدر تسألني عن أي سوق أو ترفع شارت وأحلله لك.</div>
+                    </div>
+                    <div class="mini-badges">
+                        <span class="badge"><i class="fas fa-chart-line"></i> تحليل مباشر</span>
+                        <span class="badge"><i class="fas fa-bolt"></i> استجابة سريعة</span>
+                    </div>
+                </div>
+
+                <div class="messages-panel" id="messagesPanel"></div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots"><span class="Typing-dot"></span><span class="Typing-dot"></span><span class="Typing-dot"></span></div>
+                    الوكيل يكتب الرد...</div>
+
+                <div class="quick-actions" id="quickActions"></div>
+                <div class="drop-area" id="dropArea">
+                    <strong>اسحب وأفلت صورة الشارت هنا</strong>
+                    <span>أو اضغط على أيقونة الصورة لإرفاق شارت</span>
+                </div>
+
+                <div class="preview-panel" id="previewPanel" style="display:none;"></div>
+
+                <div class="input-row">
+                    <button class="action-btn" id="attachButton" title="رفع صورة"><i class="fas fa-image"></i></button>
+                    <textarea id="messageInput" class="message-input" placeholder="اكتب سؤالك أو اطلب تحليل الشارت...\nShift+Enter لسطر جديد"></textarea>
+                    <button class="action-btn send-action" id="sendButton" title="إرسال"><i class="fas fa-paper-plane"></i></button>
+                </div>
+                <div class="bottom-meta">اقتراحات: <a href="#" class="prompt">حلل الذهب</a> · <a href="#" class="prompt">كيف حال البيتكوين؟</a> · <a href="#" class="prompt">آخر أخبار السوق</a></div>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+        </section>
     </div>
 
-    <script src="js/api.js"></script>
     <script>
-        const messagesEl = document.getElementById('messages');
-        const userInput = document.getElementById('userInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const attachBtn = document.getElementById('attachBtn');
+        const messagesPanel = document.getElementById('messagesPanel');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const attachButton = document.getElementById('attachButton');
         const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const previewPanel = document.getElementById('previewPanel');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const quickActions = document.getElementById('quickActions');
 
-        let attachedFile = null;
-        const HISTORY_KEY = 'vt_conv_history_v1';
+        let attachedImage = null;
 
-        function saveToHistory(entry) {
-            try {
-                const cur = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-                cur.push(Object.assign({ts: Date.now()}, entry));
-                // keep last 50
-                localStorage.setItem(HISTORY_KEY, JSON.stringify(cur.slice(-50)));
-            } catch(e) { console.warn('history save failed', e); }
+        function createBubble(text, role = 'ai') {
+            const bubble = document.createElement('div');
+            bubble.className = 'message ' + role;
+            bubble.innerText = text;
+            messagesPanel.appendChild(bubble);
+            messagesPanel.scrollTop = messagesPanel.scrollHeight;
+            return bubble;
         }
 
-        function getHistory() {
-            try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e) { return []; }
+        function systemBubble(text) {
+            const bubble = document.createElement('div');
+            bubble.className = 'message system';
+            bubble.innerText = text;
+            messagesPanel.appendChild(bubble);
+            messagesPanel.scrollTop = messagesPanel.scrollHeight;
+            return bubble;
         }
 
-        function computeTone() {
-            const history = getHistory();
-            if (!history.length) return 'balanced';
-            const userMsgs = history.filter(h => h.role==='user').map(h => (h.text||'').length);
-            const avg = userMsgs.reduce((a,b)=>a+b,0) / (userMsgs.length||1);
-            return avg < 60 ? 'concise' : 'detailed';
+        function showTyping(on) {
+            typingIndicator.style.display = on ? 'flex' : 'none';
+            if (on) messagesPanel.scrollTop = messagesPanel.scrollHeight;
         }
 
-        function appendBubble(text, role='ai') {
-            const div = document.createElement('div');
-            div.className = 'bubble ' + (role==='user' ? 'user' : (role==='system' ? 'system-msg' : 'ai'));
-            div.innerText = text;
-            messagesEl.appendChild(div);
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-            return div;
-        }
-
-        function appendSystem(text) { const el = document.createElement('div'); el.className='system-msg'; el.innerText=text; messagesEl.appendChild(el); messagesEl.scrollTop = messagesEl.scrollHeight; }
-
-        function detectMarketFromText(text) {
-            const t = (text||'').toLowerCase();
-            if (t.includes('ذهب') || t.includes('xau') || t.includes('xauusd')) return 'XAUUSD';
-            if (t.includes('بيتكوين') || t.includes('btc')) return 'BTCUSDT';
-            if (t.includes('إيثريوم') || t.includes('eth')) return 'ETHUSDT';
-            // add more heuristics as needed
+        function marketHint(text) {
+            const lower = text.toLowerCase();
+            if (lower.includes('ذهب') || lower.includes('xau')) return 'XAUUSD';
+            if (lower.includes('بيتكوين') || lower.includes('btc')) return 'BTCUSD';
             return null;
         }
 
-        async function localAgentResponse(userText, marketHint) {
-            // Simple adaptive assistant behavior before/while contacting server
-            const tone = computeTone();
-            if (!userText && attachedFile) {
-                return 'تلقيت صورة الشارت، سأحللها الآن وأرد عليك.';
-            }
-            const t = (userText||'').trim();
-            if (/^حلل\b|\bحلل$/.test(t)) {
-                if (attachedFile) return 'جاري تحليل الشارت المرفق. انتظر لحظة...';
-                return 'هل ترغب في رفع صورة الشارت أم تحدد سوقاً للتحليل؟ اكتب اسم السوق أو ارفع صورة.';
-            }
-            if (/^ذهب\b|\bذهب$/.test(t) || detectMarketFromText(t) === 'XAUUSD') {
-                return tone==='concise' ? 'فهمت: تحليل XAUUSD، تحليل موجز قادم.' : 'فهمت أنك تقصد الذهب (XAUUSD). سأجري تحليلًا شاملاً للشارت إذا أرفقت واحداً أو سأستخدم بيانات السوق الحالية.';
-            }
-            // Default friendly reply while contacting API
-            return tone==='concise' ? 'أفهم، أبحث عن إجابة قصيرة ومباشرة...' : 'حسناً، سأفحص سؤالك وأرد بتحليل مفصل إذا أمكن. أضف شارت لتحسين الدقة.';
+        function analyzeIntent(text) {
+            return /\bحلل\b|\bأحلل\b|\bتحليل\b/.test(text);
         }
 
-        async function sendToServer(formData) {
-            // call api.askAgent (defined in js/api.js)
-            try {
-                const res = await api.askAgent(formData);
-                return res;
-            } catch (err) {
-                throw err;
-            }
+        function handleImage(file) {
+            attachedImage = file;
+            const url = URL.createObjectURL(file);
+            previewPanel.innerHTML = `
+                <img src="${url}" alt="مُعطى الشارت">
+                <div class="preview-actions">
+                    <span>تم إرفاق: ${file.name} • ${Math.round(file.size/1024)} كيلوبايت</span>
+                    <button type="button" onclick="removeImage()">حذف</button>
+                </div>`;
+            previewPanel.style.display = 'grid';
+        }
+
+        function removeImage() {
+            attachedImage = null;
+            previewPanel.style.display = 'none';
+            previewPanel.innerHTML = '';
+            systemBubble('تم حذف الصورة المرفقة.');
+        }
+
+        async function sendToServer(question, file, market) {
+            const form = new FormData();
+            form.append('question', question);
+            if (market) form.append('market', market);
+            if (file) form.append('image', file);
+            const response = await fetch('/api/ai/agent', { method: 'POST', body: form });
+            if (!response.ok) throw new Error('الخادم رد برمز ' + response.status);
+            return await response.json();
         }
 
         async function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text && !attachedFile) { appendSystem('اكتب شيئاً أو أرفق صورة قبل الإرسال.'); return; }
+            const text = messageInput.value.trim();
+            if (!text && !attachedImage) { systemBubble('اكتب سؤالاً أو أرفق صورة الشارت قبل الإرسال.'); return; }
 
-            appendBubble(text || (attachedFile ? 'صورة مرفقة' : ''), 'user');
-            saveToHistory({role:'user', text: text || '[image]'});
-            userInput.value = '';
+            createBubble(text || '📷 صورة مرفقة', 'user');
+            messageInput.value = '';
 
-            // Local immediate adaptive reply
-            const marketHint = detectMarketFromText(text);
-            const localReply = await localAgentResponse(text, marketHint);
-            appendBubble(localReply, 'ai');
-            saveToHistory({role:'ai', text: localReply});
+            if (!attachedImage && analyzeIntent(text)) {
+                systemBubble('إذا كنت تريد تحليلًا دقيقًا، أضف صورة الشارت أو حدد سوقاً محدداً.');
+                return;
+            }
 
-            // Build form data to send to backend
-            const form = new FormData();
-            form.append('question', text || '');
-            if (attachedFile) form.append('image', attachedFile);
-            if (marketHint) form.append('market', marketHint);
-            // adaptive style hint
-            form.append('style', computeTone());
-
+            const market = marketHint(text);
+            showTyping(true);
             try {
-                const serverResp = await sendToServer(form);
-                const answer = serverResp?.answer || serverResp || 'تعذر الحصول على رد من الخادم.';
-                // If server provides visual_analysis, show it
-                if (serverResp && serverResp.visual_analysis && serverResp.visual_analysis.analysis) {
-                    appendBubble('تحليل الصورة: ' + serverResp.visual_analysis.analysis, 'ai');
-                    saveToHistory({role:'ai', text: serverResp.visual_analysis.analysis});
+                const result = await sendToServer(text, attachedImage, market);
+                const answer = result.answer || 'تعذّر الحصول على رد. حاول مرة أخرى.';
+                createBubble(answer, 'ai');
+                if (result.visual_analysis) {
+                    createBubble('تحليل الصورة: ' + result.visual_analysis.analysis, 'ai');
                 }
-                appendBubble(answer, 'ai');
-                saveToHistory({role:'ai', text: answer});
-            } catch (err) {
-                appendSystem('فشل الاتصال بالوكيل: ' + (err.message || err));
+            } catch (error) {
+                systemBubble('خطأ في الاتصال: ' + error.message);
             } finally {
-                // clear attached file after sending
-                attachedFile = null;
-                // remove preview if any
-                const prev = document.querySelector('.upload-preview'); if (prev) prev.remove();
+                showTyping(false);
+                if (attachedImage) removeImage();
             }
         }
 
-        attachBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => {
-            const f = e.target.files && e.target.files[0];
-            if (!f) return;
-            if (!f.type.startsWith('image/')) { appendSystem('الملف ليس صورة.'); return; }
-            attachedFile = f;
-            const url = URL.createObjectURL(f);
-            const img = document.createElement('img'); img.src=url; img.style.width='120px';
-            const wrap = document.createElement('div'); wrap.className='upload-preview'; wrap.appendChild(img);
-            messagesEl.appendChild(wrap); messagesEl.scrollTop = messagesEl.scrollHeight;
-            appendSystem('تم إرفاق صورة، اضغط إرسال ليتم تحليلها.');
+        attachButton.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { systemBubble('الرجاء اختيار ملف صورة.'); return; }
+            handleImage(file);
+            systemBubble('تم إرفاق الصورة. اضغط إرسال لتحليل الشارت.');
         });
 
-        // Drag & drop support
-        document.addEventListener('dragover', e=>e.preventDefault());
-        document.addEventListener('drop', e=>e.preventDefault());
-        messagesEl.addEventListener('dragover', e=>{ e.preventDefault(); });
-        messagesEl.addEventListener('drop', e=>{
-            e.preventDefault();
-            const f = e.dataTransfer.files && e.dataTransfer.files[0];
-            if (!f) return;
-            if (!f.type.startsWith('image/')) { appendSystem('الملف المرفوع ليس صورة.'); return; }
-            attachedFile = f;
-            const url = URL.createObjectURL(f);
-            const img = document.createElement('img'); img.src=url; img.style.width='160px';
-            const wrap = document.createElement('div'); wrap.className='upload-preview'; wrap.appendChild(img);
-            messagesEl.appendChild(wrap); messagesEl.scrollTop = messagesEl.scrollHeight;
-            appendSystem('تم إرفاق صورة عبر السحب والإفلات.');
+        ['dragenter','dragover'].forEach(evt => {
+            dropArea.addEventListener(evt, (e) => { e.preventDefault(); dropArea.classList.add('dragover'); });
+        });
+        ['dragleave','drop'].forEach(evt => {
+            dropArea.addEventListener(evt, (e) => {
+                e.preventDefault();
+                if (evt === 'drop') {
+                    const file = e.dataTransfer.files[0];
+                    if (!file || !file.type.startsWith('image/')) { systemBubble('الملف المرفوع ليس صورة.'); dropArea.classList.remove('dragover'); return; }
+                    handleImage(file);
+                    systemBubble('تم إرفاق صورة الشارت عبر السحب والإفلات.');
+                }
+                dropArea.classList.remove('dragover');
+            });
         });
 
-        // Keyboard: Enter to send, Shift+Enter newline
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); sendMessage();
-            }
-        });
-        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+        sendButton.addEventListener('click', sendMessage);
 
-        // Initial welcome
-        window.addEventListener('load', () => {
-            appendSystem('أهلاً! أنا مستشارك الذكي. تقدر تسألني عن أي سوق أو ترفع شارت وأحلله لك.');
+        const quick = ['حلل الذهب', 'كيف حال البيتكوين؟', 'آخر أخبار السوق'];
+        quick.forEach(prompt => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'quick-pill';
+            btn.innerText = prompt;
+            btn.onclick = () => { messageInput.value = prompt; messageInput.focus(); };
+            quickActions.appendChild(btn);
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            createBubble('أهلاً! أنا مستشارك الذكي. تقدر تسألني عن أي سوق أو ترفع شارت وأحلله لك.', 'ai');
         });
     </script>
 </body>
