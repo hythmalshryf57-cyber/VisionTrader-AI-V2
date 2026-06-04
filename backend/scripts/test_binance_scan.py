@@ -1,11 +1,18 @@
 import os
 import sys
 import requests
+try:
+    import pytest
+except Exception:
+    pytest = None
 
 TOKEN = os.environ.get('TEST_TOKEN')
 if not TOKEN:
-    print('TEST_TOKEN env var not set')
-    sys.exit(2)
+    if pytest is not None:
+        pytest.skip('TEST_TOKEN env var not set', allow_module_level=True)
+    else:
+        print('TEST_TOKEN env var not set')
+        sys.exit(2)
 
 url = 'http://127.0.0.1:8000/api/binance/scan?symbol=BTCUSDT'
 try:
