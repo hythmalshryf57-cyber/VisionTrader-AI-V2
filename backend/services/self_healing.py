@@ -41,7 +41,7 @@ except ImportError:
     telegram_service = None
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Diagnosis Logic (DeepSeek Mock)
+# Diagnosis Logic (local heuristics / external AI helper)
 # ─────────────────────────────────────────────────────────────────────────────
 def _diagnose_error(error_log: str, domain: str) -> Dict[str, Any]:
     """يحلل سبب الخطأ باستخدام الذكاء الاصطناعي (أو القواعد المحلية)."""
@@ -111,7 +111,7 @@ class OmniSelfHealing:
 
     # ─── MONITORS ────────────────────────────────────────────────────────────
     def monitor_backend(self, mock_logs: List[str] = None):
-        logger.info("[Monitor] Checking Backend (API, DB, Redis, Memory)...")
+        logger.info("[Monitor] Checking Backend (API, DB, cache, Memory)...")
         self.health_stats["backend"]["checked"] += 1
         logs = mock_logs if mock_logs else []
         for log in logs:

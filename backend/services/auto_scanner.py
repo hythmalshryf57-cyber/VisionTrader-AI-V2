@@ -213,7 +213,7 @@ class AutoScanner:
             "BTCUSD": ["bitcoin", "btc", "crypto"],
             "ETHUSD": ["ethereum", "eth", "crypto"],
             "SOLUSD": ["solana", "sol", "crypto"],
-            "BNBUSD": ["binance", "bnb", "crypto"],
+            "BNBUSD": ["bnb", "crypto"],
             "XRPUSD": ["xrp", "ripple", "crypto"],
         }
 

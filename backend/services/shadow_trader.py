@@ -1,6 +1,6 @@
 from models import ShadowTrade
 from database import SessionLocal
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 
@@ -65,7 +65,7 @@ class ShadowTrader:
             stop_loss=recommendation.get('stop_loss'),
             take_profit=recommendation.get('take_profit'),
             status='shadow',
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         self.db.add(trade)
         self.db.commit()

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -160,7 +160,7 @@ async def scan(message: types.Message):
 def _build_trading_stats(period_days: int):
     session = SessionLocal()
     try:
-        cutoff = datetime.utcnow() - timedelta(days=period_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
         entries = session.query(JournalEntry).filter(JournalEntry.date >= cutoff).all()
         total = len(entries)
         wins = len([e for e in entries if str(e.result).lower() == 'win'])
@@ -190,7 +190,7 @@ async def performance(message: types.Message):
 async def daily_report(message: types.Message):
     session = SessionLocal()
     try:
-        since = datetime.utcnow() - timedelta(days=1)
+        since = datetime.now(timezone.utc) - timedelta(days=1)
         entries = session.query(JournalEntry).filter(JournalEntry.date >= since).all()
         if not entries:
             await message.reply("لا توجد بيانات تداول خلال الـ 24 ساعة الماضية.")

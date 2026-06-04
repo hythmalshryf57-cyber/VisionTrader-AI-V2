@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from .binance_service import BinanceService
@@ -35,7 +35,7 @@ class MarketProtectionService:
         self.is_running = False
 
     def get_current_session(self) -> Dict[str, Any]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         hour = now.hour
         for name, info in SESSION_MAP.items():
             if hour in info['hours']:
@@ -126,7 +126,7 @@ class MarketProtectionService:
                 target_price=target_price,
                 direction=direction,
                 active=True,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             db.add(alert)
             db.commit()
@@ -188,7 +188,7 @@ class MarketProtectionService:
                 executed_price=executed_price,
                 slippage=slippage,
                 trade_id=trade_id,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             db.add(log)
             db.commit()
@@ -225,7 +225,7 @@ class MarketProtectionService:
         try:
             journal = models.JournalEntry(
                 user_id=user_id,
-                date=datetime.utcnow(),
+                date=datetime.now(timezone.utc),
                 market=market,
                 recommendation=direction,
                 result='pending',
@@ -275,7 +275,7 @@ class MarketProtectionService:
         }
 
     def get_spread_report(self) -> Dict[str, Any]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         recent_week = now - timedelta(days=7)
         all_values: List[float] = []
         symbol_data = []
@@ -314,14 +314,14 @@ class MarketProtectionService:
             if not active_alert or not active_alert.active:
                 return
             active_alert.active = False
-            active_alert.triggered_at = datetime.utcnow()
+            active_alert.triggered_at = datetime.now(timezone.utc)
             active_alert.message = f'وصل سعر {active_alert.market} إلى {price}$' if active_alert.direction == 'above' else f'هبط سعر {active_alert.market} إلى {price}$'
             db.commit()
             message = f'تنبيه: {active_alert.market} وصل {price}$'
             prefs = db.query(models.UserPreferences).filter(models.UserPreferences.user_id == active_alert.user_id).first()
             if prefs and prefs.telegram_chat_id:
                 telegram_service.send_message(prefs.telegram_chat_id, message)
-            self.spread_alerts.append({'market': active_alert.market, 'price': price, 'message': active_alert.message, 'time': datetime.utcnow().isoformat()})
+            self.spread_alerts.append({'market': active_alert.market, 'price': price, 'message': active_alert.message, 'time': datetime.now(timezone.utc).isoformat()})
         finally:
             db.close()
 
@@ -329,7 +329,7 @@ class MarketProtectionService:
         spread = data.get('spread')
         if spread is None:
             return
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.spread_history[symbol].append((now, spread))
         history = [value for ts, value in self.spread_history[symbol] if ts >= now - timedelta(hours=2)]
         if not history:

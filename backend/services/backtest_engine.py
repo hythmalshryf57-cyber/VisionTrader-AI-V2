@@ -21,7 +21,7 @@ import random
 import statistics
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 # ───────────────────────── Logger ──────────────────────────────────
@@ -744,8 +744,8 @@ class BacktestEngine:
             start_dt = datetime.fromisoformat(start_date)
             end_dt = datetime.fromisoformat(end_date)
         except Exception:
-            start_dt = datetime.utcnow() - timedelta(days=30)
-            end_dt = datetime.utcnow()
+            start_dt = datetime.now(timezone.utc) - timedelta(days=30)
+            end_dt = datetime.now(timezone.utc)
 
         days = max(1, (end_dt - start_dt).days)
         n_trades = min(max(days * 3, 30), 400)
@@ -805,7 +805,7 @@ class BacktestEngine:
         wf      = self.walk_forward_analysis(trades, n_windows)
 
         report = {
-            "generated_at":    datetime.utcnow().isoformat(),
+            "generated_at":    datetime.now(timezone.utc).isoformat(),
             "initial_capital": self.initial_capital,
             "total_trades":    len(trades),
             "metrics":         asdict(metrics),

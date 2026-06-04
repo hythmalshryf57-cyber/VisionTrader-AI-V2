@@ -3,7 +3,7 @@
     HYBRID STRATEGY – VisionTrader AI (Local Fallback Engine)
     ═══════════════════════════════════════════════════════════
     Generated : 2026-05-22 21:45:04 UTC
-    Engine    : Local Fallback (DeepSeek API unavailable)
+    Engine    : Local Fallback (external analysis unavailable)
 
     Merged from two strategies using signal voting:
     - Strategy A: first file

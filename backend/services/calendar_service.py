@@ -3,7 +3,7 @@ Calendar Service - خدمة التقويم الاقتصادي
 """
 
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 import xml.etree.ElementTree as ET
 
@@ -19,7 +19,7 @@ class CalendarService:
         self.cache_ttl = timedelta(minutes=15)
 
     def _refresh_cache(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if now - self.cache["updated"] < self.cache_ttl:
             return
 
@@ -67,7 +67,7 @@ class CalendarService:
         """
 
         self._refresh_cache()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return [
             {**event, "time_until": event["time"] - now}
             for event in self.cache["events"]
@@ -76,19 +76,19 @@ class CalendarService:
 
     def get_today_events(self) -> List[Dict]:
         self._refresh_cache()
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         return [
             {
                 **event,
                 "time_iso": event["time"].isoformat() + "Z",
-                "minutes_until": max(0, int((event["time"] - datetime.utcnow()).total_seconds() / 60))
+                "minutes_until": max(0, int((event["time"] - datetime.now(timezone.utc)).total_seconds() / 60))
             }
             for event in self.cache["events"]
             if event["time"].date() == today
         ]
 
     def get_high_impact_soon(self, minutes: int = 15) -> List[Dict]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return [
             {**event, "minutes_until": max(0, int((event["time"] - now).total_seconds() / 60))}
             for event in self.get_today_events()

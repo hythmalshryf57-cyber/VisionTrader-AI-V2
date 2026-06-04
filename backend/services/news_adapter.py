@@ -24,7 +24,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 import threading
@@ -266,7 +266,7 @@ class TwitterSimFetcher:
             items.append(NewsItem(
                 title=tw["text"],
                 source="Twitter/X",
-                published=datetime.utcnow().isoformat(),
+                published=datetime.now(timezone.utc).isoformat(),
                 url="https://twitter.com",
                 confidence=min(tw["likes"] / 20000, 1.0),
             ))
@@ -278,62 +278,62 @@ class TwitterSimFetcher:
 # ══════════════════════════════════════════════════════════════════════
 
 class ImpactAnalyzer:
-    """يحلل تأثير الخبر محلياً + DeepSeek عند الحاجة"""
+    """يحلل تأثير الخبر محلياً + خدمة تحليل خارجية عند الحاجة"""
 
     def __init__(self):
         self.api_key  = DEEPSEEK_KEY
         self.base_url = "https://api.deepseek.com/v1"
 
-    # ─── تحليل محلي سريع ───────────────────────────────────────────
-    def _local_analyze(self, news: NewsItem) -> Tuple[ImpactLevel, float, List[str]]:
-        text    = news.title.lower()
-        all_keywords: List[str] = []
+    # ─── تحليل عميق عبر خدمة خارجية (اختياري) ─────────────────────────
+    def _external_analyze(self, news: NewsItem) -> Optional[Dict]:
+        if not self.api_key or self.api_key.startswith("your-"):
+            return None
 
-        # ── 1) أعلى أولوية: أزمة/حرب ────────────────────────────────
-        crisis_found = [kw for kw in CRISIS_KEYWORDS if kw.lower() in text]
-        if crisis_found:
-            return ImpactLevel.CRITICAL, 0.92, crisis_found
+        prompt = f"""
+أنت محلل مالي متخصص في أسواق الفوركس. حلل الخبر التالي:
 
-        # ── 2) فحص كل الأصناف معاً ──────────────────────────────────
-        high_found = [kw for kw in HIGH_IMPACT_KEYWORDS if kw.lower() in text]
-        pos_found  = [kw for kw in POSITIVE_KEYWORDS    if kw.lower() in text]
-        neg_found  = [kw for kw in NEGATIVE_KEYWORDS    if kw.lower() in text]
+العنوان: {news.title}
+المصدر: {news.source}
+التاريخ: {news.published}
 
-        all_keywords = high_found + pos_found + neg_found
+حدد:
+1. مستوى التأثير: CRITICAL / HIGH / POSITIVE / NEGATIVE / NEUTRAL
+2. درجة الثقة (0.0–1.0)
+3. العملات المتأثرة (مثال: USD, EUR, XAU)
+4. ملخص التأثير في جملة واحدة
 
-        # تعلم كلمات مفتاحية الأخبار
-        high_score = len(high_found)
-        pos_score = len(pos_found)
-        neg_score = len(neg_found)
+أجب بـ JSON فقط:
+{
+  "impact": "HIGH",
+  "confidence": 0.85,
+  "currencies": ["USD", "EUR"],
+  "summary": "ملخص التأثير"
+}
+"""
         try:
-            from .internal_brain import InternalBrain
-            brain = InternalBrain()
-            high_score = sum(brain.get_news_keyword_weight(kw, 1.0) for kw in high_found)
-            pos_score  = sum(brain.get_news_keyword_weight(kw, 1.0) for kw in pos_found)
-            neg_score  = sum(brain.get_news_keyword_weight(kw, 1.0) for kw in neg_found)
-        except Exception:
-            pass
-
-        all_keywords = high_found + pos_found + neg_found
-        has_high = len(high_found) > 0
-
-        if has_high and pos_score > 0 and pos_score >= neg_score:
-            return ImpactLevel.POSITIVE, min(0.92, 0.70 + pos_score * 0.05), all_keywords
-
-        if has_high and neg_score > 0 and neg_score > pos_score:
-            return ImpactLevel.NEGATIVE, min(0.92, 0.70 + neg_score * 0.05), all_keywords
-
-        if has_high:
-            return ImpactLevel.HIGH, min(0.88, 0.70 + high_score * 0.03), all_keywords
-
-        if pos_score > neg_score and pos_score > 0:
-            return ImpactLevel.POSITIVE, min(0.80, 0.55 + pos_score * 0.06), pos_found
-        if neg_score > pos_score and neg_score > 0:
-            return ImpactLevel.NEGATIVE, min(0.80, 0.55 + neg_score * 0.06), neg_found
-
-        return ImpactLevel.NEUTRAL, 0.50, []
-
-    # ─── تحليل عميق عبر DeepSeek ───────────────────────────────────
+            r = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type":  "application/json",
+                },
+                json={
+                    "model":       "deepseek-chat",
+                    "messages":    [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "max_tokens":  200,
+                },
+                timeout=10,
+            )
+            if r.status_code == 200:
+                content = r.json()["choices"][0]["message"]["content"]
+                j_start = content.find("{")
+                j_end   = content.rfind("}") + 1
+                if j_start != -1 and j_end > j_start:
+                    return json.loads(content[j_start:j_end])
+        except Exception as exc:
+            logger.warning(f"External analysis error: {exc}")
+        return None
     def _deepseek_analyze(self, news: NewsItem) -> Optional[Dict]:
         if not self.api_key or self.api_key.startswith("your-"):
             return None
@@ -424,16 +424,16 @@ class ImpactAnalyzer:
         except Exception:
             pass
 
-        # ثانياً: DeepSeek إذا كان التأثير HIGH أو أعلى
+        # ثانياً: تحليل خارجي إذا كان التأثير HIGH أو أعلى
         if local_impact in (ImpactLevel.HIGH, ImpactLevel.CRITICAL) and news.impact != ImpactLevel.NEGATIVE:
-            ds_result = self._deepseek_analyze(news)
+            ds_result = self._external_analyze(news)
             if ds_result:
                 try:
                     news.impact     = ImpactLevel(ds_result.get("impact", local_impact))
                     news.confidence = float(ds_result.get("confidence", local_conf))
                     news.currencies = ds_result.get("currencies", news.currencies)
                     news.summary    = ds_result.get("summary", "")
-                    logger.info(f"✅ DeepSeek: {news.impact} | ثقة {news.confidence:.0%}")
+                    logger.info(f"✅ External analysis: {news.impact} | ثقة {news.confidence:.0%}")
                 except Exception:
                     pass
 
@@ -671,7 +671,7 @@ class NewsAdapter:
             actions = ["ℹ️ لا تغيير – الخبر محايد"]
             logger.info("ℹ️ NEUTRAL – لا تعديل على النظام")
 
-        self.state.last_adaptation   = datetime.utcnow().isoformat()
+        self.state.last_adaptation   = datetime.now(timezone.utc).isoformat()
         self.state.adaptation_reason = trigger_news
 
         action = AdaptationAction(
@@ -708,7 +708,7 @@ class NewsAdapter:
             "🔴 وضع الحماية مُفعَّل\n"
             "❄️ جميع الاستراتيجيات مجمدة\n\n"
             "📌 يرجى مراجعة الوضع والتأكيد يدوياً قبل العودة للتداول.\n"
-            f"⏰ {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"⏰ {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
         _send_telegram(msg, urgent=True)
 

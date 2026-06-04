@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 class NewsCalendarAgent:
@@ -9,7 +9,7 @@ class NewsCalendarAgent:
         events = data.get("upcoming_news") or []
         strong_events = []
         summary_lines = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for event in events:
             title = str(event.get("title") or event.get("headline") or "حدث").strip()
             time_value = event.get("time") or event.get("timestamp")

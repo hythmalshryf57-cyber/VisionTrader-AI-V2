@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import math
 from typing import Dict, List, Optional
 
@@ -33,12 +33,12 @@ class TradeProtectionService:
         return prefs
 
     def _end_of_day(self) -> datetime:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return datetime(now.year, now.month, now.day, 23, 59, 59)
 
     def _compute_daily_loss(self, db, user_id: int) -> float:
         # Compute today's net P&L from TradeExperience entries (preferred over Journal)
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         start = datetime(today.year, today.month, today.day)
         entries = db.query(models.TradeExperience).filter(
             models.TradeExperience.user_id == user_id,
@@ -129,7 +129,7 @@ class TradeProtectionService:
                 "weekly_drawdown_pct": 0.0,
             }
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         changed = False
         if user_prefs.analysis_locked_until and user_prefs.analysis_locked_until <= now:
             user_prefs.analysis_locked_until = None

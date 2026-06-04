@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import sqrt
 from typing import Dict, List
 
@@ -50,7 +50,7 @@ class PerformanceTracker:
 
         sessions = {}
         for entry in entries:
-            session = self._session_name(entry.created_at or entry.date or datetime.utcnow())
+            session = self._session_name(entry.created_at or entry.date or datetime.now(timezone.utc))
             stats = sessions.setdefault(session, {"wins": 0, "trades": 0, "pnl": 0.0})
             stats["trades"] += 1
             if self._normalize_result(entry.result) == "win":
@@ -73,7 +73,7 @@ class PerformanceTracker:
     def summarize_performance(self, user_id: int, lookback_days: int = 90) -> Dict[str, object]:
         db = SessionLocal()
         try:
-            cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
             entries = db.query(models.JournalEntry).filter(models.JournalEntry.user_id == user_id, models.JournalEntry.date >= cutoff).order_by(models.JournalEntry.date.asc()).all()
 
             if not entries:
@@ -109,7 +109,7 @@ class PerformanceTracker:
             losing_pnl = abs(sum(p for p in profits if p < 0))
             profit_factor = round((winning_pnl / losing_pnl) if losing_pnl > 0 else (winning_pnl if winning_pnl > 0 else 0.0), 2)
             best_session = self._best_session(entries)
-            current_session = self._session_name(datetime.utcnow())
+            current_session = self._session_name(datetime.now(timezone.utc))
             session_boost = 1.05 if best_session and best_session.get("session") == current_session and best_session.get("trades", 0) >= 3 else 1.0
 
             return {
@@ -146,7 +146,7 @@ class PerformanceTracker:
             pattern_losses = {}
 
             for exp in experiences:
-                session = exp.session or self._session_name(exp.created_at or datetime.utcnow())
+                session = exp.session or self._session_name(exp.created_at or datetime.now(timezone.utc))
                 stats = session_stats.setdefault(session, {"wins": 0, "trades": 0, "pnl": 0.0})
                 stats["trades"] += 1
                 if exp.result and exp.result.lower().startswith("win"):

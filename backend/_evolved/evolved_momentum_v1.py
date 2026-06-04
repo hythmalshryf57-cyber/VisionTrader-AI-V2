@@ -5,7 +5,7 @@ EVOLVED STRATEGY – VisionTrader AI (Local Fallback Engine)
 Generated : 2026-05-22 22:01:08 UTC
 Failure   : استراتيجية تداول خلال ساعات سيولة منخفضة أدت إلى drawdown 8.4%
 Failed At : 2025-05-10 02:30 UTC
-Engine    : Local Fallback (DeepSeek API unavailable)
+Engine    : Local Fallback (external analysis unavailable)
 
 Improvements Applied:
     # تم تضييق الوقف بسبب drawdown مرتفع في الاستراتيجية الأصلية

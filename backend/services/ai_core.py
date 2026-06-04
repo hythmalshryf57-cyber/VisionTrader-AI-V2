@@ -6,7 +6,7 @@ import threading
 import time
 import warnings
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from statistics import mean, stdev
 from typing import Any, Dict, List, Optional
 
@@ -230,7 +230,7 @@ class TradeOutcomeModel:
             y = df['label']
             self.model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.08, max_depth=4, random_state=42)
             self.model.fit(X, y)
-            self.last_trained = datetime.utcnow()
+            self.last_trained = datetime.now(timezone.utc)
         except Exception as e:
             logger.exception(f'Failed to train trade outcome model: {e}')
         finally:
@@ -529,7 +529,7 @@ class MemoryModule:
                 news_sentiment=news_sentiment,
                 pattern_signature=pattern_signature,
                 notes=notes,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             db.add(experience)
             db.commit()
@@ -565,7 +565,7 @@ class MemoryModule:
     def _build_signature(self, percepts: Dict[str, Any]) -> Dict[str, Any]:
         # include session, weekday, and presence of news in signature
         session = percepts.get('session') or percepts.get('market_session') or 'unknown'
-        weekday = datetime.utcnow().weekday()
+        weekday = datetime.now(timezone.utc).weekday()
         has_news = bool(percepts.get('news_sentiment'))
         return {
             "trend": percepts.get("trend"),
@@ -1081,7 +1081,7 @@ class AIService:
         """Adjust strategy weights based on recent performance with intelligent rules."""
         try:
             db = SessionLocal()
-            cutoff_date = datetime.utcnow() - timedelta(days=lookback_days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
             # Get strategy performance from database
             strategy_records = db.query(models.StrategyPerformance).all()
@@ -1145,7 +1145,7 @@ class AIService:
                     reason = "consecutive_losses"
                     weight_changes["disabled"] += 1
                     # Temporarily disable for 24 hours
-                    self.disabled_strategies[strategy_name] = datetime.utcnow() + timedelta(hours=24)
+                    self.disabled_strategies[strategy_name] = datetime.now(timezone.utc) + timedelta(hours=24)
 
                 # Apply weight change if different
                 if abs(new_weight - current_weight) > 0.01:
@@ -1160,7 +1160,7 @@ class AIService:
                     })
 
             # Re-enable strategies after timeout
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
             to_reenable = [name for name, expiry in self.disabled_strategies.items() if current_time > expiry]
             for strategy_name in to_reenable:
                 del self.disabled_strategies[strategy_name]
@@ -1168,7 +1168,7 @@ class AIService:
                 self.internal_brain.update_strategy_weight(strategy_name, 1.0)
                 logger.info(f"إعادة تفعيل الاستراتيجية {strategy_name} بعد انتهاء فترة التعطيل المؤقت")
 
-            self.last_auto_tune = datetime.utcnow()
+            self.last_auto_tune = datetime.now(timezone.utc)
 
             # Log summary
             total_updated = len(updated_strategies)
@@ -1198,7 +1198,7 @@ class AIService:
         """Weekly tuning of cluster weights based on performance."""
         try:
             db = SessionLocal()
-            cutoff_date = datetime.utcnow() - timedelta(days=7)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
 
             # Get cluster performance from recent trades
             recent_trades = db.query(models.TradeExperience).filter(
@@ -1251,7 +1251,7 @@ class AIService:
             total_weight = sum(self.cluster_weights.values())
             self.cluster_weights = {k: v / total_weight for k, v in self.cluster_weights.items()}
 
-            self.last_cluster_tune = datetime.utcnow()
+            self.last_cluster_tune = datetime.now(timezone.utc)
 
             # Log changes
             changes = []
@@ -1282,7 +1282,7 @@ class AIService:
         """Monthly comprehensive system review and strategy re-evaluation."""
         try:
             db = SessionLocal()
-            cutoff_date = datetime.utcnow() - timedelta(days=30)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
             # Review strategy performance over last month
             strategy_records = db.query(models.StrategyPerformance).all()
@@ -1316,7 +1316,7 @@ class AIService:
                 new_weight = min(3.0, current_weight * 1.5)
                 self.internal_brain.update_strategy_weight(strategy["strategy"], new_weight)
 
-            self.last_monthly_review = datetime.utcnow()
+            self.last_monthly_review = datetime.now(timezone.utc)
 
             logger.info(f"مراجعة شهرية: إعادة تقييم {len(strategy_records)} استراتيجية، إعادة ضبط {len(underperforming)} ضعيفة، تعزيز {len(top_performers)} ممتازة")
 
@@ -1347,7 +1347,7 @@ class AIService:
             "decision": decision,
             "outcome": actual_outcome,
             "correct": was_correct,
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.now(timezone.utc)
         })
 
         # Keep only last 100 decisions
@@ -1362,11 +1362,11 @@ class AIService:
 
             if accuracy_rate > 0.75 and self.judge_performance["confidence_threshold"] < 80:
                 self.judge_performance["confidence_threshold"] += 5
-                self.judge_performance["last_adjustment"] = datetime.utcnow()
+                self.judge_performance["last_adjustment"] = datetime.now(timezone.utc)
                 logger.info(f"القاضي يتعلم: رفع عتبة الثقة إلى {self.judge_performance['confidence_threshold']}% (وافق على {approval_rate:.0f}% من الصفقات وكان صحيحاً في {accuracy_rate:.1%} منها)")
             elif accuracy_rate < 0.65 and self.judge_performance["confidence_threshold"] > 40:
                 self.judge_performance["confidence_threshold"] -= 5
-                self.judge_performance["last_adjustment"] = datetime.utcnow()
+                self.judge_performance["last_adjustment"] = datetime.now(timezone.utc)
                 logger.info(f"القاضي يتعلم: خفض عتبة الثقة إلى {self.judge_performance['confidence_threshold']}% (وافق على {approval_rate:.0f}% من الصفقات وكان صحيحاً في {accuracy_rate:.1%} منها)")
 
     def get_judge_performance(self) -> Dict[str, Any]:
@@ -1385,7 +1385,7 @@ class AIService:
 
     def check_disabled_strategies(self) -> Dict[str, Any]:
         """Check and clean up disabled strategies."""
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         active_disabled = {}
         expired = []
 
@@ -1444,7 +1444,7 @@ class AIService:
             logger.info(f"تهيئة أوزان الاستراتيجيات للمستخدم الجديد {user_id}")
 
         # Apply disabled strategies
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         for strategy_name in list(base_weights.keys()):
             if strategy_name in self.disabled_strategies:
                 if current_time < self.disabled_strategies[strategy_name]:
@@ -1533,7 +1533,7 @@ class AIService:
                     "note": "لا توجد تحليل حديث لهذا السوق. الرجاء تشغيل تحليل جديد."
                 }
 
-            age_seconds = (datetime.utcnow() - recent.created_at).total_seconds()
+            age_seconds = (datetime.now(timezone.utc) - recent.created_at).total_seconds()
             if age_seconds > 300:
                 return {
                     "recommendation": "تحليل جديد مطلوب",
@@ -1624,25 +1624,25 @@ class AIService:
         status = {}
         try:
             ping = self.binance_service._request("/fapi/v1/ping")
-            status["binance"] = "ok" if isinstance(ping, dict) and (ping.get("msg", "") == "" or ping == {}) else "failed"
+            status["market_data"] = "ok" if isinstance(ping, dict) and (ping.get("msg", "") == "" or ping == {}) else "failed"
         except Exception as e:
-            logger.exception(f"Binance health check failed: {e}")
-            status["binance"] = "failed"
+            logger.exception(f"Market data health check failed: {e}")
+            status["market_data"] = "failed"
 
         try:
             tv_endpoint = getattr(self.tradingview_service, "GEMINI_ENDPOINT", None)
-            status["tradingview"] = "configured" if tv_endpoint else "missing_api_key"
+            status["chart_service"] = "configured" if tv_endpoint else "missing_api_key"
         except Exception as e:
-            logger.exception(f"TradingView health check failed: {e}")
-            status["tradingview"] = "failed"
+            logger.exception(f"Chart service health check failed: {e}")
+            status["chart_service"] = "failed"
 
         try:
             from .deepseek_r1_service import DeepSeekR1Service
             deepseek_api = DeepSeekR1Service()
-            status["deepseek"] = "configured" if getattr(deepseek_api, "api_key", None) else "missing_api_key"
+            status["nlp_service"] = "configured" if getattr(deepseek_api, "api_key", None) else "missing_api_key"
         except Exception as e:
-            logger.exception(f"DeepSeek health check failed: {e}")
-            status["deepseek"] = "failed"
+            logger.exception(f"NLP service health check failed: {e}")
+            status["nlp_service"] = "failed"
 
         return status
 
@@ -1664,7 +1664,7 @@ class AIService:
             return {"symbol": symbol, "available": False, "sentiment_score": 0.0, "recommendation": "محايد", "message": "تعذر الحصول على بيانات الأخبار."}
 
     def _verify_chart_identity(self, chart_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Basic Gemini-style checks to verify that the input represents a valid chart image.
+        """Basic image checks to verify that the input represents a valid chart image.
         Returns a dict with keys: is_chart, pair, timeframe, clarity_score, messages
         """
         result = {
@@ -2067,7 +2067,7 @@ class AIService:
                 chart_features=json.dumps(chart_features, ensure_ascii=False),
                 news_sentiment=news_sentiment,
                 notes=f"تصحيح المستخدم: {correction}",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             db.add(feedback_entry)
 

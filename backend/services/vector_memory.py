@@ -3,7 +3,7 @@ import time
 import tempfile
 import traceback
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from config import settings
 from database import SessionLocal
@@ -120,7 +120,7 @@ class VectorMemoryService:
         metadata = {
             "analysis_id": str(analysis_id),
             "result": result,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
 
         if self.use_chroma and self.collection is not None:
@@ -139,13 +139,13 @@ class VectorMemoryService:
 
         existing = next((entry for entry in self.memory_cache if entry["analysis_id"] == str(analysis_id)), None)
         if existing:
-            existing.update({"visual_description": visual_description, "result": result, "created_at": datetime.utcnow()})
+            existing.update({"visual_description": visual_description, "result": result, "created_at": datetime.now(timezone.utc)})
         else:
             self.memory_cache.append({
                 "analysis_id": str(analysis_id),
                 "visual_description": visual_description,
                 "result": result,
-                "created_at": datetime.utcnow()
+                "created_at": datetime.now(timezone.utc)
             })
         return True
 
@@ -245,7 +245,7 @@ class VectorMemoryService:
         return insight
 
     def delete_old(self, days: int = 90, db: Optional[SessionLocal] = None) -> int:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         deleted = 0
 
         if self.use_chroma and self.collection is not None:

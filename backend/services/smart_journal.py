@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from database import SessionLocal
 import models
 
@@ -53,7 +53,7 @@ class SmartJournal:
     def _best_session(self, entries):
         session_stats = defaultdict(lambda: {"wins": 0, "trades": 0, "pnl": 0.0})
         for entry in entries:
-            session = self._session_name(entry.created_at or entry.date or datetime.utcnow())
+            session = self._session_name(entry.created_at or entry.date or datetime.now(timezone.utc))
             session_stats[session]["trades"] += 1
             if self._normalize_result(entry.result) == "win":
                 session_stats[session]["wins"] += 1

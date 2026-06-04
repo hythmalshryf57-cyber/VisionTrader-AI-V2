@@ -40,6 +40,23 @@ const api = {
   async analyzeMarket(market, images) { return this.request('POST', '/api/analysis/process', { market, images }, true); },
   async getMentorResponse(query) { return this.request('POST', '/api/analysis/mentor', { query }, true); },
   async askAssistant(question) { return this.request('POST', '/api/ai/assistant', { question }, true); },
+  async askAgent(formData) {
+    const url = this.baseUrl + '/api/ai/agent';
+    const token = localStorage.getItem('token');
+    const headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, { method: 'POST', headers, body: formData });
+    const txt = await res.text();
+    let json;
+    try { json = JSON.parse(txt); } catch { json = txt; }
+    if (!res.ok) {
+      const errorMsg = (json && json.detail) ? json.detail : 'فشل الاتصال بالوكيل';
+      throw new Error(errorMsg);
+    }
+    return json;
+  },
+  async getMarketSession() { return this.request('GET', '/api/market/session', null, true); },
+  async getMarketSpread() { return this.request('GET', '/api/market/spread', null, true); },
   async detectChart(file) {
     const url = this.baseUrl + '/api/chart/detect';
     const token = localStorage.getItem('token');

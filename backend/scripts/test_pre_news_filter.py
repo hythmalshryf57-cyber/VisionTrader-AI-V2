@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import sys, os
 
 # Ensure backend package is importable
@@ -50,7 +50,7 @@ class FakeCalendar:
 
 
 def run_case(offset_minutes, description, past=False):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     fake = FakeCalendar(now, event_offset_minutes=offset_minutes, past=past)
     ef = EnvironmentFilter()
     ef.calendar_service = fake

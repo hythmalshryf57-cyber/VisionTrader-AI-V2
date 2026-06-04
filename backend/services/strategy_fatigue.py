@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -70,13 +70,13 @@ class StrategyFatigue:
 
     def _record_evaluation(self, strategy_name: str, evaluation: Dict[str, Any]) -> None:
         self.memory[strategy_name] = {
-            "last_evaluated": datetime.utcnow().isoformat(),
+            "last_evaluated": datetime.now(timezone.utc).isoformat(),
             **evaluation,
         }
         self._save_memory()
 
     def _build_fallback_history(self, strategy_name: str) -> List[Dict[str, Any]]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         demo = []
         for i in range(1, 22):
             profit = 0.8 - 0.03 * i
@@ -96,7 +96,7 @@ class StrategyFatigue:
         try:
             return datetime.fromisoformat(str(value))
         except Exception:
-            return datetime.utcnow()
+            return datetime.now(timezone.utc)
 
     def _load_trade_history(self, strategy_name: str) -> List[Dict[str, Any]]:
         trades: List[Dict[str, Any]] = []
@@ -316,7 +316,7 @@ class StrategyFatigue:
         failure_report = {
             "type": "strategy_fatigue",
             "reason": details["freeze_reason"],
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(timezone.utc).isoformat(),
         }
 
         try:

@@ -7,7 +7,7 @@ import os
 import logging
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class MT5Service:
                     diff = (bid - pos['open_price']) if pos['type'] == 'buy' else (pos['open_price'] - ask)
                     pos['pnl'] = round(diff * pos['volume'] * 100, 2)
 
-            return {"symbol": symbol, "bid": bid, "ask": ask, "time": datetime.utcnow().isoformat(), "status": "simulated", "warning": "MT5 غير متصل - النتائج محاكاة"}
+            return {"symbol": symbol, "bid": bid, "ask": ask, "time": datetime.now(timezone.utc).isoformat(), "status": "simulated", "warning": "MT5 غير متصل - النتائج محاكاة"}
 
         if not self.connected:
             return {}
@@ -129,7 +129,7 @@ class MT5Service:
             history = []
             base_price = 2000.0 if "XAU" in symbol else 1.1000
             for i in range(bars, 0, -1):
-                dt = datetime.utcnow() - timedelta(minutes=i*15)
+                dt = datetime.now(timezone.utc) - timedelta(minutes=i*15)
                 open_p = base_price + random.uniform(-5, 5)
                 close_p = open_p + random.uniform(-2, 2)
                 high_p = max(open_p, close_p) + random.uniform(0, 3)
@@ -190,7 +190,7 @@ class MT5Service:
                 "tp": tp,
                 "pnl": 0.0,
                 "status": "OPEN",
-                "time": datetime.utcnow().isoformat()
+                "time": datetime.now(timezone.utc).isoformat()
             }
             logger.info(f"[Simulator] Order placed: {ticket} {order_type} {symbol} Vol: {volume}")
             return {"ticket": ticket, "status": "success", "open_price": price}

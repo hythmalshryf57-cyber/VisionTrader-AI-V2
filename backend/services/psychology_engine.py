@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from models import PsychologyLog
 from database import SessionLocal
 
@@ -14,7 +14,7 @@ class PsychologyEngine:
         issues = []
         
         # 1. Excessive Trading (3+ trades in an hour)
-        hour_ago = datetime.utcnow() - timedelta(hours=1)
+        hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         trades_this_hour = [t for t in recent_trades if t['timestamp'] > hour_ago]
         if len(trades_this_hour) >= 3:
             issues.append("Excessive Trading: 3+ trades in the last hour.")

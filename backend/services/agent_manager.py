@@ -224,7 +224,7 @@ class LiquidityAgent(AgentBase):
             ts = data.get("timestamp")
             if ts:
                 import datetime as _dt
-                dt = _dt.datetime.utcfromtimestamp(int(ts)) if isinstance(ts, (int, float)) else _dt.datetime.utcnow()
+                dt = _dt.datetime.utcfromtimestamp(int(ts)) if isinstance(ts, (int, float)) else _dt.datetime.now(_dt.timezone.utc)
                 is_weekend = dt.weekday() >= 5
         except Exception:
             is_weekend = False

@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from passlib.exc import UnknownHashError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -44,9 +44,9 @@ def get_password_hash(password):
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -90,7 +90,7 @@ def _validate_invite_code(code: str, db: Session, client_ip: Optional[str] = Non
     if not invite:
         raise HTTPException(status_code=400, detail="رمز دعوة غير صالح")
 
-    if invite.expiry_date and invite.expiry_date < datetime.utcnow():
+    if invite.expiry_date and invite.expiry_date < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="انتهت صلاحية رمز الدعوة")
 
     if invite.max_uses and invite.uses_count >= invite.max_uses:
@@ -124,7 +124,7 @@ def register(user: UserCreate, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="هذا الإيميل مسجل بالفعل. هل تريد تسجيل الدخول؟")
     
     hashed_password = get_password_hash(user.password)
-    trial_start = datetime.utcnow()
+    trial_start = datetime.now(timezone.utc)
     trial_end = trial_start + timedelta(days=7)
     new_user = models.User(
         email=normalized_email,
@@ -230,7 +230,7 @@ async def google_callback(code: str = None, error: str = None, db: Session = Dep
         raise HTTPException(status_code=400, detail='لم يتم الحصول على البريد الإلكتروني من Google.')
     user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
     if not user:
-        trial_start = datetime.utcnow()
+        trial_start = datetime.now(timezone.utc)
         trial_end = trial_start + timedelta(days=7)
         user = models.User(
             email=email,
@@ -325,7 +325,7 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
 
 @router.get("/trial-status")
 async def get_trial_status(current_user: models.User = Depends(get_current_user)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     trial_active = False
     days_left = 0
     if current_user.trial_start and current_user.trial_end:

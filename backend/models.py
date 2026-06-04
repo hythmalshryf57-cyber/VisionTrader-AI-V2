@@ -21,7 +21,7 @@ class User(Base):
     ip_address = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
-    registered_at = Column(DateTime, default=datetime.datetime.utcnow)
+    registered_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     # Security features
     force_logout_at = Column(DateTime, nullable=True)
     is_frozen = Column(Boolean, default=False)
@@ -46,7 +46,7 @@ class InviteCode(Base):
     code = Column(String, unique=True, index=True)
     used_ip = Column(String, nullable=True)
     created_by_admin = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     expiry_date = Column(DateTime, nullable=True)
     max_uses = Column(Integer, default=1)
     uses_count = Column(Integer, default=0)
@@ -92,7 +92,7 @@ class Analysis(Base):
     description = Column(Text)
     result_json = Column(Text) # JSON string of all votes
     is_deleted = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class Alert(Base):
@@ -106,7 +106,7 @@ class Alert(Base):
     sl = Column(String, nullable=True)
     tp = Column(String, nullable=True)
     top_strategies = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class PriceAlert(Base):
@@ -118,7 +118,7 @@ class PriceAlert(Base):
     direction = Column(String, default="above")
     active = Column(Boolean, default=True)
     message = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     triggered_at = Column(DateTime, nullable=True)
 
 
@@ -131,14 +131,14 @@ class TradeSlippageLog(Base):
     executed_price = Column(Float, nullable=True)
     slippage = Column(Float, nullable=True)
     trade_id = Column(Integer, ForeignKey("shadow_trades.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class JournalEntry(Base):
     __tablename__ = "journal"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    date = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     market = Column(String)
     recommendation = Column(String) # Buy, Sell
     result = Column(String) # Win, Loss
@@ -148,7 +148,7 @@ class JournalEntry(Base):
     screenshot_url = Column(String, nullable=True)
     mood = Column(String, nullable=True) # optimistic, pessimistic
     session = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class DailyReport(Base):
@@ -163,7 +163,7 @@ class DailyReport(Base):
     losses = Column(Integer, default=0)
     profit_loss = Column(Float, default=0.0)
     sent_to_telegram = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class StrategyPerformance(Base):
@@ -191,7 +191,7 @@ class TradeExperience(Base):
     news_sentiment = Column(Float, nullable=True)
     pattern_signature = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class WeeklyReport(Base):
@@ -206,7 +206,7 @@ class WeeklyReport(Base):
     best_strategy = Column(String)
     total_pnl = Column(Float)
     report_json = Column(Text)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class PsychologyLog(Base):
@@ -215,7 +215,7 @@ class PsychologyLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     event_type = Column(String) # revenge_trading, excessive_trading, over_leveraging
     description = Column(Text)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class ShadowTrade(Base):
@@ -229,7 +229,7 @@ class ShadowTrade(Base):
     take_profit = Column(Float, nullable=True)
     status = Column(String, default="open") # open, closed
     pnl = Column(Float, default=0.0)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class SecurityLog(Base):
@@ -239,7 +239,7 @@ class SecurityLog(Base):
     event_type = Column(String) # session_expired, failed_login, unauthorized_access
     ip_address = Column(String, nullable=True)
     description = Column(Text, nullable=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class UserDevice(Base):
@@ -249,7 +249,7 @@ class UserDevice(Base):
     device_id = Column(String, index=True)
     device_name = Column(String, nullable=True)
     is_trusted = Column(Boolean, default=False)
-    first_seen = Column(DateTime, default=datetime.datetime.utcnow)
+    first_seen = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class UserActivityMaster(Base):
@@ -261,7 +261,7 @@ class UserActivityMaster(Base):
     device = Column(String, nullable=True)
     location = Column(String, nullable=True)
     is_vpn = Column(Boolean, default=False)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class DraftAnalysis(Base):
@@ -272,8 +272,8 @@ class DraftAnalysis(Base):
     image_path = Column(String, nullable=True)
     description = Column(Text)
     payload_json = Column(Text)  # Draft payload
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class WeeklyChallenge(Base):
@@ -286,7 +286,7 @@ class WeeklyChallenge(Base):
     description = Column(Text)
     reward_type = Column(String)  # "free_analysis", "badge"
     reward_description = Column(Text)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class UserChallengeProgress(Base):
@@ -297,7 +297,7 @@ class UserChallengeProgress(Base):
     current_value = Column(Float, default=0.0)
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class GlobalMemoryEvent(Base):
@@ -311,7 +311,7 @@ class GlobalMemoryEvent(Base):
     metadata_json = Column(Text, nullable=True)      # بيانات إضافية بصيغة JSON
     context = Column(String, nullable=True)          # سياق: market session, volatility level, etc.
     success = Column(Boolean, default=True)          # هل نجح الحدث أم لا
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
 
 
 class FixCacheEntry(Base):
@@ -325,8 +325,8 @@ class FixCacheEntry(Base):
     component = Column(String)                                  # المكون المصاب
     times_applied = Column(Integer, default=1)                  # عدد مرات تطبيق هذا الإصلاح
     success_rate = Column(Float, default=1.0)                   # نسبة نجاح الإصلاح
-    last_applied = Column(DateTime, default=datetime.datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_applied = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class AlertPreference(Base):
@@ -340,7 +340,7 @@ class AlertPreference(Base):
     times_acted = Column(Integer, default=0)       # عدد مرات التفاعل
     priority_adjustment = Column(Float, default=0.0)  # تعديل الأولوية
     last_sent = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class NewsKeywordImpact(Base):
@@ -355,7 +355,7 @@ class NewsKeywordImpact(Base):
     price_after = Column(Float, nullable=True)      # السعر بعد الخبر
     times_observed = Column(Integer, default=1)     # عدد مرات الملاحظة
     learned_weight = Column(Float, default=0.5)     # الوزن المتعلّم
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
 
 class CodeReviewHistory(Base):
@@ -366,5 +366,5 @@ class CodeReviewHistory(Base):
     error_type = Column(String)                      # نوع الخطأ
     error_count = Column(Integer, default=1)         # عدد مرات ظهور الخطأ
     strictness_level = Column(String, default="medium")  # مستوى التدقيق الحالي
-    last_review = Column(DateTime, default=datetime.datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_review = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))

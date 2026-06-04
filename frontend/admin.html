@@ -86,7 +86,7 @@
                 </div>
                 <div class="stat-card">
                     <h3>استهلاك API</h3>
-                    <div id="api-usage">Gemini: 0<br>DeepSeek: 0</div>
+                    <div id="api-usage">Image Analysis: 0<br>Reasoning: 0</div>
                 </div>
                 <div class="stat-card">
                     <h3>حالة السيرفر</h3>
@@ -212,7 +212,7 @@
         function displaySOC(soc) {
             document.getElementById('threat-map').innerHTML = soc.threat_map.length ? soc.threat_map.join('<br>') : 'لا توجد محاولات فاشلة';
             document.getElementById('suspicious-users').innerHTML = soc.suspicious_users.length ? soc.suspicious_users.map(u => u.email).join('<br>') : 'لا يوجد';
-            document.getElementById('api-usage').innerHTML = `Gemini: ${soc.api_usage.gemini}<br>DeepSeek: ${soc.api_usage.deepseek}`;
+            document.getElementById('api-usage').innerHTML = `Image Analysis: ${soc.api_usage.gemini ?? 0}<br>Reasoning: ${soc.api_usage.deepseek ?? 0}`;
             document.getElementById('server-status').innerHTML = `CPU: ${soc.server_status.cpu}%<br>RAM: ${soc.server_status.ram}%`;
             document.getElementById('live-alerts').innerHTML = soc.live_alerts.length ? soc.live_alerts.join('<br>') : 'لا توجد تنبيهات';
         }

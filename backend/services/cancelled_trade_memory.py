@@ -1,6 +1,6 @@
 import json
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -45,7 +45,7 @@ class CancelledTradeMemory:
         reason: free text reason for cancellation
         """
         rec = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'user_id': user_id,
             'recommendation': recommendation,
             'reason': reason,

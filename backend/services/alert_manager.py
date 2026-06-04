@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 import threading
 
@@ -47,7 +47,7 @@ class Alert:
         self.priority = priority.upper()
         self.category = category
         self.count = 1
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(timezone.utc)
         self.last_triggered = self.created_at
         self.acknowledged = False
         self.channels_notified = set()
@@ -113,7 +113,7 @@ class AlertManager:
                 alert = self.active_alerts[alert_id]
                 if not alert.acknowledged:
                     alert.count += 1
-                    alert.last_triggered = datetime.utcnow()
+                    alert.last_triggered = datetime.now(timezone.utc)
                     
                     # الترقية بناءً على العتبة الديناميكية (بدل 3 ثابتة)
                     if alert.count >= self._base_repetition_threshold and alert.priority != AlertPriority.CRITICAL:
@@ -238,7 +238,7 @@ class AlertManager:
             if alert_id in self.active_alerts:
                 alert = self.active_alerts[alert_id]
                 alert.acknowledged = True
-                ack_time = (datetime.utcnow() - alert.created_at).total_seconds()
+                ack_time = (datetime.now(timezone.utc) - alert.created_at).total_seconds()
                 logger.info(f"Alert '{message}' acknowledged in {ack_time:.1f}s.")
                 
                 # تسجيل الاعتراف في العقل المركزي
@@ -257,7 +257,7 @@ class AlertManager:
                         
                         # تسجيل سرعة الاعتراف
                         speeds = mem.setdefault("ack_speeds", [])
-                        speeds.append({"category": category, "seconds": round(ack_time, 1), "ts": datetime.utcnow().isoformat()})
+                        speeds.append({"category": category, "seconds": round(ack_time, 1), "ts": datetime.now(timezone.utc).isoformat()})
                         if len(speeds) > 100:
                             speeds[:] = speeds[-100:]
                         
@@ -270,7 +270,7 @@ class AlertManager:
         """Background thread to escalate unacknowledged HIGH alerts - timeout learned from brain."""
         while True:
             time.sleep(2)  # Check frequently for testing purposes
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             with self.lock:
                 for alert in self.active_alerts.values():
                     if not alert.acknowledged and alert.priority == AlertPriority.HIGH:

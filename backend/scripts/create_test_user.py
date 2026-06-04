@@ -10,7 +10,7 @@ if ROOT not in sys.path:
 from database import SessionLocal
 from models import User, UserPreferences
 from auth import get_password_hash, create_access_token
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 DB = SessionLocal()
 
@@ -19,7 +19,7 @@ def ensure_test_user(email: str = "integration_test@example.com", password: str 
     if user:
         return user
     hashed = get_password_hash(password)
-    trial_start = datetime.utcnow()
+    trial_start = datetime.now(timezone.utc)
     trial_end = trial_start + timedelta(days=7)
     new_user = User(
         email=email,

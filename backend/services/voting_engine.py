@@ -5,7 +5,7 @@ import inspect
 import logging
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .internal_brain import InternalBrain
 from .deepseek_r1_service import DeepSeekR1Service
 from .calendar_service import CalendarService
@@ -158,7 +158,7 @@ class DynamicStrategyLoader:
                 "geometric": [key for key, info in discovered.items() if info["cluster"] == "geometric"],
                 "momentum": [key for key, info in discovered.items() if info["cluster"] == "momentum"],
             }
-            self.last_scan = datetime.utcnow()
+            self.last_scan = datetime.now(timezone.utc)
 
         logger.info("Discovered %d strategy classes across all clusters.", len(discovered))
         for cluster_name, keys in self.cluster_map.items():
@@ -167,7 +167,7 @@ class DynamicStrategyLoader:
             logger.warning("Failed to load %d strategy modules: %s", len(self.failed_strategies), self.failed_strategies)
 
     def refresh_if_needed(self, force: bool = False) -> None:
-        if force or (datetime.utcnow() - self.last_scan).total_seconds() >= self.scan_interval_seconds:
+        if force or (datetime.now(timezone.utc) - self.last_scan).total_seconds() >= self.scan_interval_seconds:
             self._load_all()
 
     def load_for_cluster(self, cluster: str) -> List[Any]:
@@ -261,7 +261,7 @@ class EnvironmentFilter:
         issues: List[str] = []
 
         # الوقت الحالي بالـ UTC (نستخدمه في كل فحوصات التوقيت)
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now(timezone.utc)
 
         # فحص التقويم الاقتصادي (نفترض أن التواريخ تُرجع/تُقارن بالـ UTC)
         upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
@@ -900,7 +900,7 @@ class VotingEngine:
                 "issues": env_check.get('issues', []),
                 "environment_filter": env_check,
                 "market": market,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         unified_data = self.data_adapter.normalize_input(visual_context, market)
@@ -941,7 +941,7 @@ class VotingEngine:
                 "confidence": confidence,
                 "reason": "الثقة أقل من 60%",
                 "market": market,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         # عد الاستراتيجيات المتفقة كنسبة مئوية بدلاً من حد ثابت
@@ -960,7 +960,7 @@ class VotingEngine:
                 "confidence": confidence,
                 "reason": "لا توجد استراتيجيات صالحة للتقييم",
                 "market": market,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         agreeing_ratio = agreeing_count / total_count
@@ -971,7 +971,7 @@ class VotingEngine:
                 "confidence": confidence,
                 "reason": f"نسبة الاتفاق منخفضة: {agreeing_ratio:.2f}",
                 "market": market,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         # فحص الأخبار عالية التأثير

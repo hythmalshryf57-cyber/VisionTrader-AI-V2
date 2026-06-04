@@ -142,7 +142,7 @@
                     <div id="analyzingState" style="display: none;">
                         <div class="spinner" style="border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #818cf8; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
                         <h3>جاري التحليل...</h3>
-                        <p id="analysisStatus">Gemini يقرأ مستويات السيولة...</p>
+                        <p id="analysisStatus">نظام الرؤية يقرأ مستويات السيولة...</p>
                     </div>
                 </div>
                 <div class="memory-card" id="systemStatsCard">
@@ -233,24 +233,24 @@
                     </div>
                 </div>
                 <div class="memory-card card" id="binanceScannerCard">
-                    <h3><i class="fab fa-bitcoin"></i> Binance Futures Scanner</h3>
+                    <h3><i class="fab fa-bitcoin"></i> Futures Scanner</h3>
                     <div style="margin-top: 18px; display:grid; gap:12px;">
                         <div style="display:flex; gap:10px; align-items:center;">
                             <input id="binanceSymbolInput" type="text" value="BTCUSDT" placeholder="رمز السوق" style="flex:1; background: rgba(255,255,255,0.06); border:1px solid var(--border); color:white; padding:10px 12px; border-radius:10px;">
                             <button id="scanBinanceBtn" class="btn btn-primary" style="background: var(--accent-gradient); border:none; padding:10px 18px; border-radius:12px; color:white; cursor:pointer;">مسح</button>
                         </div>
                         <div id="binanceScannerResult" style="font-size:0.9rem; color:#ddd; min-height:140px; padding:14px; background: rgba(255,255,255,0.03); border-radius: 16px; border:1px solid rgba(255,255,255,0.05);">
-                            أدخل رمز السوق واضغط مسح للحصول على تحليل Binance Futures.
+                            أدخل رمز السوق واضغط مسح للحصول على تحليل السوق.
                         </div>
                     </div>
                 </div>
                 <div class="memory-card" id="tradingViewCard">
-                    <h3><i class="fas fa-chart-area"></i> TradingView Fetch & Analysis</h3>
+                    <h3><i class="fas fa-chart-area"></i> جلب وتحليل الرسم البياني</h3>
                     <div style="margin-top: 18px; display:grid; gap:12px;">
-                        <input id="tradingViewUrlInput" type="text" value="https://www.tradingview.com/chart/" placeholder="رابط TradingView" style="width:100%; background: rgba(255,255,255,0.06); border:1px solid var(--border); color:white; padding:10px 12px; border-radius:10px;">
+                        <input id="tradingViewUrlInput" type="text" value="https://www.tradingview.com/chart/" placeholder="رابط الرسم البياني" style="width:100%; background: rgba(255,255,255,0.06); border:1px solid var(--border); color:white; padding:10px 12px; border-radius:10px;">
                         <button id="fetchTradingViewBtn" class="btn btn-secondary" style="background: rgba(255,255,255,0.08); border:1px solid var(--border); color:white; padding:10px 18px; border-radius:12px; cursor:pointer; width: fit-content;">جلب التحليل</button>
                         <div id="tradingViewResult" style="font-size:0.9rem; color:#ddd; min-height:110px; padding:14px; background: rgba(255,255,255,0.03); border-radius: 16px; border:1px solid rgba(255,255,255,0.05); overflow-wrap: break-word;">
-                            أدخل رابط TradingView لتحليل سريع بواسطة Gemini.
+                            أدخل رابط الرسم البياني لتحليل سريع.
                         </div>
                     </div>
                 </div>
@@ -885,8 +885,8 @@
             document.getElementById('uploadZone').style.display = 'none';
             document.getElementById('analyzingState').style.display = 'block';
             
-            // Step 1: Gemini Simulation
-            setTimeout(() => { document.getElementById('analysisStatus').innerText = 'DeepSeek R1 يحلل الهيكل المؤسسي...'; }, 1500);
+            // Step 1: Visual analysis simulation
+            setTimeout(() => { document.getElementById('analysisStatus').innerText = 'نظام التحليل يحلل الهيكل المؤسسي...'; }, 1500);
             
             // Step 2: Voting Engine Simulation
             setTimeout(() => { document.getElementById('analysisStatus').innerText = 'محرك التصويت (34 استراتيجية) يجمع البيانات...'; }, 3000);

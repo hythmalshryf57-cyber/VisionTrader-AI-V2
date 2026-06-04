@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 class SyncBackupAgent:
@@ -11,7 +11,7 @@ class SyncBackupAgent:
         last_backup = backup_status.get("last_backup")
         outage = backup_status.get("last_outage")
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         summary = []
         if last_sync:
             summary.append(f"آخر مزامنة: {last_sync}")

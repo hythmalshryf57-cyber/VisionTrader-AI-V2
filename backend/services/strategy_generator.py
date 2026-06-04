@@ -1,6 +1,6 @@
 """
 Strategy Generator - VisionTrader AI
-يولد استراتيجيات جديدة باستخدام DeepSeek Coder
+يولد استراتيجيات جديدة باستخدام مُولِّد داخلي/خدمة خارجية مُعَمَّمة
 يتعلم من الفشل ويدمج الاستراتيجيات الناجحة
 """
 
@@ -94,13 +94,13 @@ def _call_deepseek(prompt: str, max_tokens: int = 2048) -> Optional[str]:
         if response.status_code == 200:
             body = response.json()
             content = body["choices"][0]["message"]["content"]
-            logger.info("DeepSeek API responded successfully")
+            logger.info("External model API responded successfully")
             return content.strip()
         else:
-            logger.warning(f"DeepSeek API error {response.status_code}: {response.text[:200]}")
+            logger.warning(f"External model API error {response.status_code}: {response.text[:200]}")
             return None
     except Exception as exc:
-        logger.exception(f"DeepSeek API call failed: {exc}")
+        logger.exception(f"External model API call failed: {exc}")
         return None
 
 
@@ -148,7 +148,7 @@ def _local_evolved_from_failure(
         session_filter = textwrap.dedent("""\
         # ─── فلتر الجلسة (Session Filter) ───────────────────────
         import datetime as _dt
-        _now_h = _dt.datetime.utcnow().hour
+        _now_h = _dt.datetime.now(_dt.timezone.utc).hour
         _ALLOWED_SESSIONS = list(range(7, 12)) + list(range(13, 17))  # London + NY
         if _now_h not in _ALLOWED_SESSIONS:
             # خارج الجلسات الرئيسية - لا تدخل
@@ -185,7 +185,7 @@ def _local_evolved_from_failure(
         f"Generated : {timestamp}",
         f"Failure   : {failure_reason}",
         f"Failed At : {failure_time}",
-        "Engine    : Local Fallback (DeepSeek API unavailable)",
+        "Engine    : Local Fallback (external model API unavailable)",
         "",
         "Improvements Applied:",
         improvements,
@@ -368,7 +368,7 @@ Generate the evolved strategy now:
     if raw:
         code = _extract_python_block(raw)
     else:
-        logger.info("DeepSeek unavailable – using local fallback engine")
+        logger.info("External model unavailable – using local fallback engine")
         code = _local_evolved_from_failure(failed_code, failure_report, top_codes)
 
     # اسم الملف بناءً على اسم الاستراتيجية الأصلية
@@ -441,7 +441,7 @@ Generate the hybrid strategy now:
     if raw:
         code = _extract_python_block(raw)
     else:
-        logger.info("DeepSeek unavailable – using local fallback for hybrid generation")
+        logger.info("External model unavailable – using local fallback for hybrid generation")
         code = _local_hybrid(code1, code2)
 
     stem1 = Path(strategy1_path).stem or "strat1"

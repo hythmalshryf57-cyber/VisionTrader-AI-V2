@@ -7,7 +7,7 @@ import hashlib
 import io
 import csv
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, RedirectResponse
@@ -59,7 +59,7 @@ except ImportError:
     PSUTIL_AVAILABLE = False
 
 SYSTEM_METRICS = {
-    "start_time": datetime.utcnow(),
+    "start_time": datetime.now(timezone.utc),
     "request_count": 0,
     "gemini_calls": 0,
     "deepseek_calls": 0,
@@ -135,7 +135,7 @@ def ensure_admin_user():
                 db.add(admin_user)
                 db.commit()
         else:
-            trial_start = datetime.utcnow()
+            trial_start = datetime.now(timezone.utc)
             trial_end = trial_start + timedelta(days=3650)
             new_admin = models.User(
                 email=admin_email,
@@ -292,13 +292,13 @@ app.include_router(analysis_router, prefix="/api", tags=["analysis"])
 @app.middleware("http")
 async def track_request_metrics(request: Request, call_next):
     SYSTEM_METRICS["request_count"] += 1
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
     SYSTEM_METRICS["daily_requests"][today] = SYSTEM_METRICS["daily_requests"].get(today, 0) + 1
     try:
         response = await call_next(request)
         return response
     except Exception as exc:
-        SYSTEM_METRICS["last_error"] = f"{datetime.utcnow().isoformat()} - {type(exc).__name__}: {str(exc)}"
+        SYSTEM_METRICS["last_error"] = f"{datetime.now(timezone.utc).isoformat()} - {type(exc).__name__}: {str(exc)}"
         raise
 
 
@@ -402,7 +402,7 @@ def _generate_report_for_user(db, user):
         report.wins = wins
         report.losses = losses
         report.profit_loss = pnl
-        report.created_at = datetime.utcnow()
+        report.created_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(report)
     return report
@@ -424,7 +424,7 @@ def _close_shadow_trade(db, trade, exit_price: float, reason: str):
 
     journal = models.JournalEntry(
         user_id=trade.user_id,
-        date=datetime.utcnow(),
+        date=datetime.now(timezone.utc),
         market=trade.market,
         recommendation=recommendation_text,
         result=result_text,
@@ -543,7 +543,7 @@ def _daily_reset_scheduler():
 
 
 def _generate_weekly_challenge(db):
-    week_start = datetime.utcnow().date() - timedelta(days=datetime.utcnow().weekday())
+    week_start = datetime.now(timezone.utc).date() - timedelta(days=datetime.now(timezone.utc).weekday())
     existing = db.query(models.WeeklyChallenge).filter(models.WeeklyChallenge.week_start == week_start).first()
     if existing:
         return
@@ -634,7 +634,7 @@ async def broadcast_live_data():
                 "live_trades": random.randint(10, 50),
                 "pnl": round(random.uniform(-1000, 5000), 2),
                 "status": "Active",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             await ws_manager.broadcast(json.dumps(data))
             
@@ -732,7 +732,7 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
             "confidence": 0,
             "reason": "انتهت المهلة أثناء تحليل البيانات.",
             "market": market,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         result = {
@@ -740,7 +740,7 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
             "confidence": 0,
             "reason": f"فشل التحليل: {str(e)}",
             "market": market,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
     try:
@@ -949,7 +949,7 @@ def _period_entries(db, user_id, since: datetime):
 
 @app.get("/api/stats/today")
 def get_today_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     entries = _period_entries(db, current_user.id, today_start)
     stats = _build_stats(entries)
     return {
@@ -962,7 +962,7 @@ def get_today_stats(db: Session = Depends(get_db), current_user: models.User = D
 
 @app.get("/api/stats/performance")
 def get_performance_stats(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     weekly = _build_stats(_period_entries(db, current_user.id, now - timedelta(days=7)))
     monthly = _build_stats(_period_entries(db, current_user.id, now - timedelta(days=30)))
     yearly = _build_stats(_period_entries(db, current_user.id, now - timedelta(days=365)))
@@ -1190,15 +1190,15 @@ def save_analysis_draft(payload: dict, db: Session = Depends(get_db), current_us
             image_path=payload.get("image_path"),
             description=payload.get("description", ""),
             payload_json=json.dumps(payload, ensure_ascii=False),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         db.add(draft)
     else:
         draft.image_path = payload.get("image_path", draft.image_path)
         draft.description = payload.get("description", draft.description)
         draft.payload_json = json.dumps(payload, ensure_ascii=False)
-        draft.updated_at = datetime.utcnow()
+        draft.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(draft)
     return {"status": "saved", "draft_id": draft.id}
@@ -1245,7 +1245,7 @@ def get_system_health(db: Session = Depends(get_db), current_user: models.User =
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Admin privileges required")
 
-    uptime = datetime.utcnow() - SYSTEM_METRICS["start_time"]
+    uptime = datetime.now(timezone.utc) - SYSTEM_METRICS["start_time"]
     cpu_percent = psutil.cpu_percent(interval=0.5) if PSUTIL_AVAILABLE else None
     ram_info = psutil.virtual_memory() if PSUTIL_AVAILABLE else None
     return {
@@ -1354,7 +1354,7 @@ def get_daily_reports(days: int = 7, db: Session = Depends(get_db), current_user
 
 @app.post("/api/reports/daily/generate")
 def generate_daily_report(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     entries = db.query(models.JournalEntry).filter(
         models.JournalEntry.user_id == current_user.id,
         models.JournalEntry.date >= datetime(today.year, today.month, today.day)
@@ -1389,7 +1389,7 @@ def generate_daily_report(db: Session = Depends(get_db), current_user: models.Us
         report.wins = wins
         report.losses = losses
         report.profit_loss = pnl
-        report.created_at = datetime.utcnow()
+        report.created_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(report)
     return {
@@ -1433,7 +1433,7 @@ def send_daily_report_to_telegram(db: Session = Depends(get_db), current_user: m
 @app.get("/api/account/summary")
 def account_summary(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     prefs = _ensure_preferences(db, current_user)
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     today_report = db.query(models.DailyReport).filter(
         models.DailyReport.user_id == current_user.id,
         models.DailyReport.report_date == today
@@ -1449,7 +1449,7 @@ def account_summary(db: Session = Depends(get_db), current_user: models.User = D
             "profit_loss": today_report.profit_loss if today_report else 0.0
         },
         "trial_status": {
-            "active": bool(current_user.trial_start and current_user.trial_end and datetime.utcnow() < current_user.trial_end),
+            "active": bool(current_user.trial_start and current_user.trial_end and datetime.now(timezone.utc) < current_user.trial_end),
             "ends_at": current_user.trial_end.isoformat() if current_user.trial_end else None
         }
     }
@@ -1602,7 +1602,7 @@ def add_active_trade(payload: dict, current_user: models.User = Depends(auth.get
         stop_loss=payload["stop_loss"],
         take_profits=payload["take_profits"],
         position_size=payload["position_size"],
-        entry_time=datetime.utcnow()
+        entry_time=datetime.now(timezone.utc)
     )
     return {"status": "trade_added", "trade_id": payload["trade_id"]}
 
@@ -1643,7 +1643,7 @@ def get_system_pulse():
 
     return {
         "status": "online",
-        "refresh_time": datetime.utcnow().isoformat(),
+        "refresh_time": datetime.now(timezone.utc).isoformat(),
         "active_strategies": health.get("active_strategies", 0),
         "system_healthy": health.get("overall_system_win_rate", 0) > 55,
         "health_details": health
@@ -2036,7 +2036,7 @@ def get_trade_confidence(analysis_id: Optional[int] = None, market: Optional[str
 @app.get("/api/market/countdown")
 def get_market_countdown(current_user: models.User = Depends(auth.get_current_user)):
     from datetime import datetime, time
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     # Simplified market hours (example for forex)
     # New York: 13:30-20:00 UTC
     ny_open = time(13, 30)
@@ -2324,7 +2324,7 @@ def _record_agent_memory(db: Session, current_user: models.User, question: str, 
         memory = internal_brain_service.get_component_memory('super_agent') or {}
         conversations = memory.setdefault('conversations', [])
         conversations.append({
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'user_id': current_user.id,
             'question': question,
             'answer': answer,
@@ -2338,7 +2338,7 @@ def _record_agent_memory(db: Session, current_user: models.User, question: str, 
 
 
 def _build_agent_answer(question: str, intent: str, mood: str, profile: dict, market: str, market_data: dict, memory_matches: list, visual_analysis: dict, action_result: dict, quick_backtest: dict, session_info: dict) -> str:
-    greeting = 'مساء الخير' if 15 <= datetime.utcnow().hour < 21 else 'صباح الخير' if 6 <= datetime.utcnow().hour < 15 else 'مساء النور'
+    greeting = 'مساء الخير' if 15 <= datetime.now(timezone.utc).hour < 21 else 'صباح الخير' if 6 <= datetime.now(timezone.utc).hour < 15 else 'مساء النور'
     mood_sentence = ''
     if mood == 'anxious':
         mood_sentence = 'أشعر بأن لديك قلق خفيف، سأبقي النصيحة مركزة وحذرة.'
@@ -2502,8 +2502,8 @@ async def super_ai_agent(
             action_result = {'updated': updates}
     elif intent == 'backtest':
         try:
-            start_date = (datetime.utcnow() - timedelta(days=21)).date().isoformat()
-            end_date = datetime.utcnow().date().isoformat()
+            start_date = (datetime.now(timezone.utc) - timedelta(days=21)).date().isoformat()
+            end_date = datetime.now(timezone.utc).date().isoformat()
             quick_backtest = backtest_engine.run_backtest(
                 market=market,
                 timeframe='1d',
@@ -2577,7 +2577,7 @@ async def detect_chart_screenshot(file: UploadFile = File(...), current_user: mo
 @app.get("/api/daily-limits/status")
 def get_daily_limits_status(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     prefs = _ensure_preferences(db, current_user)
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     entries = db.query(models.JournalEntry).filter(
         models.JournalEntry.user_id == current_user.id,
         models.JournalEntry.date >= datetime(today.year, today.month, today.day)
@@ -2597,7 +2597,7 @@ def get_daily_limits_status(db: Session = Depends(get_db), current_user: models.
 
 @app.get("/api/weekly-challenge")
 def get_weekly_challenge(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    week_start = datetime.utcnow().date() - timedelta(days=datetime.utcnow().weekday())
+    week_start = datetime.now(timezone.utc).date() - timedelta(days=datetime.now(timezone.utc).weekday())
     challenge = db.query(models.WeeklyChallenge).filter(models.WeeklyChallenge.week_start == week_start).first()
     if not challenge:
         return {"challenge": None}
@@ -2640,7 +2640,7 @@ def get_weekly_challenge(db: Session = Depends(get_db), current_user: models.Use
     progress.current_value = current_value
     if current_value >= challenge.target_value and not progress.completed:
         progress.completed = True
-        progress.completed_at = datetime.utcnow()
+        progress.completed_at = datetime.now(timezone.utc)
     db.commit()
 
     return {
@@ -2658,7 +2658,7 @@ def get_weekly_challenge(db: Session = Depends(get_db), current_user: models.Use
 
 @app.get("/api/leaderboard")
 def get_leaderboard(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    week_start = datetime.utcnow().date() - timedelta(days=datetime.utcnow().weekday())
+    week_start = datetime.now(timezone.utc).date() - timedelta(days=datetime.now(timezone.utc).weekday())
     progresses = db.query(models.UserChallengeProgress).join(models.WeeklyChallenge).filter(
         models.WeeklyChallenge.week_start == week_start,
         models.UserChallengeProgress.completed == True

@@ -31,9 +31,9 @@ try:
 except ImportError:
     telegram_service = None
 
-# Mock DeepSeek API
-def _deepseek_analyze_code(code: str) -> Dict[str, Any]:
-    """محاكاة لتحليل DeepSeek العميق للكود (المنطق، الأداء، والتوافق)"""
+# Mock deep analysis helper (local fallback)
+def _local_deep_analyze_code(code: str) -> Dict[str, Any]:
+    """محاكاة لتحليل عميق للكود (المنطق، الأداء، والتوافق)"""
     issues = []
     
     # محاكاة لفحص المنطق
@@ -127,9 +127,9 @@ class CodeReviewAgent:
 
     def deep_analysis(self, code: str) -> List[str]:
         """تحليل عميق عبر الذكاء الاصطناعي (أخطاء منطقية، أداء، وتوافق)."""
-        logger.info("[Deep Analysis] Sending to DeepSeek for advanced review...")
-        # Fallback local deep analysis if DeepSeek key is missing
-        result = _deepseek_analyze_code(code)
+        logger.info("[Deep Analysis] Performing advanced code review (local analysis used)")
+        # Fallback local deep analysis
+        result = _local_deep_analyze_code(code)
         return result.get("issues", [])
 
     def review(self, code_path: str) -> Dict[str, Any]:

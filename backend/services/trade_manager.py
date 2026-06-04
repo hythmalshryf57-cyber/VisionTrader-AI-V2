@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any, List
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from .risk_calculator import RiskCalculator
 from .performance_tracker import PerformanceTracker
@@ -250,7 +250,7 @@ class TradeManagerService:
                         position_size: float, entry_time: datetime = None):
         """إضافة صفقة نشطة للتتبع"""
         if entry_time is None:
-            entry_time = datetime.utcnow()
+            entry_time = datetime.now(timezone.utc)
 
         self.active_trades[trade_id] = {
             'user_id': user_id,
@@ -262,7 +262,7 @@ class TradeManagerService:
             'position_size': position_size,
             'entry_time': entry_time,
             'current_price': entry_price,
-            'last_update': datetime.utcnow(),
+            'last_update': datetime.now(timezone.utc),
             'alerts_sent': set(),  # لتجنب تكرار التنبيهات
         }
 
@@ -294,7 +294,7 @@ class TradeManagerService:
                 'position_size': trade['position_size'],
                 'pnl': pnl,
                 'pnl_percent': round((pnl / (trade['entry_price'] * trade['position_size'])) * 100, 2) if trade['entry_price'] * trade['position_size'] > 0 else 0,
-                'duration': str(datetime.utcnow() - trade['entry_time']),
+                'duration': str(datetime.now(timezone.utc) - trade['entry_time']),
                 'distance_to_tp1': distance_to_tp1,
                 'distance_to_sl': distance_to_sl,
                 'last_update': trade['last_update'],
@@ -323,7 +323,7 @@ class TradeManagerService:
                         if symbol in prices:
                             current_price = prices[symbol]
                             trade['current_price'] = current_price
-                            trade['last_update'] = datetime.utcnow()
+                            trade['last_update'] = datetime.now(timezone.utc)
                             self._check_alerts(trade_id, trade, current_price)
             except Exception as e:
                 print(f"خطأ في مراقبة الصفقات: {e}")
@@ -391,7 +391,7 @@ class TradeManagerService:
         direction = trade['direction']
         pnl = self._calculate_pnl(trade, exit_price)
         pnl_percent = round((pnl / (entry_price * trade['position_size'])) * 100, 2) if entry_price * trade['position_size'] > 0 else 0
-        duration = datetime.utcnow() - trade['entry_time']
+        duration = datetime.now(timezone.utc) - trade['entry_time']
         targets_hit = 0
         for tp in trade['take_profits']:
             if (direction == 'شراء' and exit_price >= tp) or (direction == 'بيع' and exit_price <= tp):

@@ -27,40 +27,40 @@ class TelegramBot:
         chat = getattr(settings, 'ADMIN_CHAT_ID', None)
         if not chat:
             return
-        msg = f"⚠️ <b>VPN/Proxy Attempt Detected</b>\nUser: {user_id}\nIP: {ip}\nISP: {isp}\nORG: {org}\nAction: {action or 'unknown'}\nTime: {datetime.datetime.utcnow().isoformat()}"
+        msg = f"⚠️ <b>VPN/Proxy Attempt Detected</b>\nUser: {user_id}\nIP: {ip}\nISP: {isp}\nORG: {org}\nAction: {action or 'unknown'}\nTime: {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
         return self.send_alert(chat, msg)
 
     def alert_unknown_device(self, user_id, device_id, ip):
         chat = getattr(settings, 'ADMIN_CHAT_ID', None)
         if not chat:
             return
-        msg = f"🔔 <b>Unknown Device</b>\nUser: {user_id}\nDevice: {device_id}\nIP: {ip}\nTime: {datetime.datetime.utcnow().isoformat()}"
+        msg = f"🔔 <b>Unknown Device</b>\nUser: {user_id}\nDevice: {device_id}\nIP: {ip}\nTime: {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
         return self.send_alert(chat, msg)
 
     def alert_multiple_locations(self, user_id, ip1, ip2):
         chat = getattr(settings, 'ADMIN_CHAT_ID', None)
         if not chat:
             return
-        msg = f"⚠️ <b>Rapid Location Change</b>\nUser: {user_id}\nFrom: {ip1}\nTo: {ip2}\nTime: {datetime.datetime.utcnow().isoformat()}"
+        msg = f"⚠️ <b>Rapid Location Change</b>\nUser: {user_id}\nFrom: {ip1}\nTo: {ip2}\nTime: {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
         return self.send_alert(chat, msg)
 
     def alert_spam_attempt(self, user_id, ip, count):
         chat = getattr(settings, 'ADMIN_CHAT_ID', None)
         if not chat:
             return
-        msg = f"🚨 <b>Possible Spam</b>\nUser: {user_id}\nIP: {ip}\nRequests: {count}\nTime: {datetime.datetime.utcnow().isoformat()}"
+        msg = f"🚨 <b>Possible Spam</b>\nUser: {user_id}\nIP: {ip}\nRequests: {count}\nTime: {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
         return self.send_alert(chat, msg)
 
     def alert_password_change(self, user_id, ip):
         chat = getattr(settings, 'ADMIN_CHAT_ID', None)
         if not chat:
             return
-        msg = f"🔐 <b>Password Changed</b>\nUser: {user_id}\nIP: {ip}\nTime: {datetime.datetime.utcnow().isoformat()}"
+        msg = f"🔐 <b>Password Changed</b>\nUser: {user_id}\nIP: {ip}\nTime: {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
         return self.send_alert(chat, msg)
 
     def alert_risk_limit(self, user_id, details):
         chat = getattr(settings, 'ADMIN_CHAT_ID', None)
         if not chat:
             return
-        msg = f"⚠️ <b>Risk Limit Exceeded</b>\nUser: {user_id}\nDetails: {details}\nTime: {datetime.datetime.utcnow().isoformat()}"
+        msg = f"⚠️ <b>Risk Limit Exceeded</b>\nUser: {user_id}\nDetails: {details}\nTime: {datetime.datetime.now(datetime.timezone.utc).isoformat()}"
         return self.send_alert(chat, msg)

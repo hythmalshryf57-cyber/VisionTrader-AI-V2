@@ -92,7 +92,7 @@ class MonitorService:
                 if current_user:
                     u = db.query(models.User).filter(models.User.id == current_user.id).first()
                     if u:
-                        u.force_logout_at = datetime.datetime.utcnow()
+                        u.force_logout_at = datetime.datetime.now(datetime.timezone.utc)
                         db.add(models.SecurityLog(user_id=current_user.id, event_type='vpn_block', ip_address=ip, description='VPN/Proxy detected - session blocked'))
                         db.commit()
                 try:
@@ -119,7 +119,7 @@ class MonitorService:
         try:
             u = db.query(models.User).filter(models.User.id == user_id).first()
             if u:
-                u.force_logout_at = datetime.datetime.utcnow()
+                u.force_logout_at = datetime.datetime.now(datetime.timezone.utc)
                 u.is_active = False
                 db.add(models.SecurityLog(user_id=user_id, event_type='blocked', ip_address=None, description=reason))
                 db.commit()
@@ -129,7 +129,7 @@ class MonitorService:
 
 monitor_service = MonitorService()
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from database import SessionLocal
 import models
 from config import settings
@@ -202,7 +202,7 @@ class MonitorService:
                 device=device_id or ua[:200],
                 location=location,
                 is_vpn=is_vpn,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             db.add(act)
             db.commit()

@@ -11,7 +11,7 @@ from config import settings
 from services.telegram_bot import TelegramBot
 from services.crypto_vault import vault as crypto_vault
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 telegram = TelegramBot(token=getattr(settings, 'TELEGRAM_BOT_TOKEN', None))
 
@@ -150,7 +150,7 @@ async def force_logout(user_id: int, db: Session = Depends(get_db), current_user
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.force_logout_at = datetime.utcnow()
+    user.force_logout_at = datetime.now(timezone.utc)
     slog = models.SecurityLog(user_id=user_id, event_type='force_logout', ip_address=None, description='Admin forced logout')
     db.add(slog)
     db.commit()
@@ -202,7 +202,7 @@ async def kill_switch(user_id: int, db: Session = Depends(get_db), current_user:
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.is_active = False
-    user.force_logout_at = datetime.utcnow()
+    user.force_logout_at = datetime.now(timezone.utc)
     slog = models.SecurityLog(user_id=user_id, event_type='kill_switch', ip_address=None, description='Admin kill switch triggered')
     db.add(slog)
     db.commit()
@@ -265,7 +265,7 @@ async def generate_code_smart(payload: dict, db: Session = Depends(get_db), curr
     expiry_days = int(payload.get('expiry_days', 30))
     max_uses = int(payload.get('max_uses', 1))
     code = _generate_smart_invite_code(db)
-    expiry = datetime.utcnow() + timedelta(days=expiry_days)
+    expiry = datetime.now(timezone.utc) + timedelta(days=expiry_days)
     invite = models.InviteCode(code=code, created_by_admin=True, expiry_date=expiry, max_uses=max_uses)
     db.add(invite)
     db.commit()

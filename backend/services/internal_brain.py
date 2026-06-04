@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
@@ -150,7 +150,7 @@ class InternalBrain:
                 metadata_json=json.dumps(metadata or {}, ensure_ascii=False, default=str),
                 context=context,
                 success=success,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             db.add(event)
             db.commit()
@@ -169,7 +169,7 @@ class InternalBrain:
             "value": event_value,
             "success": success,
             "context": context,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         })
         # الاحتفاظ بآخر 500 حدث فقط
         if len(events_list) > 500:
@@ -205,7 +205,7 @@ class InternalBrain:
         """
         db = self._get_db_session()
         try:
-            cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
             events = db.query(models.GlobalMemoryEvent).filter(
                 models.GlobalMemoryEvent.component == component,
                 models.GlobalMemoryEvent.event_type == threshold_name,
@@ -261,7 +261,7 @@ class InternalBrain:
         """
         db = self._get_db_session()
         try:
-            cutoff = datetime.utcnow() - timedelta(days=30)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             events = db.query(models.GlobalMemoryEvent).filter(
                 models.GlobalMemoryEvent.component == "agent_manager",
                 models.GlobalMemoryEvent.event_type == "agent_accuracy",
@@ -352,7 +352,7 @@ class InternalBrain:
                 entry.success_rate = (entry.success_rate * (entry.times_applied - 1) + (1.0 if success else 0.0)) / entry.times_applied
                 entry.fix_description = action
                 entry.fix_code = action
-                entry.last_applied = datetime.utcnow()
+                entry.last_applied = datetime.now(timezone.utc)
             else:
                 entry = models.FixCacheEntry(
                     error_signature=error_signature,
@@ -362,7 +362,7 @@ class InternalBrain:
                     component=component,
                     times_applied=1,
                     success_rate=1.0 if success else 0.0,
-                    last_applied=datetime.utcnow(),
+                    last_applied=datetime.now(timezone.utc),
                 )
                 db.add(entry)
             db.commit()
@@ -548,7 +548,7 @@ class InternalBrain:
                     existing.success_rate = ((existing.success_rate * (total - 1)) + 1.0) / total
                 else:
                     existing.success_rate = ((existing.success_rate * (total - 1)) + 0.0) / total
-                existing.last_applied = datetime.utcnow()
+                existing.last_applied = datetime.now(timezone.utc)
             else:
                 new_fix = models.FixCacheEntry(
                     error_signature=error_signature,
@@ -558,7 +558,7 @@ class InternalBrain:
                     component=component,
                     times_applied=1,
                     success_rate=1.0 if success else 0.0,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                 )
                 db.add(new_fix)
             
@@ -678,7 +678,7 @@ class InternalBrain:
                     pref.times_read += 1
                 if was_acted_upon:
                     pref.times_acted += 1
-                pref.last_sent = datetime.utcnow()
+                pref.last_sent = datetime.now(timezone.utc)
                 
                 # حساب تعديل الأولوية
                 if pref.times_sent >= 5:
@@ -733,7 +733,7 @@ class InternalBrain:
             
             if record:
                 record.error_count += 1
-                record.last_review = datetime.utcnow()
+                record.last_review = datetime.now(timezone.utc)
                 
                 # ترقية مستوى التدقيق تلقائياً
                 if record.error_count >= 10:
@@ -790,7 +790,7 @@ class InternalBrain:
     def get_daily_learning_summary(self) -> Dict[str, Any]:
         """ملخص شامل لما تعلمه النظام اليوم"""
         db = self._get_db_session()
-        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         try:
             today_events = db.query(models.GlobalMemoryEvent).filter(
                 models.GlobalMemoryEvent.created_at >= today
@@ -928,7 +928,7 @@ class InternalBrain:
                 news_sentiment=news_sentiment,
                 pattern_signature=pattern_signature,
                 notes=notes,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             db.add(experience)
             db.commit()
@@ -1036,7 +1036,7 @@ class InternalBrain:
         Called automatically after each logged trade (best-effort).
         """
         db = self._get_db_session()
-        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
         strategy_stats: Dict[str, Dict[str, float]] = {}
         try:
             query = db.query(models.TradeExperience).filter(models.TradeExperience.created_at >= cutoff)
@@ -1069,7 +1069,7 @@ class InternalBrain:
                 record.wins = int(stats["wins"])
                 record.losses = int(stats["losses"])
                 record.total_profit = round(float(stats["profit"]), 2)
-                record.last_updated = datetime.utcnow()
+                record.last_updated = datetime.now(timezone.utc)
                 updated.append({
                     "strategy_name": name,
                     "trades": stats["trades"],
@@ -1091,7 +1091,7 @@ class InternalBrain:
         if min_trades < 20:
             min_trades = 20
         db = self._get_db_session()
-        cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
         strategy_stats: Dict[str, Dict[str, float]] = {}
         try:
             experiences = db.query(models.TradeExperience).filter(models.TradeExperience.created_at >= cutoff).all()
@@ -1123,7 +1123,7 @@ class InternalBrain:
                 record.total_profit = round(float(stats["profit"]), 2)
                 if win_rate < 0.4:
                     record.total_profit -= abs(record.total_profit) * 0.05
-                record.last_updated = datetime.utcnow()
+                record.last_updated = datetime.now(timezone.utc)
                 updated.append({
                     "strategy_name": name,
                     "trades": stats["trades"],

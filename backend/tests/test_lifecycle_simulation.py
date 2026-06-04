@@ -24,7 +24,7 @@ os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 import logging
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def phase(num, title):
@@ -153,7 +153,7 @@ def main():
         "last_error": "ImportError: no module named xyz",
         "fix_applied": "pip install xyz",
         "success": True,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
     mem = brain.get_component_memory("fix_cache_demo")
     print(f"  \U0001f4be Fix cached: {mem.get('last_error', 'N/A')[:50]}")

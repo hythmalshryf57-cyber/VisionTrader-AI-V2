@@ -1,7 +1,7 @@
 import logging
 import math
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from statistics import mean
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -151,7 +151,7 @@ class DataAdapter:
             'issues': issues,
             'market': market,
             'raw_context': visual_context,
-            'generated_at': datetime.utcnow().isoformat()
+            'generated_at': datetime.now(timezone.utc).isoformat()
         }
 
     def _merge_series(self, chart_data: Dict[str, Any], source: Dict[str, Any]) -> None:
@@ -269,7 +269,7 @@ class DataAdapter:
     def _populate_timestamp_series(self, chart_data: Dict[str, Any]) -> None:
         if chart_data['timestamps'] and len(chart_data['timestamps']) == len(chart_data['closes']):
             return
-        base = datetime.utcnow()
+        base = datetime.now(timezone.utc)
         interval = timedelta(minutes=1)
         if len(chart_data['closes']) >= 60:
             interval = timedelta(minutes=5)

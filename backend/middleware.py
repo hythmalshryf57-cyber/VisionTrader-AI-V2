@@ -8,7 +8,7 @@ from services.telegram_bot import TelegramBot
 from config import settings
 from database import get_db
 from models import User
-from datetime import datetime, date
+from datetime import date, datetime, timezone
 from jose import JWTError, jwt
 from config import settings
 
@@ -103,7 +103,7 @@ class TrialMiddleware(BaseHTTPMiddleware):
                     user.last_analysis_date = today
                     db.commit()
 
-                if user.trial_end and datetime.utcnow() > user.trial_end:
+                if user.trial_end and datetime.now(timezone.utc) > user.trial_end:
                     # Trial expired
                     if request.url.path.startswith("/api/analysis/"):
                         raise HTTPException(status_code=403, detail="انتهت فترة التجربة المجانية")

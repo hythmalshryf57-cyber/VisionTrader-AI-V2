@@ -25,7 +25,7 @@ class SmartOrdersService:
             "market": market,
             "price": price,
             "expiry": expiry_time,
-            "created_at": datetime.datetime.utcnow()
+            "created_at": datetime.datetime.now(datetime.timezone.utc)
         }
         self.pending_orders.append(order)
         return order
