@@ -28,7 +28,7 @@ from datetime import datetime
 # Track results
 results = []
 
-def test(name, func):
+def run_test(name, func):
     """Run a test and track result"""
     try:
         func()
@@ -55,7 +55,7 @@ def main():
         brain = InternalBrain()
         assert brain is not None
         assert brain.default_weight == 1.0
-    test("Brain initialization", test_brain_init)
+    run_test("Brain initialization", test_brain_init)
     
     def test_brain_event_logging():
         from services.internal_brain import InternalBrain
@@ -75,7 +75,7 @@ def main():
         last_event = mem["events"][-1]
         assert last_event["key"] == "test_key"
         assert last_event["value"] == 42.0
-    test("Event logging to Global Memory", test_brain_event_logging)
+    run_test("Event logging to Global Memory", test_brain_event_logging)
     
     def test_brain_dynamic_threshold():
         from services.internal_brain import InternalBrain
@@ -83,7 +83,7 @@ def main():
         th = brain.get_dynamic_threshold("test_comp", "test_threshold", 0.65)
         assert isinstance(th, float)
         assert th > 0
-    test("Dynamic threshold calculation", test_brain_dynamic_threshold)
+    run_test("Dynamic threshold calculation", test_brain_dynamic_threshold)
     
     def test_brain_fix_cache():
         from services.internal_brain import InternalBrain
@@ -98,7 +98,7 @@ def main():
         brain._save_component_memory("fix_cache_test", mem)
         loaded = brain.get_component_memory("fix_cache_test")
         assert loaded["test_fix"]["fix_code"] == "print('fixed')"
-    test("Fix Cache (store & retrieve)", test_brain_fix_cache)
+    run_test("Fix Cache (store & retrieve)", test_brain_fix_cache)
     
     def test_brain_sandbox_duration():
         from services.internal_brain import InternalBrain
@@ -109,7 +109,7 @@ def main():
         assert d1 == 3, f"Excellent quality should be 3 days, got {d1}"
         assert d2 == 5, f"Medium quality should be 5 days, got {d2}"
         assert d3 == 7, f"Low quality should be 7 days, got {d3}"
-    test("Dynamic sandbox duration", test_brain_sandbox_duration)
+    run_test("Dynamic sandbox duration", test_brain_sandbox_duration)
     
     def test_brain_deployment_threshold():
         from services.internal_brain import InternalBrain
@@ -118,7 +118,7 @@ def main():
         t2 = brain.get_dynamic_deployment_threshold(0.5)  # medium
         t3 = brain.get_dynamic_deployment_threshold(0.8)  # volatile
         assert t1 <= t2 <= t3, f"Threshold should increase with volatility: {t1}, {t2}, {t3}"
-    test("Dynamic deployment threshold", test_brain_deployment_threshold)
+    run_test("Dynamic deployment threshold", test_brain_deployment_threshold)
     
     def test_brain_agent_weight():
         from services.internal_brain import InternalBrain
@@ -126,7 +126,7 @@ def main():
         w = brain.get_agent_dynamic_weight("TestAgent", 1.0)
         assert isinstance(w, float)
         assert w > 0
-    test("Agent dynamic weight", test_brain_agent_weight)
+    run_test("Agent dynamic weight", test_brain_agent_weight)
     
     def test_brain_daily_summary():
         from services.internal_brain import InternalBrain
@@ -134,7 +134,7 @@ def main():
         summary = brain.get_daily_learning_summary()
         assert "date" in summary
         assert "total_events" in summary
-    test("Daily learning summary", test_brain_daily_summary)
+    run_test("Daily learning summary", test_brain_daily_summary)
     
     # ===================================================
     # 2. Agent Manager (Dynamic Weights)
@@ -145,7 +145,7 @@ def main():
         from services.agent_manager import AgentManager
         am = AgentManager()
         assert am is not None
-    test("AgentManager initialization", test_agent_manager)
+    run_test("AgentManager initialization", test_agent_manager)
     
     # ===================================================
     # 3. Strategy Generator
@@ -156,7 +156,7 @@ def main():
         from services.strategy_generator import generate_hybrid, generate_from_failure
         assert callable(generate_hybrid)
         assert callable(generate_from_failure)
-    test("StrategyGenerator functions available", test_strategy_generator)
+    run_test("StrategyGenerator functions available", test_strategy_generator)
     
     # ===================================================
     # 4. Sandbox Tester
@@ -167,7 +167,7 @@ def main():
         from services.sandbox_tester import test_strategy, generate_report
         assert callable(test_strategy)
         assert callable(generate_report)
-    test("SandboxTester functions available", test_sandbox_tester)
+    run_test("SandboxTester functions available", test_sandbox_tester)
     
     # ===================================================
     # 5. Controlled Deployer
@@ -178,7 +178,7 @@ def main():
         from services.controlled_deployer import deploy, request_approval
         assert callable(deploy)
         assert callable(request_approval)
-    test("ControlledDeployer functions available", test_controlled_deployer)
+    run_test("ControlledDeployer functions available", test_controlled_deployer)
     
     # ===================================================
     # 6. Degradation Watcher
@@ -189,7 +189,7 @@ def main():
         from services.degradation_watcher import DegradationWatcher
         dw = DegradationWatcher()
         assert dw is not None
-    test("DegradationWatcher initialization", test_degradation_watcher)
+    run_test("DegradationWatcher initialization", test_degradation_watcher)
     
     # ===================================================
     # 7. Self Healing
@@ -200,7 +200,7 @@ def main():
         from services.self_healing import OmniSelfHealing
         sh = OmniSelfHealing()
         assert sh is not None
-    test("OmniSelfHealing initialization", test_self_healing)
+    run_test("OmniSelfHealing initialization", test_self_healing)
     
     # ===================================================
     # 8. Code Review Agent
@@ -211,7 +211,7 @@ def main():
         from services.code_review_agent import CodeReviewAgent
         cra = CodeReviewAgent()
         assert cra is not None
-    test("CodeReviewAgent initialization", test_code_review)
+    run_test("CodeReviewAgent initialization", test_code_review)
     
     # ===================================================
     # 9. News Adapter
@@ -222,7 +222,7 @@ def main():
         from services.news_adapter import NewsAdapter
         na = NewsAdapter()
         assert na is not None
-    test("NewsAdapter initialization", test_news_adapter)
+    run_test("NewsAdapter initialization", test_news_adapter)
     
     # ===================================================
     # 10. Alert Manager
@@ -238,7 +238,7 @@ def main():
         assert "repetition_threshold" in stats
         assert "escalation_timeout_sec" in stats
         assert "brain_connected" in stats
-    test("AlertManager initialization + learning stats", test_alert_manager)
+    run_test("AlertManager initialization + learning stats", test_alert_manager)
     
     def test_alert_send_and_ack():
         from services.alert_manager import AlertManager, AlertPriority
@@ -247,7 +247,7 @@ def main():
         assert alert.priority == "MEDIUM"
         am.acknowledge_alert("test_cat", "Integration test alert")
         assert am.active_alerts[alert.alert_id].acknowledged == True
-    test("Alert send + acknowledge flow", test_alert_send_and_ack)
+    run_test("Alert send + acknowledge flow", test_alert_send_and_ack)
     
     # ===================================================
     # 11. Cross-Component: Full Brain Flow
@@ -291,7 +291,7 @@ def main():
         print("    -> Alert response tracked")
         print(f"    -> Code error logged (strictness={strictness})")
         print(f"    -> Daily summary: {summary['total_events']} events today")
-    test("Full cross-component brain flow", test_full_brain_flow)
+    run_test("Full cross-component brain flow", test_full_brain_flow)
     
     # ===================================================
     # RESULTS SUMMARY
@@ -324,4 +324,8 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
+
+
+def test_integration_brain():
     main()
