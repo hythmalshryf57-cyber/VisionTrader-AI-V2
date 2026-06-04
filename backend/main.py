@@ -2442,117 +2442,169 @@ async def _analyze_image_file(image: UploadFile) -> dict:
 
 @app.post("/api/ai/agent")
 async def super_ai_agent(
-    question: str = Form(...),
+    question: str = Form(""),
     image: UploadFile = File(None),
-    market_hint: str = Form(None),
+    market: str = Form(None),
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    question = question.strip()
+    question = (question or "").strip()
     if not question:
-        raise HTTPException(status_code=400, detail="Question is required")
-
-    intent = _infer_intent(question)
-    mood = _infer_mood(question)
-    profile = _build_user_profile(current_user, db)
-    memory_matches = vector_memory.find_similar(question, top_k=4, db=db)
-    visual_analysis = None
-    if image is not None:
-        visual_analysis = await _analyze_image_file(image)
-
-    market = market_hint or _map_named_market(question)
-    market_data = binance_service.scan(market)
-    session_info = market_protection_service.get_current_session()
-    spread_report = market_protection_service.get_spread_report()
-
-    action_result = None
-    quick_backtest = None
-
-    if intent == 'price_alert':
-        price_candidates = _find_numbers(question)
-        target_price = price_candidates[0] if price_candidates else market_data.get('price')
-        direction = 'above' if any(word in _normalize_text(question) for word in ['فوق', 'أعلى', 'ارتفاع', 'شراء', 'buy']) else 'below'
-        if target_price is None:
-            raise HTTPException(status_code=400, detail='Price target could not be extracted for alert')
-        action_result = market_protection_service.create_price_alert(
-            user_id=current_user.id,
-            market=market,
-            target_price=float(target_price),
-            direction=direction
-        )
-    elif intent == 'settings':
-        updates = {}
-        risk_numbers = [n for n in _find_numbers(question) if 0 < n < 100]
-        if risk_numbers and any(word in _normalize_text(question) for word in ['risk', 'مخاطر', 'نسبة']):
-            risk_value = risk_numbers[0]
-            if risk_value > 5:
-                risk_value = max(0.1, min(risk_value / 100.0, 5.0))
-            updates['risk_percentage'] = round(risk_value, 2)
-        if any(word in _normalize_text(question) for word in ['فاتح', 'light']):
-            updates['theme'] = 'light'
-        if any(word in _normalize_text(question) for word in ['داكن', 'dark']):
-            updates['theme'] = 'dark'
-        if updates:
-            prefs = _ensure_preferences(db, current_user)
-            for key, value in updates.items():
-                if hasattr(prefs, key):
-                    setattr(prefs, key, value)
-            db.add(prefs)
-            db.commit()
-            action_result = {'updated': updates}
-    elif intent == 'backtest':
-        try:
-            start_date = (datetime.now(timezone.utc) - timedelta(days=21)).date().isoformat()
-            end_date = datetime.now(timezone.utc).date().isoformat()
-            quick_backtest = backtest_engine.run_backtest(
-                market=market,
-                timeframe='1d',
-                start_date=start_date,
-                end_date=end_date,
-                initial_capital=profile.get('settings', {}).get('capital', 10000.0),
-                simulations=250,
-                n_windows=3,
-            )
-        except Exception as exc:
-            quick_backtest = {'error': str(exc)}
-
-    answer = _build_agent_answer(
-        question=question,
-        intent=intent,
-        mood=mood,
-        profile=profile,
-        market=market,
-        market_data=market_data,
-        memory_matches=memory_matches,
-        visual_analysis=visual_analysis,
-        action_result=action_result,
-        quick_backtest=quick_backtest,
-        session_info=session_info,
-    )
+        question = "حلل السوق الحالي وقدّم توصية عامة بناءً على أحوال السوق."
 
     try:
-        _record_agent_memory(db, current_user, question, answer, _summarize_visual_analysis(visual_analysis))
-    except Exception:
-        pass
+        intent = _infer_intent(question)
+        mood = _infer_mood(question)
+        profile = _build_user_profile(current_user, db)
+        memory_matches = vector_memory.find_similar(question, top_k=4, db=db)
+        visual_analysis = {}
+        if image is not None:
+            try:
+                visual_analysis = await _analyze_image_file(image) or {}
+            except Exception as exc:
+                logger.exception(f"Image processing failed: {exc}")
+                visual_analysis = {
+                    'analysis': {
+                        'recommendation': 'فشل تحليل الصورة، سأتابع بدونها.',
+                        'note': 'تعذّر قراءة الصورة المرفقة. يرجى تجربة صورة أخرى أو إرسال سؤالك بدون صورة.',
+                        'confidence': 0
+                    }
+                }
 
-    # Sanitize strings/objects before returning to the client to avoid leaking system/provider names
-    safe_answer = _sanitize_string_for_user(answer)
-    safe_visual = _sanitize_obj_for_user(visual_analysis or {})
-    safe_memory = _sanitize_obj_for_user(memory_matches or [])
+        market = (market or "").strip() or _map_named_market(question)
+        market_data = {}
+        try:
+            market_data = binance_service.scan(market) or {}
+        except Exception as exc:
+            logger.exception(f"Market scan failed for {market}: {exc}")
+            market_data = {}
 
-    return {
-        'answer': safe_answer,
-        'intent': intent,
-        'mood': mood,
-        'profile': _sanitize_obj_for_user(profile or {}),
-        'market_data': _sanitize_obj_for_user(market_data or {}),
-        'session_info': _sanitize_obj_for_user(session_info or {}),
-        'spread_report': _sanitize_obj_for_user(spread_report or {}),
-        'memory_matches': safe_memory,
-        'visual_analysis': safe_visual,
-        'action_result': _sanitize_obj_for_user(action_result or {}),
-        'quick_backtest': _sanitize_obj_for_user(quick_backtest or {}),
-    }
+        try:
+            session_info = market_protection_service.get_current_session() or {}
+        except Exception as exc:
+            logger.exception(f"Session info retrieval failed: {exc}")
+            session_info = {}
+
+        try:
+            spread_report = market_protection_service.get_spread_report() or {}
+        except Exception as exc:
+            logger.exception(f"Spread report retrieval failed: {exc}")
+            spread_report = {}
+
+        action_result = None
+        quick_backtest = None
+
+        if intent == 'price_alert':
+            price_candidates = _find_numbers(question)
+            target_price = price_candidates[0] if price_candidates else market_data.get('price')
+            direction = 'above' if any(word in _normalize_text(question) for word in ['فوق', 'أعلى', 'ارتفاع', 'شراء', 'buy']) else 'below'
+            if target_price is None:
+                action_result = {
+                    'error': 'تعذّر تحديد سعر الهدف من السؤال. الرجاء ذكر السعر أو إعادة صياغة الطلب.'
+                }
+            else:
+                try:
+                    action_result = market_protection_service.create_price_alert(
+                        user_id=current_user.id,
+                        market=market,
+                        target_price=float(target_price),
+                        direction=direction
+                    )
+                except Exception as exc:
+                    logger.exception(f"Price alert creation failed: {exc}")
+                    action_result = {
+                        'error': 'فشل إنشاء تنبيه السعر. يرجى المحاولة مرة أخرى.'
+                    }
+        elif intent == 'settings':
+            updates = {}
+            risk_numbers = [n for n in _find_numbers(question) if 0 < n < 100]
+            if risk_numbers and any(word in _normalize_text(question) for word in ['risk', 'مخاطر', 'نسبة']):
+                risk_value = risk_numbers[0]
+                if risk_value > 5:
+                    risk_value = max(0.1, min(risk_value / 100.0, 5.0))
+                updates['risk_percentage'] = round(risk_value, 2)
+            if any(word in _normalize_text(question) for word in ['فاتح', 'light']):
+                updates['theme'] = 'light'
+            if any(word in _normalize_text(question) for word in ['داكن', 'dark']):
+                updates['theme'] = 'dark'
+            if updates:
+                prefs = _ensure_preferences(db, current_user)
+                for key, value in updates.items():
+                    if hasattr(prefs, key):
+                        setattr(prefs, key, value)
+                db.add(prefs)
+                db.commit()
+                action_result = {'updated': updates}
+        elif intent == 'backtest':
+            try:
+                start_date = (datetime.now(timezone.utc) - timedelta(days=21)).date().isoformat()
+                end_date = datetime.now(timezone.utc).date().isoformat()
+                quick_backtest = backtest_engine.run_backtest(
+                    market=market,
+                    timeframe='1d',
+                    start_date=start_date,
+                    end_date=end_date,
+                    initial_capital=profile.get('settings', {}).get('capital', 10000.0),
+                    simulations=250,
+                    n_windows=3,
+                )
+            except Exception as exc:
+                quick_backtest = {'error': str(exc)}
+
+        answer = _build_agent_answer(
+            question=question,
+            intent=intent,
+            mood=mood,
+            profile=profile,
+            market=market,
+            market_data=market_data,
+            memory_matches=memory_matches,
+            visual_analysis=visual_analysis,
+            action_result=action_result,
+            quick_backtest=quick_backtest,
+            session_info=session_info,
+        )
+
+        try:
+            _record_agent_memory(db, current_user, question, answer, _summarize_visual_analysis(visual_analysis))
+        except Exception:
+            pass
+
+        # Sanitize strings/objects before returning to the client to avoid leaking system/provider names
+        safe_answer = _sanitize_string_for_user(answer)
+        safe_visual = _sanitize_obj_for_user(visual_analysis or {})
+        safe_memory = _sanitize_obj_for_user(memory_matches or [])
+
+        return {
+            'answer': safe_answer,
+            'intent': intent,
+            'mood': mood,
+            'profile': _sanitize_obj_for_user(profile or {}),
+            'market_data': _sanitize_obj_for_user(market_data or {}),
+            'session_info': _sanitize_obj_for_user(session_info or {}),
+            'spread_report': _sanitize_obj_for_user(spread_report or {}),
+            'memory_matches': safe_memory,
+            'visual_analysis': safe_visual,
+            'action_result': _sanitize_obj_for_user(action_result or {}),
+            'quick_backtest': _sanitize_obj_for_user(quick_backtest or {}),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception(f"super_ai_agent failed: {exc}")
+        return {
+            'answer': 'حدث خطأ مؤقت أثناء معالجة الطلب. يرجى المحاولة مرة أخرى لاحقًا.',
+            'intent': 'market_analysis',
+            'mood': 'neutral',
+            'profile': {},
+            'market_data': {},
+            'session_info': {},
+            'spread_report': {},
+            'memory_matches': [],
+            'visual_analysis': {},
+            'action_result': {'error': 'حدث خطأ داخلي خلال معالجة الطلب.'},
+            'quick_backtest': {},
+        }
 
 @app.post("/api/chart/detect")
 async def detect_chart_screenshot(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):

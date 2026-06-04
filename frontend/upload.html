@@ -170,7 +170,7 @@
         function marketHint(text) {
             const lower = text.toLowerCase();
             if (lower.includes('ذهب') || lower.includes('xau')) return 'XAUUSD';
-            if (lower.includes('بيتكوين') || lower.includes('btc')) return 'BTCUSD';
+            if (lower.includes('بيتكوين') || lower.includes('btc')) return 'BTCUSDT';
             return null;
         }
 
@@ -202,8 +202,20 @@
             form.append('question', question);
             if (market) form.append('market', market);
             if (file) form.append('image', file);
-            const response = await fetch('/api/ai/agent', { method: 'POST', body: form });
-            if (!response.ok) throw new Error('الخادم رد برمز ' + response.status);
+            const headers = {};
+            const token = localStorage.getItem('token');
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
+            }
+            const response = await fetch('/api/ai/agent', { method: 'POST', body: form, headers });
+            if (!response.ok) {
+                let errorText = response.statusText;
+                try {
+                    const json = await response.json();
+                    if (json.detail) errorText = json.detail;
+                } catch (e) {}
+                throw new Error('الخادم رد برمز ' + response.status + ' - ' + errorText);
+            }
             return await response.json();
         }
 
@@ -274,8 +286,21 @@
             quickActions.appendChild(btn);
         });
 
+        function registerBottomPrompts() {
+            document.querySelectorAll('.prompt').forEach(prompt => {
+                prompt.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const text = event.target.innerText.trim();
+                    if (!text) return;
+                    messageInput.value = text;
+                    messageInput.focus();
+                });
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             createBubble('أهلاً! أنا مستشارك الذكي. تقدر تسألني عن أي سوق أو ترفع شارت وأحلله لك.', 'ai');
+            registerBottomPrompts();
         });
     </script>
 </body>

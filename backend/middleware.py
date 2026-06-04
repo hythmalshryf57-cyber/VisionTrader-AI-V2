@@ -103,10 +103,14 @@ class TrialMiddleware(BaseHTTPMiddleware):
                     user.last_analysis_date = today
                     db.commit()
 
-                if user.trial_end and datetime.now(timezone.utc) > user.trial_end:
-                    # Trial expired
-                    if request.url.path.startswith("/api/analysis/"):
-                        raise HTTPException(status_code=403, detail="انتهت فترة التجربة المجانية")
+                if user.trial_end:
+                    trial_end = user.trial_end
+                    if isinstance(trial_end, datetime) and trial_end.tzinfo is None:
+                        trial_end = trial_end.replace(tzinfo=timezone.utc)
+                    if datetime.now(timezone.utc) > trial_end:
+                        # Trial expired
+                        if request.url.path.startswith("/api/analysis/"):
+                            raise HTTPException(status_code=403, detail="انتهت فترة التجربة المجانية")
 
                 if user.daily_analyses_count >= 10:
                     if request.url.path.startswith("/api/analysis/"):
