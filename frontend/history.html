@@ -77,18 +77,12 @@
 
         <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div class="card history-card">
-                <h3>أعلى الأسواق دقة</h3>
-                <div style="margin-top: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Gold</span> <span>94%</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span>US30</span> <span>88%</span></div>
-                </div>
+                <h3>أفضل سوق (حسب الدقة)</h3>
+                <div id="bestMarketCard" style="margin-top: 15px; color: #ddd;">جاري الحساب...</div>
             </div>
             <div class="card history-card">
-                <h3>أفضل الاستراتيجيات نجاحاً</h3>
-                <div style="margin-top: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>SMC</span> <span>91%</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span>Order Flow</span> <span>85%</span></div>
-                </div>
+                <h3>الصفقات الأخيرة</h3>
+                <div id="recentTrades" style="margin-top: 10px; color: #ddd;">تحميل...</div>
             </div>
         </div>
     </div>
@@ -107,6 +101,7 @@
                     return;
                 }
                 renderHistory(historyEntries);
+                updateBestMarketAndRecent(historyEntries);
             } catch (err) {
                 list.innerHTML = '<div class="history-item" style="color:#ff9999;"><div style="grid-column: span 6; text-align: center;">فشل تحميل السجل. تحقق من تسجيل الدخول وحاول مرة أخرى.</div></div>';
                 console.error('Failed to load history', err);
@@ -153,8 +148,66 @@
                         <div class="history-details hidden" style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; border-right: 3px solid #00bdff;">
                             <strong>تفاصيل التحليل:</strong>
                             <p>${entry.reason || entry.description || 'لا توجد تفاصيل إضافية لهذا التحليل.'}</p>
-                            <p><strong>استراتيجيات مدعومة:</strong> ${entry.strategies || 'غير متوفر'}</p>
                         </div>`;
+            }).join('');
+        }
+
+        function updateBestMarketAndRecent(entries) {
+            const bestCard = document.getElementById('bestMarketCard');
+            const recentDiv = document.getElementById('recentTrades');
+            if (!entries || !entries.length) {
+                bestCard.innerText = 'لا توجد بيانات كافية.';
+                recentDiv.innerText = 'لا توجد صفقات.';
+                return;
+            }
+
+            // Aggregate by market
+            const byMarket = {};
+            entries.forEach(e => {
+                const m = (e.market || 'غير معروف').toUpperCase();
+                const res = (e.result || '').toLowerCase();
+                const isWin = res.includes('win') || res.includes('رابح') || res.includes('ربح');
+                const stats = byMarket[m] || {wins:0, trades:0, pnl:0};
+                stats.trades += 1;
+                if (isWin) stats.wins += 1;
+                stats.pnl += Number(e.profit_loss || 0);
+                byMarket[m] = stats;
+            });
+
+            let best = {market: null, win_rate: 0, trades:0, pnl:0};
+            Object.keys(byMarket).forEach(m => {
+                const s = byMarket[m];
+                const wr = s.trades ? (s.wins / s.trades) * 100 : 0;
+                if (wr > best.win_rate && s.trades >= 3) { // prefer markets with at least 3 trades
+                    best = {market: m, win_rate: wr, trades: s.trades, pnl: s.pnl};
+                }
+            });
+
+            if (!best.market) {
+                // fallback to highest trades
+                let top = {market:null, trades:0};
+                Object.keys(byMarket).forEach(m => { if (byMarket[m].trades > top.trades) top = {market:m,trades:byMarket[m].trades}; });
+                if (top.market) best.market = top.market, best.win_rate = ((byMarket[top.market].wins/byMarket[top.market].trades)*100).toFixed(2), best.trades = byMarket[top.market].trades, best.pnl = byMarket[top.market].pnl;
+            }
+
+            if (best.market) {
+                if (best.trades < 3) {
+                    bestCard.innerText = 'بيانات غير كافية.';
+                } else {
+                    bestCard.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><div><strong style="font-size:1.1rem">${best.market}</strong><div style="color:#999;font-size:0.9rem">عدد الصفقات: ${best.trades}</div></div><div style="text-align:right"><div style="font-weight:700;color:#00ff88">${Number(best.win_rate).toFixed(1)}%</div><div style="color:#999">صافي الربح: ${best.pnl.toFixed(2)}$</div></div></div>`;
+                }
+            } else {
+                bestCard.innerText = 'لا توجد بيانات كافية.';
+            }
+
+            // recent trades (last 5)
+            const recent = entries.slice(0,5);
+            recentDiv.innerHTML = recent.map(r => {
+                const date = r.date || r.created_at || '';
+                const d = date ? new Date(date).toLocaleString('ar-EG') : '';
+                const pnl = Number(r.profit_loss || 0).toFixed(2);
+                const isWin = (r.result||'').toLowerCase().includes('win') || (r.result||'').toLowerCase().includes('رابح');
+                return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,0.03)"><div><strong>${r.market||'-'}</strong><div style="color:#999;font-size:0.85rem">${d}</div></div><div style="text-align:right;color:${isWin? '#00ff88':'#ff6b6b'}">${isWin? '✅':'❌'} ${pnl}$</div></div>`;
             }).join('');
         }
 

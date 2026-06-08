@@ -365,21 +365,27 @@
             }
         }
 
-        // تحميل الصفحة
-        loadStrategies();
-        loadSavedSettings();
         async function protectStrategyFactory() {
             try {
                 const profile = await api.me();
                 if (!profile.is_admin) {
                     window.location.href = 'dashboard.html';
+                    throw new Error('Admin access required');
                 }
             } catch (error) {
                 console.warn('Strategy Factory access blocked:', error);
                 window.location.href = 'login.html';
+                throw error;
             }
         }
-        protectStrategyFactory();
+
+        async function initializeStrategyFactory() {
+            await protectStrategyFactory();
+            loadSavedSettings();
+            await loadStrategies();
+        }
+
+        initializeStrategyFactory();
     </script>
     <script src="js/theme.js"></script>
     <script>
@@ -402,4 +408,4 @@
         })();
     </script>
 </body>
-</html>
+</html>

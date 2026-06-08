@@ -18,8 +18,11 @@ Merged from two strategies using signal voting:
 
 def generate_signal(price, ob_high, ob_low, session_hour):
     """Order Block based signal with session filter."""
-    if session_hour not in range(7, 12):
-        return "NEUTRAL", None
+    # Session filter removed to allow analysis at any hour
+    
+    # The following line is removed to eliminate the session hour check
+    # if session_hour not in range(7, 12):
+    #     return "NEUTRAL", None
     stop_loss_pct = 1.2
     if ob_low <= price <= ob_high:
         return "BUY", price * (1 - stop_loss_pct / 100)

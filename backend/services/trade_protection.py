@@ -190,14 +190,10 @@ class TradeProtectionService:
             user_prefs.lock_reason = f"🎉 حققت هدفك اليومي {user_prefs.daily_profit_target_percent}%. تداولك متوقف لليوم"
             changed = True
 
-        if self._has_three_consecutive_losses(db, user_id) and not user_prefs.analysis_locked_until:
-            user_prefs.analysis_locked_until = now + timedelta(hours=1)
-            db.add(models.PsychologyLog(
-                user_id=user_id,
-                event_type="consecutive_losses_lock",
-                description="خسرت 3 صفقات متتالية. تم قفل التحليل لمدة ساعة."
-            ))
-            changed = True
+        # Removed automatic analysis lock on 3 consecutive losses per user request.
+        # Previously the system would set `analysis_locked_until` for one hour when
+        # three consecutive losses were detected. That behaviour is intentionally
+        # disabled to avoid blocking users' access to analysis.
 
         if changed:
             db.commit()

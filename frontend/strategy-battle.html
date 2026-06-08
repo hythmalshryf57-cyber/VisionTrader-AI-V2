@@ -59,7 +59,21 @@
             <div class="win-rate-pill">74% نجاح</div>
         </div>
     </div>
+    <script src="js/api.js"></script>
     <script>
+        async function protectStrategyBattle() {
+            try {
+                const profile = await api.me();
+                if (!profile.is_admin) {
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        protectStrategyBattle();
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')

@@ -57,6 +57,7 @@ const api = {
   },
   async getMarketSession() { return this.request('GET', '/api/market/session', null, true); },
   async getMarketSpread() { return this.request('GET', '/api/market/spread', null, true); },
+  async getMarketPrice(symbol = 'BTCUSDT') { return this.request('GET', `/api/market/price?symbol=${encodeURIComponent(symbol)}`, null, false); },
   async detectChart(file) {
     const url = this.baseUrl + '/api/chart/detect';
     const token = localStorage.getItem('token');

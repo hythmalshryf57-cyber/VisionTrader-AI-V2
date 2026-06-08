@@ -13,7 +13,7 @@ class CalendarService:
     def __init__(self):
         self.feed_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
         self.cache = {
-            "updated": datetime.min,
+            "updated": datetime.min.replace(tzinfo=timezone.utc),
             "events": []
         }
         self.cache_ttl = timedelta(minutes=15)
@@ -34,7 +34,8 @@ class CalendarService:
                 if not timestamp:
                     continue
                 try:
-                    event_time = datetime.utcfromtimestamp(int(timestamp))
+                    # Use timezone-aware UTC datetime
+                    event_time = datetime.fromtimestamp(int(timestamp), timezone.utc)
                 except ValueError:
                     continue
 

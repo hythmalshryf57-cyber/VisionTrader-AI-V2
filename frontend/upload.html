@@ -163,6 +163,8 @@
         }
         .messages-area {
             flex: 1; overflow-y: auto; min-height: 0;
+            /* Limit height so the chat becomes scrollable on long threads */
+            max-height: calc(100vh - 320px);
             padding: 16px 0;
             display: flex; flex-direction: column; gap: 14px;
             -webkit-overflow-scrolling: touch;

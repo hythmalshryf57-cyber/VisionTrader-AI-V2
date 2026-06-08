@@ -263,33 +263,12 @@ class EnvironmentFilter:
         # الوقت الحالي بالـ UTC (نستخدمه في كل فحوصات التوقيت)
         utc_now = datetime.now(timezone.utc)
 
-        # فحص التقويم الاقتصادي (نفترض أن التواريخ تُرجع/تُقارن بالـ UTC)
-        upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
-        high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
-
-        # فلتر ما قبل الأخبار (Pre-News Volatility Filter):
-        # - قبل 15 دقيقة: تجميد التوصيات الجديدة (suspend)
-        # - قبل 5 دقائق: نصيحة بإغلاق الصفقات أو تضييق الوقف (suspend + نصيحة)
-        # - بعد الخبر بـ 10 دقائق: يعيد التداول إذا استقرت الأسعار (proceed)
+        # Removed pre-news suspension logic to allow analysis at any time.
+        # Historical behavior: we checked upcoming high-impact events and suspended
+        # analysis within 15 minutes of such events. This was causing automatic
+        # blocking of analyses. For the current requirement we always proceed.
         message: Optional[str] = None
         minutes_to_event: Optional[int] = None
-
-        if high_impact_events:
-            next_event = min(high_impact_events, key=lambda x: x.get('time_until', timedelta(hours=24)))
-            time_until = next_event.get('time_until', timedelta(hours=24))
-            minutes = int(time_until.total_seconds() / 60)
-            minutes_to_event = max(0, minutes)
-
-            # حالات قبل الخبر
-            if time_until <= timedelta(minutes=15) and time_until > timedelta(minutes=5):
-                issues.append("High impact news in less than 15 minutes")
-                message = f"خبر عالي التأثير قادم خلال {minutes_to_event} دقيقة - تم تعليق التوصيات"
-            elif time_until <= timedelta(minutes=5):
-                issues.append("High impact news in less than 5 minutes - close or tighten stops recommended")
-                message = f"خبر عالي التأثير قادم خلال {minutes_to_event} دقيقة - يُنصح بإغلاق الصفقات المفتوحة أو تضييق الوقف - تم تعليق التوصيات"
-            elif time_until <= timedelta(hours=1):
-                issues.append("High impact news within 1 hour")
-                message = f"خبر عالي التأثير متوقع خلال {minutes_to_event} دقيقة - توخ الحذر"
 
         # فحص إذا كان حدث عالي التأثير قد وقع خلال آخر 10 دقائق — في هذه الحالة نعيد التداول
         today_events = self.calendar_service.get_today_events()
@@ -304,38 +283,12 @@ class EnvironmentFilter:
             issues.append('High impact news occurred within last 10 minutes; resume if stable')
             message = 'مرور 10 دقائق على خبر عالي التأثير - يستأنف التداول إذا استقرت الأسعار'
 
-        # توقيت الجلسة اعتمادًا على GMT/UTC
+        # Remove session-based cautions (Asia/London/NewYork) — allow analysis anytime
         utc_hour = utc_now.hour
-        weekday = utc_now.weekday()  # Monday=0 .. Sunday=6
+        weekday = utc_now.weekday()
+        session = 'any'
 
-        # جلسات تقريبية حسب UTC ساعات
-        if 0 <= utc_hour < 8:
-            session = 'asia'
-        elif 7 <= utc_hour < 16:
-            session = 'europe'
-        else:
-            session = 'america'
-
-        # أيام الأسبوع خاصة: الاثنين صباحًا و الجمعة مساءً => تحذير
-        if weekday == 0 and utc_hour < 12:
-            issues.append('Monday morning session - caution')
-        if weekday == 4 and utc_hour >= 18:
-            issues.append('Friday evening session - caution')
-
-        # فحص أداء الزوج في الجلسة الحالية (إذا كانت الخاصية متاحة في internal_brain)
-        try:
-            win_rate = None
-            if hasattr(self.internal_brain, 'get_pair_win_rate'):
-                win_rate = self.internal_brain.get_pair_win_rate(market.upper(), session)
-            elif hasattr(self.internal_brain, 'pair_win_rate'):
-                win_rate = getattr(self.internal_brain, 'pair_win_rate')(market.upper(), session)
-
-            if isinstance(win_rate, (int, float)):
-                if win_rate < 40:
-                    issues.append(f'Low session win_rate {win_rate}% for {market} in {session}')
-        except Exception:
-            # إذا فشل الحصول على الإحصائيات، نتابع بدونها
-            pass
+        # Skip session-specific win-rate checks
 
         # الخروج بثلاث حالات
         suspend_flag = False
@@ -974,20 +927,7 @@ class VotingEngine:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
-        # فحص الأخبار عالية التأثير
-        upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
-        high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
-        if high_impact_events:
-            next_event = min(high_impact_events, key=lambda x: x.get('time_until', timedelta(hours=24)))
-            time_until = next_event.get('time_until', timedelta(hours=24))
-            if time_until < timedelta(hours=1):
-                return {
-                    "recommendation": "لا توجد فرصة واضحة حالياً",
-                    "confidence": confidence,
-                    "reason": "أخبار عالية التأثير قريبة",
-                    "market": market,
-                    "timestamp": datetime.now().isoformat()
-                }
+        # News proximity filter removed: do not block analysis due to upcoming high-impact events.
 
         result = {
             "recommendation": ai_analysis["recommendation"],

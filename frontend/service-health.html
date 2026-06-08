@@ -89,6 +89,22 @@
             </div>
         </div>
 
+        <div class="card" style="padding: 24px; display: grid; gap: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div>
+                    <p style="margin-bottom: 6px; font-weight: 700;">فحص الأسعار الحيّة</p>
+                    <p style="color: var(--muted); margin: 0;">مقارنة Binance و TradingView/TwelveData لضمان وجود بيانات سعر مباشرة.</p>
+                </div>
+                <span id="priceStatus" class="status-pill status-pending">جارٍ التحقق</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                <div><strong>الرمز:</strong> <span id="priceSymbolDisplay">-</span></div>
+                <div><strong>Binance:</strong> <span id="binancePriceDisplay">-</span></div>
+                <div><strong>TradingView / TwelveData:</strong> <span id="tradingviewPriceDisplay">-</span></div>
+                <div><strong>الفرق:</strong> <span id="priceDeltaDisplay">-</span></div>
+            </div>
+            <div style="color: var(--muted); font-size: 0.95rem;">إذا لم يكن هناك اتصال مباشر، فقد يكون هناك مشكلة في موفر البيانات الخارجية أو الشبكة.</div>
+        </div>
         <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
                 <div>
@@ -163,6 +179,34 @@
             const telegramNote = localStorage.getItem('telegram_chat_id') ? 'مربوط' : 'غير مهيأ';
             const tokenAvailable = !!localStorage.getItem('token');
             setStatus('telegramStatus', tokenAvailable ? telegramNote : 'تسجيل دخول مطلوب');
+            await refreshPriceStatus();
+        }
+
+        async function refreshPriceStatus() {
+            const symbol = 'BTCUSDT';
+            try {
+                const data = await fetchJson(`/api/market/price?symbol=${encodeURIComponent(symbol)}`);
+                const status = data.binance_status === 'ok' && data.twelvedata_status === 'ok' ? 'متزامن' : 'غير متزامن';
+                document.getElementById('priceStatus').innerText = status;
+                document.getElementById('priceSymbolDisplay').innerText = data.symbol || symbol;
+                document.getElementById('binancePriceDisplay').innerText = data.binance_price ? `$${data.binance_price.toFixed(4)}` : 'غير متاح';
+                document.getElementById('tradingviewPriceDisplay').innerText = data.twelvedata_price ? `$${data.twelvedata_price.toFixed(4)}` : 'غير متاح';
+                document.getElementById('priceDeltaDisplay').innerText = data.price_diff_pct != null ? `${data.price_diff_pct}%` : 'غير متاح';
+                if (data.binance_status !== 'ok') {
+                    setStatus('binanceStatus', 'غير متصل');
+                }
+                if (data.twelvedata_status !== 'ok') {
+                    setStatus('tradingviewStatus', 'غير متصل');
+                }
+            } catch (error) {
+                document.getElementById('priceStatus').innerText = 'فشل الفحص';
+                document.getElementById('priceSymbolDisplay').innerText = symbol;
+                document.getElementById('binancePriceDisplay').innerText = 'خطأ';
+                document.getElementById('tradingviewPriceDisplay').innerText = 'خطأ';
+                document.getElementById('priceDeltaDisplay').innerText = 'خطأ';
+                setStatus('binanceStatus', 'غير متصل');
+                setStatus('tradingviewStatus', 'غير متصل');
+            }
         }
 
         function toggleInfo() {
@@ -171,10 +215,6 @@
 
         document.addEventListener('DOMContentLoaded', refreshServiceHealth);
     </script>
-    <script src="js/theme.js"></script>
-</body>
-</html>
-    </div>
     <script src="js/theme.js"></script>
 </body>
 </html>

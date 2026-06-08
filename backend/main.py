@@ -861,6 +861,10 @@ def add_journal(entry: dict, db: Session = Depends(get_db), current_user: models
     if profit is None:
         profit = 0.0
 
+    # Manual journal entries are admin-only to prevent users from spoofing historical data
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required to add journal entries manually")
+
     return journal_service.add_entry(
         user_id=current_user.id,
         market=entry['market'],

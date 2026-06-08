@@ -295,8 +295,15 @@
                 const res = await api.login(email, password);
                 localStorage.setItem('token', res.access_token);
                 localStorage.removeItem('user');
-                const adminEmail = 'hythmalshryf57@gmail.com';
-                const destination = email.toLowerCase() === adminEmail ? 'admin.html' : 'upload.html';
+                let destination = 'upload.html';
+                try {
+                    const profile = await api.me();
+                    if (profile.is_admin) {
+                        destination = 'admin.html';
+                    }
+                } catch (_) {
+                    destination = 'upload.html';
+                }
                 window.location.href = destination;
             } catch (err) {
                 showMessage(err.message || 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.', 'error');

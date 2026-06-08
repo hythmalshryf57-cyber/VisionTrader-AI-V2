@@ -71,6 +71,14 @@
       "success": true,
       "context": "EURUSD",
       "timestamp": "2026-05-31T10:36:33.093979"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "ICT",
+      "value": 0.85,
+      "success": true,
+      "context": "EURUSD",
+      "timestamp": "2026-06-08T09:03:38.125842+00:00"
     }
   ]
 }

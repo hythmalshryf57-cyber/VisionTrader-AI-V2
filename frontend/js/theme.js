@@ -73,6 +73,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setupRippleEffect();
     handleShimmer();
 
+    // Hide admin-only navigation for non-admin users
+    const hideAdminLinks = async () => {
+        const adminLinks = document.querySelectorAll('a[href="strategy_factory.html"], a[href="strategy-battle.html"], a[href="admin.html"], a[href="admin-engine.html"]');
+        if (!adminLinks.length || !window.api || !window.api.me) {
+            return;
+        }
+        try {
+            const profile = await window.api.me();
+            if (!profile || !profile.is_admin) {
+                adminLinks.forEach(link => link.remove());
+            }
+        } catch (_err) {
+            adminLinks.forEach(link => link.remove());
+        }
+    };
+    hideAdminLinks();
+
     // Pulse animation for alerts
     const alerts = document.querySelectorAll('.alert, .calendar-warning, #errorCard:not(.hidden)');
     alerts.forEach(alert => alert.classList.add('pulse-alert'));

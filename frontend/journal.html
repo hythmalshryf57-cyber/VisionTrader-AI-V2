@@ -140,12 +140,29 @@
         
         async function loadJournal() {
             try {
+                // Show add button only for admins
+                try {
+                    const me = await api.me();
+                    if (!me || !me.is_admin) {
+                        const btn = document.querySelector('.add-btn');
+                        if (btn) btn.style.display = 'none';
+                    }
+                } catch (e) {
+                    // If user info not available, hide add by default
+                    const btn = document.querySelector('.add-btn');
+                    if (btn) btn.style.display = 'none';
+                }
+
                 const entries = await api.getJournal();
-                const stats = await api.getComparisonStats();
-                
-                document.getElementById('winRate').innerText = stats.human_win_rate + '%';
-                document.getElementById('totalPnL').innerText = '$' + stats.total_profit;
-                document.getElementById('totalTrades').innerText = entries.length;
+                // Compute stats directly from journal entries (DB-driven)
+                const totalTrades = Array.isArray(entries) ? entries.length : 0;
+                const totalPnL = entries.reduce((acc, e) => acc + (Number(e.profit_loss) || 0), 0);
+                const wins = entries.filter(e => { const r = (e.result||'').toLowerCase(); return r.includes('win') || r.includes('رابح') || r.includes('ربح'); }).length;
+                const winRate = totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
+
+                document.getElementById('winRate').innerText = winRate + '%';
+                document.getElementById('totalPnL').innerText = '$' + totalPnL.toFixed(2);
+                document.getElementById('totalTrades').innerText = totalTrades;
 
                 const body = document.getElementById('journalBody');
                 body.innerHTML = entries.map(entry => `
