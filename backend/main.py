@@ -44,6 +44,7 @@ from services.binance_service import BinanceService
 from services.internal_brain import InternalBrain
 from services.tradingview_service import TradingViewService
 from services.telegram_service import telegram_service
+from services.alert_manager import create_alert
 from services.agent_manager import AgentManager
 from services.backtest_engine import backtest_engine
 
@@ -2634,22 +2635,62 @@ async def super_ai_agent(
             targets = rr.get("targets", [])
             sl = rr.get("stop_loss", "")
             
+            best_ops = auto_scanner.get_top_opportunities()
+            def format_opportunity(best):
+                return (
+                    f"💡 أفضل فرصة حالياً هي على {best['market']} بثقة {best['confidence']}%.\n"
+                    f"- التوصية: {best['recommendation']}\n"
+                    f"- الدخول: {best['entry']}\n"
+                    f"- SL: {best['sl']}\n"
+                    f"- TP: {best['tp']}\n"
+                    f"- R:R: {best.get('rr', '1:3')}"
+                )
+
+            strong_op = next((op for op in best_ops if op.get("confidence", 0) > 70), None)
+            strong_alert_added = False
+            if strong_op:
+                alert_msg = f"🚨 فرصة قوية على {strong_op['market']}! ثقة {strong_op['confidence']}%"
+                engine_suffix += f"\n\n{alert_msg}\n"
+                strong_alert_added = True
+                try:
+                    await ws_manager.broadcast(json.dumps({"type": "alert", "message": alert_msg}, ensure_ascii=False))
+                except Exception as e:
+                    logger.error(f"Failed to broadcast alert: {e}")
+                try:
+                    telegram_service.send_alert(None, strong_op["market"], strong_op["recommendation"], strong_op["confidence"], [])
+                except Exception as e:
+                    logger.error(f"Failed to send Telegram alert: {e}")
+                try:
+                    create_alert(
+                        current_user.id,
+                        strong_op["market"],
+                        strong_op["recommendation"],
+                        strong_op["confidence"],
+                        strong_op["entry"],
+                        strong_op["sl"],
+                        strong_op["tp"],
+                        f"R:R {strong_op.get('rr', '1:3')}"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to record strong opportunity dashboard alert: {e}")
+
             # 3. Check Confidence < 60%
             if conf < 60 or rec not in ["شراء", "بيع"]:
-                best_ops = auto_scanner.get_top_opportunities()
                 if best_ops:
                     best = best_ops[0]
-                    engine_suffix = (
-                        f"\n\n⚠️ **ما فيه فرصة واضحة على {market_target} الآن.** (الثقة: {conf}%)\n\n"
-                        f"💡 **أفضل فرصة حالياً هي على [{best['market']}] بثقة {best['confidence']}%**\n"
-                        f"- التوصية: {best['recommendation']}\n"
-                        f"- الدخول: {best['entry']}\n"
-                        f"- الأهداف: {best['tp']} | الوقف: {best['sl']}"
-                    )
+                    engine_suffix += f"\n\n⚠️ {market_target} متذبذب الآن. {format_opportunity(best)}"
                 else:
-                    engine_suffix = f"\n\n⚠️ **ما فيه فرصة واضحة على {market_target} الآن.** (الثقة: {conf}%) ولا توجد فرص قوية في الأسواق الأخرى."
+                    engine_suffix += f"\n\n⚠️ {market_target} متذبذب الآن. لا توجد فرصة قوية معلنة في الأسواق الأخرى حالياً."
+                return engine_suffix
             else:
-                engine_suffix = f"\n\n📊 **نظام VisionTrader ({market_target})**: {rec} | ثقة {conf}%"
+                if conf > 70:
+                    if not strong_alert_added:
+                        alert_msg = f"🚨 فرصة قوية على {market_target}! ثقة {conf}%"
+                        engine_suffix += f"\n\n{alert_msg}\n"
+                    engine_suffix += f"📊 **نظام VisionTrader ({market_target})**: {rec}"
+                else:
+                    engine_suffix += f"\n\n📊 **نظام VisionTrader ({market_target})**: {rec} | ثقة {conf}%"
+
                 if footprint_text:
                     engine_suffix += footprint_text
                 if targets:
