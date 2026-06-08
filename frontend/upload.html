@@ -2,342 +2,817 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VisionTrader AI - المحادثة والتحليل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>VisionTrader AI — الوكيل الذكي</title>
+    <meta name="description" content="وكيل تداول ذكي يحلل الشارتات تلقائياً ويعطي توصيات احترافية">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            color-scheme: dark;
-            color: #e5e7eb;
-            background: radial-gradient(circle at top right, rgba(56,189,248,0.18), transparent 20%),
-                        radial-gradient(circle at left bottom, rgba(236,72,153,0.16), transparent 20%),
-                        linear-gradient(180deg, #020617 0%, #060b1a 55%, #080d1f 100%);
-            font-family: 'Cairo', sans-serif;
+            --bg: #020818;
+            --bg2: #040d1e;
+            --card: rgba(6, 20, 45, 0.75);
+            --card-border: rgba(0, 200, 255, 0.18);
+            --card-hover: rgba(0, 200, 255, 0.32);
+            --accent: #00c8ff;
+            --accent2: #8b5cf6;
+            --accent3: #22d3ee;
+            --gold: #fbbf24;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --sidebar-w: 270px;
         }
-        * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; background: transparent; }
-        .page-shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; gap: 18px; padding: 18px; }
-        .topbar { position: fixed; left: 0; right: 0; top: 0; height: 68px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: rgba(3, 10, 23, 0.9); border-bottom: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(14px); z-index: 20; }
-        .topbar h1 { margin: 0; font-size: 1.18rem; letter-spacing: 0.08em; color: #f8fafc; }
-        .topbar .subtitle { color: #93c5fd; font-size: 0.92rem; }
-        .sidebar { margin-top: 86px; background: rgba(5,13,35,0.9); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; box-shadow: 0 30px 90px rgba(0,0,0,0.25); padding: 24px; display: flex; flex-direction: column; gap: 18px; }
-        .sidebar nav a { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 18px; color: #d1d5db; text-decoration: none; transition: 0.2s ease; border: 1px solid transparent; }
-        .sidebar nav a.active, .sidebar nav a:hover { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.18); color: #fff; }
-        .sidebar nav a i { width: 26px; text-align: center; color: #38bdf8; }
-        .sidebar .panel { border: 1px solid rgba(255,255,255,0.06); border-radius: 22px; padding: 18px; background: rgba(255,255,255,0.03); }
-        .sidebar .panel h2 { margin: 0 0 10px; font-size: 1rem; color: #f8fafc; }
-        .sidebar .panel p { margin: 0; color: #cbd5e1; line-height: 1.7; font-size: 0.94rem; }
-        .content { margin-top: 86px; display: flex; flex-direction: column; gap: 18px; }
-        .chat-card { border-radius: 28px; padding: 22px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 30px 90px rgba(0,0,0,0.2); display: grid; grid-template-rows: auto 1fr auto; min-height: calc(100vh - 146px); }
-        .chat-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
-        .chat-header .title { margin: 0; font-size: 1.3rem; color: #f8fafc; }
-        .chat-header .welcome { margin: 8px 0 0; color: #cbd5e1; line-height: 1.75; }
-        .chat-header .mini-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-        .badge { display: inline-flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,0.06); color: #dbeafe; font-size: 0.92rem; border: 1px solid rgba(56,189,248,0.14); }
-        .messages-panel { position: relative; display: flex; flex-direction: column; gap: 14px; padding-right: 8px; overflow-y: auto; margin-top: 18px; }
-        .message { max-width: 74%; padding: 16px 20px; border-radius: 24px; line-height: 1.75; word-break: break-word; }
-        .message.ai { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); box-shadow: inset 0 0 0 1px rgba(56,189,248,0.06); }
-        .message.user { align-self: flex-end; background: linear-gradient(135deg,#0ea5e9,#9333ea); color: #f8fafc; border-radius: 24px 24px 6px 24px; }
-        .message.system { align-self: center; background: rgba(59,130,246,0.15); color: #bfdbfe; border-radius: 18px; padding: 12px 16px; font-size: 0.96rem; border: 1px solid rgba(59,130,246,0.18); }
-        
-        /* Staggered typing dots wave animation */
-        .typing-indicator { display: none; align-items: center; gap: 12px; margin: 4px 0 0; padding: 12px 16px; border-radius: 18px; background: rgba(59,130,246,0.12); color: #dbeafe; font-size: 0.95rem; border: 1px solid rgba(59,130,246,0.18); }
-        .Typing-dot { width: 8px; height: 8px; border-radius: 50%; background: #c7d2fe; animation: blink 1.2s infinite ease-in-out; }
-        .Typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .Typing-dot:nth-child(3) { animation-delay: 0.4s; }
-        .typing-dots { display: flex; gap: 8px; }
-        @keyframes blink { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-        
-        .quick-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
-        .quick-pill { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #e2e8f0; padding: 10px 14px; border-radius: 14px; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease; }
-        .quick-pill:hover { transform: translateY(-1px); background: rgba(56,189,248,0.16); }
-        .input-row { display: grid; grid-template-columns: 52px 1fr 52px; gap: 12px; align-items: flex-end; margin-top: 18px; }
-        .message-input { width: 100%; min-height: 58px; max-height: 180px; padding: 16px 18px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: #f8fafc; font-size: 0.98rem; resize: vertical; outline: none; }
-        .action-btn { width: 52px; height: 52px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #dbeafe; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.18s ease; }
-        .action-btn:hover { transform: translateY(-2px); border-color: rgba(56,189,248,0.22); }
-        .send-action { grid-column: 3 / 4; background: linear-gradient(135deg, #22c55e, #06b6d4); color: #fff; border: none; }
-        .drop-area { margin-top: 18px; border: 2px dashed rgba(255,255,255,0.16); border-radius: 24px; padding: 20px; text-align: center; color: #cbd5e1; transition: border-color 0.2s ease, background 0.2s ease; cursor: pointer; }
-        .drop-area.dragover { border-color: #22c55e; background: rgba(34,197,94,0.08); }
-        .drop-area strong { display: block; font-size: 1rem; margin-bottom: 8px; }
-        .preview-panel { border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 18px; background: rgba(255,255,255,0.04); margin-top: 16px; display: grid; gap: 12px; }
-        .preview-panel img { width: 100%; border-radius: 16px; object-fit: contain; }
-        .preview-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .preview-actions button { border: none; border-radius: 14px; padding: 10px 14px; background: rgba(255,255,255,0.08); color: #dbeafe; cursor: pointer; }
-        .bottom-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; color: #9ca3af; font-size: 0.92rem; }
-        .bottom-meta a { color: #38bdf8; text-decoration: none; }
-        @media (max-width: 1120px) { .page-shell { grid-template-columns: 1fr; } .sidebar { position: sticky; top: 86px; width: 100%; margin: 0 auto 18px; } .chat-card { min-height: auto; } }
-        @media (max-width: 780px) {
-            .page-shell { padding: 12px; }
-            .topbar { padding: 0 16px; }
-            .chat-header { flex-direction: column; align-items: stretch; }
-            .chat-header .mini-badges { justify-content: flex-start; }
-            .input-row { grid-template-columns: 1fr 52px; }
-            .send-action { grid-column: 2 / 3; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { max-width: 100%; overflow-x: hidden; }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: radial-gradient(ellipse at 20% 0%, rgba(0,200,255,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 100%, rgba(139,92,246,0.06) 0%, transparent 50%),
+                        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ═══ LAYOUT ═══ */
+        .shell { display: flex; min-height: 100vh; }
+
+        /* ═══ SIDEBAR ═══ */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: rgba(4, 12, 30, 0.95);
+            border-left: 1px solid rgba(0,200,255,0.1);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            z-index: 200;
+            backdrop-filter: blur(20px);
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+            overflow-y: auto;
+        }
+        .sidebar-logo {
+            padding: 22px 20px;
+            border-bottom: 1px solid rgba(0,200,255,0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sidebar-logo .logo-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; color: white;
+            box-shadow: 0 0 15px rgba(0,200,255,0.3);
+            flex-shrink: 0;
+        }
+        .sidebar-logo .logo-text { font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700; color: #fff; }
+        .sidebar-logo .logo-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+        .sidebar-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; }
+        .nav-link {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 14px; border-radius: 14px;
+            color: var(--text-dim); text-decoration: none;
+            transition: all 0.2s ease; font-size: 0.93rem; font-weight: 500;
+            border: 1px solid transparent;
+            min-height: 44px;
+        }
+        .nav-link i { width: 20px; text-align: center; font-size: 0.88rem; }
+        .nav-link:hover { background: rgba(0,200,255,0.08); color: #fff; border-color: rgba(0,200,255,0.12); }
+        .nav-link.active {
+            background: linear-gradient(135deg, rgba(0,200,255,0.15), rgba(139,92,246,0.12));
+            color: var(--accent); border-color: rgba(0,200,255,0.25);
+            box-shadow: inset 0 0 12px rgba(0,200,255,0.06);
+        }
+        .nav-link.active i { color: var(--accent); }
+        .sidebar-footer { padding: 16px 10px; border-top: 1px solid rgba(0,200,255,0.08); }
+
+        /* ═══ TOPBAR (mobile) ═══ */
+        .topbar {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 60px; z-index: 300;
+            background: rgba(2, 8, 24, 0.95);
+            border-bottom: 1px solid rgba(0,200,255,0.1);
+            backdrop-filter: blur(15px);
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+        }
+        .topbar-logo { font-family: 'Orbitron', monospace; font-size: 0.9rem; color: var(--accent); font-weight: 700; }
+        .hamburger {
+            width: 44px; height: 44px;
+            border: 1px solid rgba(0,200,255,0.2); border-radius: 10px;
+            background: rgba(0,200,255,0.06);
+            color: var(--accent); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            z-index: 199; backdrop-filter: blur(3px);
+        }
+        .sidebar-overlay.active { display: block; }
+
+        /* ═══ MAIN ═══ */
+        .main {
+            flex: 1;
+            margin-right: var(--sidebar-w);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .page-header {
+            padding: 28px 32px 0;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+        }
+        .page-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.3rem; font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .page-subtitle { color: var(--text-dim); font-size: 0.9rem; margin-top: 4px; }
+        .header-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border-radius: 50px;
+            background: rgba(0,200,255,0.08);
+            border: 1px solid rgba(0,200,255,0.2);
+            font-size: 0.82rem; color: var(--accent);
+        }
+        .header-badge .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--success);
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)}
+            50%{box-shadow:0 0 0 6px rgba(16,185,129,0)}
+        }
+
+        /* ═══ CHAT AREA ═══ */
+        .chat-container {
+            flex: 1; display: flex; flex-direction: column;
+            padding: 24px 32px 0;
+            max-width: 900px; width: 100%; margin: 0 auto;
+            gap: 0;
+        }
+        .messages-area {
+            flex: 1; overflow-y: auto; min-height: 0;
+            padding: 16px 0;
+            display: flex; flex-direction: column; gap: 14px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Message Bubbles */
+        .bubble-wrap { display: flex; align-items: flex-end; gap: 10px; }
+        .bubble-wrap.user { flex-direction: row-reverse; }
+        .avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; flex-shrink: 0;
+        }
+        .avatar.ai { background: linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+        .avatar.user { background: linear-gradient(135deg,#10b981,#059669); color:#fff; }
+        .bubble {
+            max-width: 75%; padding: 14px 18px; border-radius: 20px;
+            line-height: 1.75; word-break: break-word;
+            font-size: 0.93rem; position: relative;
+        }
+        .bubble.ai {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 4px 20px 20px 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .bubble.user {
+            background: linear-gradient(135deg, #0ea5e9, #9333ea);
+            border-radius: 20px 4px 20px 20px;
+            color: #fff;
+        }
+        .bubble.system {
+            max-width: 90%; align-self: center;
+            background: rgba(139,92,246,0.1);
+            border: 1px solid rgba(139,92,246,0.25);
+            border-radius: 14px; padding: 12px 18px;
+            color: #c4b5fd; font-size: 0.88rem; text-align: center;
+        }
+        .bubble h1,.bubble h2,.bubble h3 { margin: 10px 0 6px; color: var(--accent); font-size: 1rem; }
+        .bubble strong { color: var(--accent); }
+        .bubble p { margin: 6px 0; }
+        .bubble ul,.bubble ol { margin: 6px 0 6px 20px; }
+        .bubble li { margin: 3px 0; }
+        .copy-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-top: 10px; padding: 6px 12px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px; color: var(--text-dim); cursor: pointer;
+            font-size: 0.78rem; transition: all 0.2s; font-family: 'Cairo', sans-serif;
+        }
+        .copy-btn:hover { background: rgba(0,200,255,0.1); color: var(--accent); }
+
+        /* Analysis Result Card */
+        .analysis-card {
+            background: linear-gradient(135deg, rgba(0,200,255,0.05), rgba(139,92,246,0.05));
+            border: 1px solid rgba(0,200,255,0.2);
+            border-radius: 18px; padding: 20px;
+            margin-top: 12px;
+        }
+        .analysis-card .card-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--accent); margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .analysis-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); gap: 10px; }
+        .analysis-item {
+            background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px;
+            text-align: center; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .analysis-item .label { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 5px; }
+        .analysis-item .value { font-size: 1rem; font-weight: 700; }
+        .value.buy { color: var(--success); }
+        .value.sell { color: var(--danger); }
+        .value.entry { color: var(--gold); }
+        .value.tp { color: #34d399; }
+        .value.sl { color: #f87171; }
+        .value.rr { color: var(--accent3); }
+
+        /* Typing indicator */
+        .typing { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+        .typing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: 0.3; animation: bounce 1.2s infinite ease-in-out; }
+        .typing-dot:nth-child(2){animation-delay:.2s}
+        .typing-dot:nth-child(3){animation-delay:.4s}
+        @keyframes bounce {0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+
+        /* Progress steps */
+        .progress-steps {
+            display: flex; align-items: center; justify-content: center; gap: 0;
+            padding: 14px 20px;
+            background: var(--card); border: 1px solid var(--card-border);
+            border-radius: 16px; margin-bottom: 8px;
+            flex-wrap: wrap; gap: 8px;
+        }
+        .step {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 50px;
+            font-size: 0.8rem; color: var(--text-dim);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .step.done { color: var(--success); border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
+        .step.active { color: var(--accent); border-color: rgba(0,200,255,0.3); background: rgba(0,200,255,0.06); animation: step-pulse 1.5s infinite; }
+        @keyframes step-pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,200,255,0.2)}50%{box-shadow:0 0 0 6px rgba(0,200,255,0)}}
+
+        /* Quick options */
+        .options-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .option-btn {
+            padding: 9px 16px; border-radius: 50px;
+            background: rgba(0,200,255,0.07);
+            border: 1px solid rgba(0,200,255,0.2);
+            color: var(--accent); cursor: pointer;
+            font-size: 0.84rem; font-weight: 600;
+            transition: all 0.2s ease;
+            font-family: 'Cairo', sans-serif;
+            min-height: 44px; display: inline-flex; align-items: center;
+        }
+        .option-btn:hover { background: rgba(0,200,255,0.15); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,200,255,0.15); }
+
+        /* ═══ INPUT AREA ═══ */
+        .input-zone {
+            position: sticky; bottom: 0;
+            background: linear-gradient(0deg, var(--bg) 60%, transparent);
+            padding: 16px 32px 24px;
+            max-width: 900px; width: 100%; margin: 0 auto;
+        }
+        .input-row {
+            display: flex; align-items: flex-end; gap: 10px;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 20px; padding: 10px 12px;
+            box-shadow: 0 0 30px rgba(0,200,255,0.06);
+            transition: border-color 0.2s;
+        }
+        .input-row:focus-within { border-color: rgba(0,200,255,0.35); }
+        .msg-textarea {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text); font-family: 'Cairo', sans-serif;
+            font-size: 0.95rem; resize: none; min-height: 44px; max-height: 120px;
+            line-height: 1.6; padding: 4px 8px;
+        }
+        .msg-textarea::placeholder { color: var(--text-dim); }
+        .send-btn {
+            width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border: none; color: #fff; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0,200,255,0.25);
+        }
+        .send-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,200,255,0.35); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .attach-btn {
+            width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-dim); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 1rem;
+            transition: all 0.2s; min-height: 44px;
+        }
+        .attach-btn:hover { background: rgba(0,200,255,0.1); color: var(--accent); }
+        .input-hint { text-align: center; font-size: 0.78rem; color: var(--text-dim); margin-top: 8px; }
+        .input-hint span { color: var(--accent); }
+
+        /* ═══ QUICK STARTERS ═══ */
+        .quick-starters {
+            padding: 0 32px 20px;
+            max-width: 900px; width: 100%; margin: 0 auto;
+        }
+        .starters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .starter-card {
+            background: var(--card); border: 1px solid var(--card-border);
+            border-radius: 16px; padding: 16px; cursor: pointer;
+            transition: all 0.25s ease; display: flex; flex-direction: column; gap: 8px;
+        }
+        .starter-card:hover { border-color: var(--card-hover); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,255,0.1); }
+        .starter-icon { font-size: 1.5rem; }
+        .starter-title { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+        .starter-desc { font-size: 0.78rem; color: var(--text-dim); line-height: 1.4; }
+
+        /* Image preview */
+        .img-preview-wrap {
+            display: none; margin: 8px 0;
+            background: rgba(0,200,255,0.04); border: 1px dashed rgba(0,200,255,0.2);
+            border-radius: 14px; padding: 12px;
+            align-items: center; gap: 12px;
+        }
+        .img-preview-wrap.show { display: flex; }
+        .img-preview-wrap img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+        .img-remove { margin-right: auto; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #f87171; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 0.8rem; font-family: 'Cairo', sans-serif; }
+
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(100%); }
+            .sidebar.open { transform: translateX(0); }
+            .topbar { display: flex; }
+            .main { margin-right: 0; margin-top: 60px; }
+            .page-header { padding: 20px 20px 0; }
+            .chat-container { padding: 16px 16px 0; }
+            .quick-starters { padding: 0 16px 16px; }
+            .input-zone { padding: 12px 16px 20px; }
+        }
+        @media (max-width: 640px) {
+            .bubble { max-width: 88%; font-size: 0.9rem; }
+            .page-title { font-size: 1.1rem; }
+            .starters-grid { grid-template-columns: 1fr 1fr; }
+            .analysis-grid { grid-template-columns: repeat(2, 1fr); }
+            .progress-steps { justify-content: flex-start; }
+        }
+        @media (max-width: 400px) {
+            .starters-grid { grid-template-columns: 1fr; }
+            .bubble { max-width: 95%; }
         }
     </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="topbar">
-        <div>
-            <h1>💬 VisionTrader AI</h1>
-            <div class="subtitle">المساعد التداولي الذكي للردود، تحليل الشارت، وتوصيات السوق.</div>
+
+<!-- Sidebar Overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- Topbar (mobile only) -->
+<header class="topbar">
+    <div class="topbar-logo">🤖 VisionTrader</div>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="القائمة">
+        <i class="fas fa-bars"></i>
+    </button>
+</header>
+
+<div class="shell">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">🤖</div>
+            <div>
+                <div class="logo-text">VisionTrader</div>
+                <div class="logo-sub">الوكيل الذكي للتداول</div>
+            </div>
         </div>
-        <div class="subtitle">الصفحة المدمجة للمحادثة وتحليل الصور</div>
-    </div>
-    <div class="page-shell">
-        <aside class="sidebar">
-            <nav style="display:grid; gap:4px;">
-                <a href="dashboard.html"><i class="fas fa-th-large"></i> <span>لوحة التحكم</span></a>
-                <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
-                <a href="upload.html" class="active"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
-                <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
-                <a href="journal.html"><i class="fas fa-book"></i> <span>دفتر اليوميات</span></a>
-                <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
-                <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
-            </nav>
-            <div class="panel">
-                <h2>نظرة سريعة</h2>
-                <p>يمكنك الآن الدردشة مباشرة مع المستشار الذكي، رفع صورة الشارت، والحصول على تحليل سوقي عملي في مكان واحد.</p>
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-link"><i class="fas fa-chart-pie"></i> لوحة التحكم</a>
+            <a href="upload.html" class="nav-link active"><i class="fas fa-robot"></i> الوكيل الذكي</a>
+            <a href="tv-chart.html" class="nav-link"><i class="fas fa-chart-area"></i> الشارت التفاعلي</a>
+            <a href="price-alerts.html" class="nav-link"><i class="fas fa-bell"></i> تنبيهات الأسعار</a>
+            <a href="history.html" class="nav-link"><i class="fas fa-history"></i> السجل</a>
+            <a href="journal.html" class="nav-link"><i class="fas fa-book-open"></i> دفتر التداول</a>
+            <a href="daily-report.html" class="nav-link"><i class="fas fa-file-pdf"></i> التقرير اليومي</a>
+            <a href="strategy_factory.html" class="nav-link"><i class="fas fa-flask"></i> مختبر الاستراتيجيات</a>
+            <a href="settings.html" class="nav-link"><i class="fas fa-cog"></i> الإعدادات</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="login.html" class="nav-link" id="logoutLink" style="color:var(--danger)">
+                <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">🤖 الوكيل الذكي</div>
+                <div class="page-subtitle">يسألك خطوة بخطوة ثم يحلل الشارت تلقائياً</div>
             </div>
-        </aside>
-        <section class="content">
-            <div class="chat-card">
-                <div class="chat-header">
-                    <div>
-                        <div class="title">محادثة الوكيل</div>
-                        <div class="welcome">أهلاً! أنا مستشارك الذكي. تقدر تسألني عن أي سوق أو ترفع شارت وأحلله لك.</div>
-                    </div>
-                    <div class="mini-badges">
-                        <span class="badge"><i class="fas fa-chart-line"></i> تحليل مباشر</span>
-                        <span class="badge"><i class="fas fa-bolt"></i> استجابة سريعة</span>
-                    </div>
-                </div>
-
-                <div class="messages-panel" id="messagesPanel"></div>
-                <div class="typing-indicator" id="typingIndicator">
-                    <div class="typing-dots"><span class="Typing-dot"></span><span class="Typing-dot"></span><span class="Typing-dot"></span></div>
-                    الوكيل يكتب الرد...</div>
-
-                <div class="quick-actions" id="quickActions"></div>
-                <div class="drop-area" id="dropArea">
-                    <strong>اسحب وأفلت صورة الشارت هنا</strong>
-                    <span>أو اضغط على أيقونة الصورة لإرفاق شارت</span>
-                </div>
-
-                <div class="preview-panel" id="previewPanel" style="display:none;"></div>
-
-                <div class="input-row">
-                    <button class="action-btn" id="attachButton" title="رفع صورة"><i class="fas fa-image"></i></button>
-                    <textarea id="messageInput" class="message-input" placeholder="اكتب سؤالك أو اطلب تحليل الشارت...\nShift+Enter لسطر جديد"></textarea>
-                    <button class="action-btn send-action" id="sendButton" title="إرسال"><i class="fas fa-paper-plane"></i></button>
-                </div>
-                <div class="bottom-meta">اقتراحات: <a href="#" class="prompt">حلل الذهب</a> · <a href="#" class="prompt">كيف حال البيتكوين؟</a> · <a href="#" class="prompt">آخر أخبار السوق</a></div>
-                <input type="file" id="fileInput" accept="image/*" hidden>
+            <div class="header-badge">
+                <div class="dot"></div>
+                Gemini Vision + TradingView
             </div>
-        </section>
-    </div>
+        </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-        const messagesPanel = document.getElementById('messagesPanel');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const attachButton = document.getElementById('attachButton');
-        const fileInput = document.getElementById('fileInput');
-        const dropArea = document.getElementById('dropArea');
-        const previewPanel = document.getElementById('previewPanel');
-        const typingIndicator = document.getElementById('typingIndicator');
-        const quickActions = document.getElementById('quickActions');
+        <!-- Chat messages -->
+        <div class="chat-container">
+            <div class="messages-area" id="messagesArea"></div>
+            <div id="typingIndicator" style="display:none">
+                <div class="bubble-wrap">
+                    <div class="avatar ai"><i class="fas fa-robot"></i></div>
+                    <div class="bubble ai">
+                        <div class="typing">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        let attachedImage = null;
+        <!-- Quick starters (shown only when chat is empty) -->
+        <div class="quick-starters" id="quickStarters">
+            <div class="starters-grid">
+                <div class="starter-card" onclick="sendQuick('أبي تحليل شارت')">
+                    <div class="starter-icon">📊</div>
+                    <div class="starter-title">تحليل شارت</div>
+                    <div class="starter-desc">أختار الزوج والإطار وأعطيك توصية كاملة</div>
+                </div>
+                <div class="starter-card" onclick="sendQuick('حلل الذهب XAUUSD')">
+                    <div class="starter-icon">🥇</div>
+                    <div class="starter-title">تحليل الذهب</div>
+                    <div class="starter-desc">XAUUSD — أشهر الأسواق وأكثرها تداولاً</div>
+                </div>
+                <div class="starter-card" onclick="sendQuick('حلل EURUSD')">
+                    <div class="starter-icon">💶</div>
+                    <div class="starter-title">تحليل اليورو</div>
+                    <div class="starter-desc">EURUSD — أكثر الأزواج سيولة</div>
+                </div>
+                <div class="starter-card" onclick="sendQuick('حلل البيتكوين')">
+                    <div class="starter-icon">₿</div>
+                    <div class="starter-title">تحليل البيتكوين</div>
+                    <div class="starter-desc">BTCUSDT — ملك العملات الرقمية</div>
+                </div>
+            </div>
+        </div>
 
-        function createBubble(text, role = 'ai') {
-            const bubble = document.createElement('div');
-            bubble.className = 'message ' + role;
-            if (role === 'ai' && window.marked) {
-                bubble.innerHTML = marked.parse(text);
-                
-                // Add a Copy Button
-                const copyBtn = document.createElement('button');
-                copyBtn.innerHTML = '<i class="far fa-copy"></i> نسخ التوصية';
-                copyBtn.style.cssText = 'display:block; margin-top:8px; padding:6px 12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#cbd5e1; cursor:pointer; font-size:0.8rem;';
-                copyBtn.onclick = () => {
-                    navigator.clipboard.writeText(text);
-                    copyBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
-                    setTimeout(() => {
-                        copyBtn.innerHTML = '<i class="far fa-copy"></i> نسخ التوصية';
-                    }, 2000);
-                };
-                bubble.appendChild(copyBtn);
-            } else {
-                bubble.innerText = text;
-            }
-            messagesPanel.appendChild(bubble);
-            messagesPanel.scrollTop = messagesPanel.scrollHeight;
-            return bubble;
-        }
+        <!-- Input area -->
+        <div class="input-zone">
+            <!-- Image preview -->
+            <div class="img-preview-wrap" id="imgPreviewWrap">
+                <img id="imgPreviewThumb" src="" alt="صورة الشارت">
+                <span id="imgPreviewName" style="font-size:0.83rem;color:var(--text-dim)"></span>
+                <button class="img-remove" onclick="removeAttachment()">✕ حذف</button>
+            </div>
 
-        function systemBubble(text) {
-            const bubble = document.createElement('div');
-            bubble.className = 'message system';
-            bubble.innerText = text;
-            messagesPanel.appendChild(bubble);
-            messagesPanel.scrollTop = messagesPanel.scrollHeight;
-            return bubble;
-        }
+            <div class="input-row">
+                <button class="attach-btn" id="attachBtn" onclick="document.getElementById('fileInput').click()" title="رفع صورة شارت">
+                    <i class="fas fa-image"></i>
+                </button>
+                <textarea class="msg-textarea" id="msgInput"
+                    placeholder="اكتب رسالتك... أو اضغط على أحد الاقتراحات ⬆"
+                    rows="1"></textarea>
+                <button class="send-btn" id="sendBtn" title="إرسال">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="input-hint">
+                اضغط <span>Enter</span> للإرسال · <span>Shift+Enter</span> لسطر جديد
+            </div>
+        </div>
 
-        function showTyping(on) {
-            typingIndicator.style.display = on ? 'flex' : 'none';
-            if (on) messagesPanel.scrollTop = messagesPanel.scrollHeight;
-        }
+        <input type="file" id="fileInput" accept="image/*" hidden>
+    </main>
+</div>
 
-        function marketHint(text) {
-            const lower = text.toLowerCase();
-            if (lower.includes('ذهب') || lower.includes('xau')) return 'XAUUSD';
-            if (lower.includes('بيتكوين') || lower.includes('btc')) return 'BTCUSDT';
-            return null;
-        }
+<script>
+// ══════════════════════════════════════════════════════
+//  VisionTrader AI — Smart Conversational Agent
+// ══════════════════════════════════════════════════════
+const messagesArea = document.getElementById('messagesArea');
+const msgInput     = document.getElementById('msgInput');
+const sendBtn      = document.getElementById('sendBtn');
+const typingInd    = document.getElementById('typingIndicator');
+const quickStart   = document.getElementById('quickStarters');
+const fileInput    = document.getElementById('fileInput');
+const imgPreview   = document.getElementById('imgPreviewWrap');
+const imgThumb     = document.getElementById('imgPreviewThumb');
+const imgName      = document.getElementById('imgPreviewName');
 
-        function analyzeIntent(text) {
-            return /\bحلل\b|\bأحلل\b|\bتحليل\b/.test(text);
-        }
+const API_BASE = '';
+let attachedImage = null;
+let isProcessing = false;
+let conversationStarted = false;
 
-        function handleImage(file) {
-            attachedImage = file;
-            const url = URL.createObjectURL(file);
-            previewPanel.innerHTML = `
-                <img src="${url}" alt="مُعطى الشارت">
-                <div class="preview-actions">
-                    <span>تم إرفاق: ${file.name} • ${Math.round(file.size/1024)} كيلوبايت</span>
-                    <button type="button" onclick="removeImage()">حذف</button>
-                </div>`;
-            previewPanel.style.display = 'grid';
-        }
+// Current conversation step tracking
+let convState = {
+    state: 'idle',
+    pair: null,
+    timeframe: null,
+    trade_type: null
+};
 
-        function removeImage() {
-            attachedImage = null;
-            previewPanel.style.display = 'none';
-            previewPanel.innerHTML = '';
-            systemBubble('تم حذف الصورة المرفقة.');
-        }
+// ── Helpers ──────────────────────────────────────────
+function getToken() {
+    return localStorage.getItem('token');
+}
 
-        async function sendToServer(question, file, market) {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = 'login.html';
-                return;
-            }
+function addMessage(content, role = 'ai', options = []) {
+    if (!conversationStarted) {
+        conversationStarted = true;
+        quickStart.style.display = 'none';
+    }
 
-            const form = new FormData();
-            form.append('question', question);
-            if (market) form.append('market', market);
-            if (file) form.append('image', file);
-            const headers = {
-                'Authorization': 'Bearer ' + token
-            };
-            const response = await fetch('/api/ai/agent', { method: 'POST', body: form, headers });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    localStorage.removeItem('token');
-                    window.location.href = 'login.html';
-                    return;
-                }
-                let errorText = response.statusText;
-                try {
-                    const json = await response.json();
-                    if (json.detail) errorText = json.detail;
-                } catch (e) {}
-                throw new Error('الخادم رد برمز ' + response.status + ' - ' + errorText);
-            }
-            return await response.json();
-        }
+    const wrap = document.createElement('div');
+    wrap.className = `bubble-wrap ${role}`;
 
-        async function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text && !attachedImage) { systemBubble('اكتب سؤالاً أو أرفق صورة الشارت قبل الإرسال.'); return; }
+    if (role === 'system') {
+        const b = document.createElement('div');
+        b.className = 'bubble system';
+        b.textContent = content;
+        messagesArea.appendChild(b);
+        scrollBottom();
+        return b;
+    }
 
-            createBubble(text || '📷 صورة مرفقة', 'user');
-            messageInput.value = '';
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${role}`;
+    avatar.innerHTML = role === 'ai' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
 
-            if (!attachedImage && analyzeIntent(text)) {
-                systemBubble('إذا كنت تريد تحليلًا دقيقًا، أضف صورة الشارت أو حدد سوقاً محدداً.');
-                return;
-            }
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${role}`;
 
-            const market = marketHint(text);
-            showTyping(true);
-            try {
-                const result = await sendToServer(text, attachedImage, market);
-                const answer = result.answer || 'تعذّر الحصول على رد. حاول مرة أخرى.';
-                createBubble(answer, 'ai');
-                if (result.visual_analysis && result.visual_analysis.analysis) {
-                    const va = result.visual_analysis.analysis;
-                    const vaText = typeof va === 'string' ? va : (va.note || va.recommendation || JSON.stringify(va));
-                    if (vaText) createBubble('📷 تحليل الصورة: ' + vaText, 'ai');
-                }
-            } catch (error) {
-                systemBubble('خطأ في الاتصال: ' + error.message);
-            } finally {
-                showTyping(false);
-                if (attachedImage) removeImage();
-            }
-        }
+    if (role === 'ai' && window.marked) {
+        bubble.innerHTML = marked.parse(content);
+        // Add copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.innerHTML = '<i class="far fa-copy"></i> نسخ التوصية';
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(content);
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+            setTimeout(() => copyBtn.innerHTML = '<i class="far fa-copy"></i> نسخ التوصية', 2500);
+        };
+        bubble.appendChild(copyBtn);
+    } else {
+        bubble.textContent = content;
+    }
 
-        attachButton.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (!file.type.startsWith('image/')) { systemBubble('الرجاء اختيار ملف صورة.'); return; }
-            handleImage(file);
-            systemBubble('تم إرفاق الصورة. اضغط إرسال لتحليل الشارت.');
-        });
-
-        ['dragenter','dragover'].forEach(evt => {
-            dropArea.addEventListener(evt, (e) => { e.preventDefault(); dropArea.classList.add('dragover'); });
-        });
-        ['dragleave','drop'].forEach(evt => {
-            dropArea.addEventListener(evt, (e) => {
-                e.preventDefault();
-                if (evt === 'drop') {
-                    const file = e.dataTransfer.files[0];
-                    if (!file || !file.type.startsWith('image/')) { systemBubble('الملف المرفوع ليس صورة.'); dropArea.classList.remove('dragover'); return; }
-                    handleImage(file);
-                    systemBubble('تم إرفاق صورة الشارت عبر السحب والإفلات.');
-                }
-                dropArea.classList.remove('dragover');
-            });
-        });
-
-        messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-        sendButton.addEventListener('click', sendMessage);
-
-        const quick = ['حلل الذهب', 'كيف حال البيتكوين؟', 'آخر أخبار السوق'];
-        quick.forEach(prompt => {
+    // Options buttons
+    if (options && options.length > 0) {
+        const optWrap = document.createElement('div');
+        optWrap.className = 'options-wrap';
+        options.forEach(opt => {
             const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'quick-pill';
-            btn.innerText = prompt;
-            btn.onclick = () => { messageInput.value = prompt; messageInput.focus(); };
-            quickActions.appendChild(btn);
+            btn.className = 'option-btn';
+            // Strip emoji for sending
+            const cleanOpt = opt.replace(/[^\u0600-\u06FF\w\s\-\/()]/g, '').trim() || opt;
+            btn.textContent = opt;
+            btn.onclick = () => sendMessage(cleanOpt);
+            optWrap.appendChild(btn);
+        });
+        bubble.appendChild(optWrap);
+    }
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(bubble);
+    messagesArea.appendChild(wrap);
+    scrollBottom();
+    return bubble;
+}
+
+function scrollBottom() {
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+}
+
+function showTyping(show) {
+    typingInd.style.display = show ? 'block' : 'none';
+    if (show) scrollBottom();
+}
+
+// ── Progress steps ────────────────────────────────────
+function updateProgressSteps(state, pair, tf) {
+    const existing = document.getElementById('progressSteps');
+    if (existing) existing.remove();
+
+    if (state === 'idle' || state === 'done') return;
+
+    const steps = [
+        { key: 'ask_pair',       label: pair || 'الزوج' },
+        { key: 'ask_timeframe',  label: tf || 'الإطار' },
+        { key: 'ask_trade_type', label: 'نوع التداول' },
+        { key: 'analyzing',      label: '🔍 تحليل' },
+    ];
+
+    const stateOrder = ['ask_pair','ask_timeframe','ask_trade_type','analyzing'];
+    const currentIdx = stateOrder.indexOf(state);
+
+    const bar = document.createElement('div');
+    bar.className = 'progress-steps';
+    bar.id = 'progressSteps';
+
+    steps.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.className = `step ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : ''}`;
+        el.innerHTML = i < currentIdx
+            ? `<i class="fas fa-check-circle"></i> ${s.label}`
+            : `<i class="fas fa-circle"></i> ${s.label}`;
+        bar.appendChild(el);
+    });
+
+    messagesArea.appendChild(bar);
+    scrollBottom();
+}
+
+// ── Image attachment ─────────────────────────────────
+fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { addMessage('الرجاء اختيار ملف صورة.', 'system'); return; }
+    attachedImage = file;
+    imgThumb.src = URL.createObjectURL(file);
+    imgName.textContent = file.name + ' · ' + Math.round(file.size/1024) + 'KB';
+    imgPreview.classList.add('show');
+});
+
+function removeAttachment() {
+    attachedImage = null;
+    imgPreview.classList.remove('show');
+    imgThumb.src = '';
+    fileInput.value = '';
+}
+
+// ── Send message ─────────────────────────────────────
+async function sendMessage(forcedText = null) {
+    if (isProcessing) return;
+    const text = (forcedText || msgInput.value).trim();
+    if (!text && !attachedImage) return;
+
+    const token = getToken();
+    if (!token) { window.location.href = 'login.html'; return; }
+
+    addMessage(text || '📷 صورة مرفقة', 'user');
+    msgInput.value = '';
+    autoResize();
+
+    // If image attached — use the regular agent for image analysis
+    if (attachedImage) {
+        isProcessing = true;
+        sendBtn.disabled = true;
+        showTyping(true);
+        try {
+            const form = new FormData();
+            form.append('question', text || 'حلل هذا الشارت');
+            form.append('image', attachedImage);
+            const res = await fetch(`${API_BASE}/api/ai/agent`, {
+                method: 'POST', body: form,
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) throw new Error('خطأ ' + res.status);
+            const data = await res.json();
+            addMessage(data.answer || 'تعذّر الحصول على رد.', 'ai');
+        } catch(e) {
+            addMessage('خطأ في التحليل: ' + e.message, 'system');
+        } finally {
+            showTyping(false); isProcessing = false; sendBtn.disabled = false;
+            removeAttachment();
+        }
+        return;
+    }
+
+    // Use conversational agent
+    isProcessing = true;
+    sendBtn.disabled = true;
+    showTyping(true);
+
+    try {
+        const form = new FormData();
+        form.append('message', text);
+
+        const res = await fetch(`${API_BASE}/api/ai/conversational-agent`, {
+            method: 'POST', body: form,
+            headers: { 'Authorization': 'Bearer ' + token }
         });
 
-        function registerBottomPrompts() {
-            document.querySelectorAll('.prompt').forEach(prompt => {
-                prompt.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const text = event.target.innerText.trim();
-                    if (!text) return;
-                    messageInput.value = text;
-                    messageInput.focus();
-                });
-            });
+        if (res.status === 401) { localStorage.removeItem('token'); window.location.href = 'login.html'; return; }
+        if (!res.ok) throw new Error('خطأ ' + res.status);
+
+        const data = await res.json();
+        showTyping(false);
+
+        // Update state
+        convState.state = data.state || 'idle';
+
+        // Handle "analyzing" state — show loading then fetch analysis
+        if (data.action === 'fetch_analysis') {
+            addMessage(data.message, 'ai');
+            showTyping(true);
+            // Auto-fetch the analysis result
+            await fetchAnalysis(token);
+            return;
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            createBubble('أهلاً! أنا مستشارك الذكي. تقدر تسألني عن أي سوق أو ترفع شارت وأحلله لك.', 'ai');
-            registerBottomPrompts();
+        addMessage(data.message, 'ai', data.options || []);
+
+        // Update progress
+        updateProgressSteps(data.state, convState.pair, convState.timeframe);
+
+    } catch(e) {
+        showTyping(false);
+        addMessage('حدث خطأ: ' + e.message + '. حاول مرة أخرى.', 'system');
+    } finally {
+        isProcessing = false;
+        sendBtn.disabled = false;
+    }
+}
+
+// Fetch the actual analysis (called after "analyzing" state)
+async function fetchAnalysis(token) {
+    try {
+        const form = new FormData();
+        form.append('message', 'get_analysis');
+        const res = await fetch(`${API_BASE}/api/ai/conversational-agent`, {
+            method: 'POST', body: form,
+            headers: { 'Authorization': 'Bearer ' + token }
         });
-    </script>
+        if (!res.ok) throw new Error('خطأ ' + res.status);
+        const data = await res.json();
+        showTyping(false);
+        addMessage(data.message, 'ai', data.options || []);
+    } catch(e) {
+        showTyping(false);
+        addMessage('تعذّر جلب التحليل. حاول مرة أخرى.', 'system');
+    } finally {
+        isProcessing = false;
+        sendBtn.disabled = false;
+    }
+}
+
+function sendQuick(text) {
+    msgInput.value = text;
+    sendMessage();
+}
+
+// ── Textarea auto-resize ──────────────────────────────
+function autoResize() {
+    msgInput.style.height = 'auto';
+    msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+}
+msgInput.addEventListener('input', autoResize);
+msgInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+sendBtn.addEventListener('click', () => sendMessage());
+
+// ── Sidebar (mobile) ──────────────────────────────────
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+// ── Logout ────────────────────────────────────────────
+document.getElementById('logoutLink').addEventListener('click', e => {
+    e.preventDefault();
+    localStorage.removeItem('token');
+    window.location.href = 'login.html';
+});
+
+// ── Init ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    if (!getToken()) { window.location.href = 'login.html'; return; }
+    // Welcome message
+    addMessage(
+        'أهلاً! 👋 أنا **وكيل التداول الذكي** في VisionTrader AI.\n\nأقدر أحلل لك أي شارت بشكل احترافي مع:\n✅ نقطة الدخول المثلى\n✅ وقف الخسارة (SL)\n✅ الأهداف (TP1, TP2, TP3)\n✅ نسبة المخاطرة/العائد (R:R)\n\nاختر من الأسفل أو اكتب مباشرة:',
+        'ai',
+        ['أبي تحليل شارت', 'حلل الذهب', 'حلل EURUSD', 'حلل البيتكوين']
+    );
+    conversationStarted = false;
+    quickStart.style.display = 'block';
+});
+</script>
 </body>
 </html>

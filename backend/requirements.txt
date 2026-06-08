@@ -51,3 +51,6 @@ psutil==6.0.0
 
 # Telegram Bot
 aiogram==2.25.1
+
+# Browser Automation (TradingView Screenshot)
+playwright>=1.40.0

@@ -2674,6 +2674,317 @@ async def super_ai_agent(
         logger.exception(f"super_ai_agent failed: {exc}")
         return _build_simple_response("حدث خطأ مؤقت. يرجى المحاولة مرة أخرى.", "error")
 
+# ─────────────────────────────────────────────────────────────
+# Conversational Agent — Multi-step trading analysis with auto TradingView screenshot
+# ─────────────────────────────────────────────────────────────
+CONV_STATES = {
+    "idle": "idle",
+    "ask_pair": "ask_pair",
+    "ask_timeframe": "ask_timeframe",
+    "ask_trade_type": "ask_trade_type",
+    "analyzing": "analyzing",
+    "done": "done",
+}
+
+SUPPORTED_PAIRS = [
+    "XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF",
+    "AUDUSD", "USDCAD", "BTCUSDT", "ETHUSDT", "USOIL",
+    "NAS100", "US30", "XAGUSD", "GBPJPY", "EURJPY",
+]
+
+SUPPORTED_TIMEFRAMES = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"]
+SUPPORTED_TRADE_TYPES = ["سكالبينج", "يومي", "سوينج", "scalping", "day", "swing"]
+
+PAIR_ALIASES = {
+    "ذهب": "XAUUSD", "gold": "XAUUSD", "xau": "XAUUSD",
+    "يورو": "EURUSD", "euro": "EURUSD", "eur": "EURUSD",
+    "باوند": "GBPUSD", "جنيه": "GBPUSD", "pound": "GBPUSD", "gbp": "GBPUSD",
+    "ين": "USDJPY", "yen": "USDJPY", "jpy": "USDJPY",
+    "بيتكوين": "BTCUSDT", "bitcoin": "BTCUSDT", "btc": "BTCUSDT",
+    "ايثيريوم": "ETHUSDT", "ethereum": "ETHUSDT", "eth": "ETHUSDT",
+    "نفط": "USOIL", "oil": "USOIL", "crude": "USOIL",
+    "ناسداك": "NAS100", "nasdaq": "NAS100", "nas": "NAS100",
+    "داو": "US30", "dow": "US30", "us30": "US30",
+    "فضة": "XAGUSD", "silver": "XAGUSD", "xag": "XAGUSD",
+    "كابي": "GBPJPY", "gbpjpy": "GBPJPY",
+}
+
+TF_ALIASES = {
+    "1m": "M1", "m1": "M1", "دقيقة": "M1",
+    "5m": "M5", "m5": "M5", "5 دقائق": "M5",
+    "15m": "M15", "m15": "M15", "15 دقيقة": "M15",
+    "30m": "M30", "m30": "M30", "30 دقيقة": "M30",
+    "1h": "H1", "h1": "H1", "ساعة": "H1", "ساعه": "H1",
+    "4h": "H4", "h4": "H4", "4 ساعات": "H4",
+    "1d": "D1", "d1": "D1", "يومي": "D1", "daily": "D1",
+    "1w": "W1", "w1": "W1", "اسبوعي": "W1", "weekly": "W1",
+}
+
+def _parse_pair(text: str) -> Optional[str]:
+    t = text.strip().upper()
+    if t in SUPPORTED_PAIRS:
+        return t
+    for alias, sym in PAIR_ALIASES.items():
+        if alias in text.lower():
+            return sym
+    return None
+
+def _parse_timeframe(text: str) -> Optional[str]:
+    t = text.strip().upper()
+    if t in SUPPORTED_TIMEFRAMES:
+        return t
+    for alias, tf in TF_ALIASES.items():
+        if alias in text.lower():
+            return tf
+    return None
+
+def _parse_trade_type(text: str) -> Optional[str]:
+    t = text.lower()
+    if any(k in t for k in ["سكالب", "scalp", "سريع"]):
+        return "سكالبينج"
+    if any(k in t for k in ["سوينج", "swing", "اسبوعي", "طويل"]):
+        return "سوينج"
+    if any(k in t for k in ["يومي", "day", "daily", "نهاري"]):
+        return "يومي"
+    return None
+
+def _is_analysis_request(text: str) -> bool:
+    keywords = ["حلل", "تحليل", "ابي", "أبي", "اريد", "أريد", "اعطني", "صفقة", "trade", "analyze", "analysis", "شارت", "chart", "توصية"]
+    return any(k in text.lower() for k in keywords)
+
+@app.post("/api/ai/conversational-agent")
+async def conversational_agent(
+    message: str = Form(""),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Multi-step conversational trading agent.
+    Guides user through: pair selection → timeframe → trade type → auto screenshot → AI analysis
+    """
+    message = (message or "").strip()
+    uid = current_user.id
+
+    # Init or retrieve session state
+    if uid not in USER_SESSIONS:
+        USER_SESSIONS[uid] = {"history": [], "last_market": None}
+    session = USER_SESSIONS[uid]
+
+    # Init conversation state
+    if "conv" not in session:
+        session["conv"] = {
+            "state": "idle",
+            "pair": None,
+            "timeframe": None,
+            "trade_type": None,
+        }
+    conv = session["conv"]
+
+    def reply(msg: str, state: str, options: list = None, action: str = None):
+        conv["state"] = state
+        return {
+            "message": msg,
+            "state": state,
+            "options": options or [],
+            "action": action or "",
+        }
+
+    # ── Handle RESET command ────────────────────────────────────────────────
+    if message.lower() in ["reset", "إعادة", "ابدأ من جديد", "جديد", "بداية"]:
+        session["conv"] = {"state": "idle", "pair": None, "timeframe": None, "trade_type": None}
+        return reply(
+            "حسناً، أبدأ من جديد! 🔄\n\nأنا وكيل التداول الذكي. تقدر تطلب مني:\n• تحليل شارت أي زوج\n• توصية بدخول وخروج\n• أو ترفع صورة شارت وأحللها\n\nبماذا أقدر أساعدك؟",
+            "idle",
+            ["أبي تحليل", "حلل الذهب", "ارفع شارت"]
+        )
+
+    # ── STATE: idle — detect if user wants analysis ─────────────────────────
+    if conv["state"] == "idle":
+        if not message:
+            return reply(
+                "أهلاً! 👋 أنا وكيل التداول الذكي في VisionTrader AI.\n\nأقدر أحلل لك أي زوج تداولي بشكل احترافي مع:\n✅ نقطة الدخول\n✅ وقف الخسارة (SL)\n✅ الأهداف (TP1, TP2, TP3)\n✅ نسبة المخاطرة/العائد (R:R)\n\nبماذا أقدر أساعدك؟",
+                "idle",
+                ["أبي تحليل شارت", "حلل الذهب", "حلل EURUSD", "حلل البيتكوين"]
+            )
+
+        # Try to detect pair directly from first message
+        detected_pair = _parse_pair(message)
+        if detected_pair:
+            conv["pair"] = detected_pair
+            conv["state"] = "ask_timeframe"
+            return reply(
+                f"ممتاز! اخترت **{detected_pair}** ✅\n\nأي إطار زمني تريد التحليل عليه؟",
+                "ask_timeframe",
+                ["M15", "H1", "H4", "D1", "M5", "M30", "W1"]
+            )
+
+        if _is_analysis_request(message):
+            conv["state"] = "ask_pair"
+            return reply(
+                "بالتأكيد! 📊 سأحلل لك الشارت بالكامل.\n\n**أولاً**: أي زوج أو سوق تريد تحليله؟",
+                "ask_pair",
+                ["XAUUSD (ذهب)", "EURUSD", "GBPUSD", "BTCUSDT", "NAS100", "USOIL", "ETHUSDT", "GBPJPY"]
+            )
+
+        # General question — pass to regular Gemini agent
+        api_key = getattr(settings, "GEMINI_API_KEY", "")
+        if api_key:
+            import httpx
+            contents = [
+                {"role": "user", "parts": [{"text": "أنت وكيل تداول ذكي. تجيب بالعربية بأسلوب ودود ومحترف. تقدر تساعد في تحليل الأسواق."}]},
+                {"role": "model", "parts": [{"text": "تمام، أنا جاهز لمساعدتك."}]},
+                {"role": "user", "parts": [{"text": message}]},
+            ]
+            for model_name in ["gemini-2.5-flash", "gemini-1.5-flash"]:
+                try:
+                    url_g = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                    async with httpx.AsyncClient(timeout=15) as client:
+                        resp = await client.post(url_g, json={"contents": contents, "generationConfig": {"maxOutputTokens": 512}})
+                        resp.raise_for_status()
+                        ans = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        return reply(ans, "idle", ["أبي تحليل شارت", "حلل الذهب"])
+                except Exception:
+                    pass
+        return reply("يمكنني مساعدتك في تحليل الأسواق! اكتب 'أبي تحليل' وسأسألك عن التفاصيل. 📊", "idle", ["أبي تحليل شارت"])
+
+    # ── STATE: ask_pair ─────────────────────────────────────────────────────
+    if conv["state"] == "ask_pair":
+        pair = _parse_pair(message)
+        if not pair:
+            return reply(
+                "لم أتعرف على الزوج. جرب أحد هذه الخيارات أو اكتب رمز الزوج مباشرة:",
+                "ask_pair",
+                ["XAUUSD", "EURUSD", "GBPUSD", "BTCUSDT", "NAS100", "USOIL", "ETHUSDT", "USDJPY"]
+            )
+        conv["pair"] = pair
+        conv["state"] = "ask_timeframe"
+        return reply(
+            f"ممتاز! اخترت **{pair}** ✅\n\n**ثانياً**: أي إطار زمني تريد التحليل عليه؟",
+            "ask_timeframe",
+            ["M5 (5 دقائق)", "M15 (15 دقيقة)", "H1 (ساعة)", "H4 (4 ساعات)", "D1 (يومي)", "W1 (أسبوعي)"]
+        )
+
+    # ── STATE: ask_timeframe ────────────────────────────────────────────────
+    if conv["state"] == "ask_timeframe":
+        tf = _parse_timeframe(message)
+        if not tf:
+            return reply(
+                "لم أتعرف على الإطار الزمني. اختر أحد هذه:",
+                "ask_timeframe",
+                ["M5", "M15", "H1", "H4", "D1", "W1"]
+            )
+        conv["timeframe"] = tf
+        conv["state"] = "ask_trade_type"
+        return reply(
+            f"ممتاز! **{conv['pair']}** على **{tf}** ✅\n\n**ثالثاً**: ما نوع التداول الذي تفضله؟",
+            "ask_trade_type",
+            ["سكالبينج ⚡ (دقائق)", "يومي 📅 (ساعات)", "سوينج 🌊 (أيام/أسابيع)"]
+        )
+
+    # ── STATE: ask_trade_type ───────────────────────────────────────────────
+    if conv["state"] == "ask_trade_type":
+        trade_type = _parse_trade_type(message)
+        if not trade_type:
+            trade_type = "يومي"  # Default
+        conv["trade_type"] = trade_type
+        conv["state"] = "analyzing"
+
+        pair = conv["pair"]
+        tf = conv["timeframe"]
+
+        # Start async analysis
+        return reply(
+            f"🔍 **بدأت التحليل!**\n\nأفتح شارت **{pair}** على الإطار **{tf}** تلقائياً...\nسيصلك التحليل الكامل خلال ثوانٍ ⏳",
+            "analyzing",
+            [],
+            "fetch_analysis"
+        )
+
+    # ── STATE: analyzing — perform the actual screenshot + Gemini analysis ──
+    if conv["state"] == "analyzing":
+        pair = conv.get("pair", "XAUUSD")
+        tf = conv.get("timeframe", "H1")
+        trade_type = conv.get("trade_type", "يومي")
+
+        # Try to get TradingView screenshot
+        screenshot_b64 = None
+        try:
+            from services.tv_screenshot import get_chart_as_base64
+            screenshot_b64 = await asyncio.wait_for(
+                get_chart_as_base64(pair, tf),
+                timeout=30
+            )
+        except Exception as e:
+            logger.warning(f"TV screenshot failed in conv agent: {e}")
+
+        # Build analysis prompt
+        analysis_prompt = f"""أنت محلل تداول خبير. حلل شارت {pair} على الإطار الزمني {tf} لتداول {trade_type}.
+
+قدم تحليلاً احترافياً شاملاً يشمل:
+1. 📈 **الاتجاه العام**: (صعودي/هابط/عرضي)
+2. 🎯 **نقطة الدخول المثلى**: السعر الدقيق أو المنطقة
+3. 🛑 **وقف الخسارة (SL)**: السعر الدقيق مع السبب
+4. 🎯 **الهدف الأول (TP1)**: 
+5. 🎯 **الهدف الثاني (TP2)**: 
+6. 🎯 **الهدف الثالث (TP3)**: 
+7. ⚖️ **نسبة المخاطرة/العائد (R:R)**
+8. 💡 **ملاحظات إضافية**: مستويات دعم/مقاومة، نماذج سعرية، أي تحذيرات
+
+أسلوبك: احترافي، واضح، ومباشر. استخدم الأرقام الفعلية قدر الإمكان."""
+
+        api_key = getattr(settings, "GEMINI_API_KEY", "")
+        analysis_result = ""
+
+        if api_key:
+            import httpx
+            for model_name in ["gemini-2.5-flash", "gemini-1.5-flash"]:
+                try:
+                    url_g = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                    parts = [{"text": analysis_prompt}]
+                    if screenshot_b64:
+                        parts.append({"inlineData": {"mimeType": "image/png", "data": screenshot_b64}})
+                    payload = {
+                        "contents": [{"role": "user", "parts": parts}],
+                        "generationConfig": {"temperature": 0.5, "maxOutputTokens": 1500}
+                    }
+                    async with httpx.AsyncClient(timeout=30) as client:
+                        resp = await client.post(url_g, json=payload)
+                        resp.raise_for_status()
+                        analysis_result = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        break
+                except Exception as e:
+                    logger.warning(f"Gemini analysis in conv agent failed ({model_name}): {e}")
+
+        if not analysis_result:
+            analysis_result = f"""📊 **تحليل {pair} — {tf}**
+
+⚠️ تعذّر الاتصال بمحرك التحليل الآن. لكن إليك توجيهات عامة:
+
+• تحقق من مستويات الدعم والمقاومة الرئيسية
+• انظر لاتجاه المتوسطات المتحركة (MA 20, MA 50)
+• تأكد من مؤشر RSI (شراء مفرط > 70، بيع مفرط < 30)
+• لا تدخل صفقة بدون تأكيد واضح من الشارت
+
+حاول مرة أخرى لاحقاً للحصول على تحليل كامل بالأرقام. 🔄"""
+
+        # Reset conversation after analysis
+        session["conv"] = {"state": "idle", "pair": None, "timeframe": None, "trade_type": None}
+        session["last_market"] = pair
+
+        chart_note = "\n\n📸 *تم فتح الشارت من TradingView تلقائياً وتحليله بالذكاء الاصطناعي*" if screenshot_b64 else "\n\n⚠️ *لم يتمكن من فتح الشارت تلقائياً — التحليل بناءً على بيانات السوق*"
+
+        return reply(
+            analysis_result + chart_note,
+            "done",
+            ["تحليل زوج آخر", "أبي تحليل جديد", "إعادة"],
+            "analysis_complete"
+        )
+
+    # Fallback
+    session["conv"] = {"state": "idle", "pair": None, "timeframe": None, "trade_type": None}
+    return reply("حدث خطأ في المحادثة. اضغط 'إعادة' للبدء من جديد.", "idle", ["إعادة"])
+
+
 @app.post("/api/chart/detect")
 async def detect_chart_screenshot(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
     if not file:

@@ -26,19 +26,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<header class="topbar-mobile">
+    <div class="brand-mobile">🤖 VisionTrader</div>
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="القائمة"><i class="fas fa-bars"></i></button>
+</header>
     <div class="app-layout">
-        <!-- Sidebar Same as before -->
-        <aside class="sidebar">
-            <div class="brand"><i class="fas fa-cogs"></i><span>Strategy Factory</span></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="brand"><div class="brand-icon">🤖</div><span>VisionTrader AI</span></div>
             <nav class="nav">
-                <a href="dashboard.html"><i class="fas fa-th-large"></i> <span>لوحة التحكم</span></a>
+                <a href="dashboard.html"><i class="fas fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+                <a href="upload.html"><i class="fas fa-robot"></i> <span>الوكيل الذكي</span></a>
                 <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
-                <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
                 <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
-                <a href="journal.html"><i class="fas fa-book"></i> <span>دفتر اليوميات</span></a>
                 <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+                <a href="journal.html"><i class="fas fa-book-open"></i> <span>دفتر التداول</span></a>
+                <a href="strategy_factory.html" class="active"><i class="fas fa-flask"></i> <span>مختبر الاستراتيجيات</span></a>
                 <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
             </nav>
+            <div style="padding:12px 10px;">
+                <button class="btn btn-danger" style="width:100%;" onclick="localStorage.removeItem('token');window.location.href='login.html';"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            </div>
         </aside>
 
         <main class="main-content fade-in">
@@ -373,15 +381,25 @@
         }
         protectStrategyFactory();
     </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('Service Worker registered:', reg.scope))
-                    .catch(err => console.warn('SW registration failed:', err));
-            });
-        }
-    </script>
     <script src="js/theme.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+        (function() {
+            function fix() {
+                var m = document.querySelector('.main-content');
+                if (!m) return;
+                m.style.marginRight = window.innerWidth <= 1024 ? '0' : '';
+                m.style.marginTop  = window.innerWidth <= 1024 ? '60px' : '';
+            }
+            fix(); window.addEventListener('resize', fix);
+        })();
+    </script>
 </body>
-</html>
+</html>
