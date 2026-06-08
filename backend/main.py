@@ -1441,7 +1441,8 @@ def account_summary(db: Session = Depends(get_db), current_user: models.User = D
     ).first()
     return {
         "email": current_user.email,
-        "account_balance": prefs.account_balance,
+        "account_balance": prefs.demo_balance if prefs.demo_mode else prefs.account_balance,
+        "demo_mode": prefs.demo_mode,
         "trading_mode": prefs.trading_mode,
         "watchlist": json.loads(prefs.watchlist or "[]"),
         "daily_report": {
@@ -2510,20 +2511,23 @@ async def super_ai_agent(
             current_parts.append({"inlineData": {"mimeType": image_mime, "data": image_b64}})
         contents.append({"role": "user", "parts": current_parts})
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": contents,
-            "generationConfig": {"temperature": 0.75, "maxOutputTokens": 1024}
-        }
-        try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                resp = await client.post(url, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        except Exception as exc:
-            logger.exception(f"Gemini API call failed: {exc}")
-            return ""
+        # Try gemini-3.0-flash, fallback to gemini-2.5-flash, then gemini-1.5-flash
+        models_to_try = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+        for model_name in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            payload = {
+                "contents": contents,
+                "generationConfig": {"temperature": 0.75, "maxOutputTokens": 1024}
+            }
+            try:
+                async with httpx.AsyncClient(timeout=20) as client:
+                    resp = await client.post(url, json=payload)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            except Exception as exc:
+                logger.warning(f"Gemini API call with {model_name} failed: {exc}")
+        return ""
 
     # ── Helper: detect market symbol from text ─────────────────────────────────
     def detect_market(text: str) -> str:

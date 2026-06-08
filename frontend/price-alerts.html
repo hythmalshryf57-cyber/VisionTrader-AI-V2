@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Alerts - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        .alerts-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1.8fr; gap: 30px; }
+        @media (max-width: 850px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+        .form-card { background: var(--card-glass); border: 1px solid var(--border-glass); border-radius: 20px; padding: 24px; backdrop-filter: blur(15px); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: var(--text-dim); }
+        .badge-active { background: rgba(0, 255, 136, 0.1); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.2); }
+        .badge-triggered { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border: 1px solid rgba(255, 77, 77, 0.2); }
+        .badge { padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
+            <nav class="nav">
+                <a href="dashboard.html"><i class="fas fa-th-large"></i> <span>لوحة التحكم</span></a>
+                <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
+                <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
+                <a href="price-alerts.html" class="active"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
+                <a href="journal.html"><i class="fas fa-book"></i> <span>دفتر اليوميات</span></a>
+                <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+                <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+            </nav>
+        </aside>
+
+        <main class="main-content fade-in">
+            <div class="alerts-container">
+                <h1 style="margin-bottom: 8px;"><i class="fas fa-bell"></i> تنبيهات الأسعار الذكية</h1>
+                <p style="color: var(--text-dim); margin-bottom: 30px;">راقب الأسواق واحصل على إشعار فوري عند وصول السعر لهدفك</p>
+
+                <div class="grid-layout">
+                    <!-- Create Alert -->
+                    <div class="form-card">
+                        <h3 style="margin-bottom: 20px;"><i class="fas fa-plus-circle"></i> إضافة تنبيه جديد</h3>
+                        <form id="createAlertForm">
+                            <div class="form-group">
+                                <label>رمز السوق (مثال: BTCUSDT, XAUUSDT)</label>
+                                <input type="text" id="marketInput" class="cosmic-input" placeholder="BTCUSDT" style="margin-bottom:0;" required>
+                            </div>
+                            <div class="form-group">
+                                <label>السعر المستهدف</label>
+                                <input type="number" id="targetPriceInput" step="0.000001" class="cosmic-input" placeholder="65000" style="margin-bottom:0;" required>
+                            </div>
+                            <div class="form-group">
+                                <label>الاتجاه</label>
+                                <select id="directionInput" class="cosmic-input" style="margin-bottom:0;">
+                                    <option value="above">أعلى من أو يساوي (Above)</option>
+                                    <option value="below">أقل من أو يساوي (Below)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">إنشاء التنبيه</button>
+                        </form>
+                    </div>
+
+                    <!-- Alerts List -->
+                    <div class="form-card">
+                        <h3 style="margin-bottom: 20px;"><i class="fas fa-list"></i> التنبيهات الحالية</h3>
+                        <div id="alertsList" style="display: grid; gap: 14px;">
+                            <div style="color: var(--text-dim);">جاري تحميل التنبيهات...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        async function loadAlerts() {
+            const listEl = document.getElementById('alertsList');
+            try {
+                const alerts = await api.request('GET', '/api/price-alerts', null, true);
+                if (!alerts || alerts.length === 0) {
+                    listEl.innerHTML = '<div style="color: var(--text-dim);">لا توجد تنبيهات أسعار نشطة حالياً.</div>';
+                    return;
+                }
+                listEl.innerHTML = alerts.map(alert => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:rgba(255,255,255,0.03); border-radius:14px; border:1px solid rgba(255,255,255,0.05);">
+                        <div>
+                            <strong style="font-size:1.1rem; color:#fff;">${alert.market}</strong>
+                            <div style="font-size:0.85rem; color:var(--text-dim); margin-top:4px;">
+                                السعر: ${alert.target_price} • الاتجاه: ${alert.direction === 'above' ? 'صعوداً ↗️' : 'هبوطاً ↘️'}
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="badge ${alert.active ? 'badge-active' : 'badge-triggered'}">
+                                ${alert.active ? 'نشط' : 'تم التنبيه'}
+                            </span>
+                            ${alert.active ? `
+                                <button class="btn btn-ghost" style="padding:6px 12px; min-height:auto; min-width:auto; font-size:0.85rem;" onclick="deleteAlert(${alert.id})">
+                                    <i class="fas fa-trash-alt"></i> إزالة
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                listEl.innerHTML = '<div style="color: #ff4d4d;">فشل تحميل التنبيهات.</div>';
+            }
+        }
+
+        async function deleteAlert(id) {
+            try {
+                await api.request('POST', '/api/price-alerts/delete', { id }, true);
+                loadAlerts();
+            } catch (err) {
+                alert('فشل حذف التنبيه: ' + err.message);
+            }
+        }
+
+        document.getElementById('createAlertForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                market: document.getElementById('marketInput').value.trim().toUpperCase(),
+                target_price: parseFloat(document.getElementById('targetPriceInput').value),
+                direction: document.getElementById('directionInput').value
+            };
+            try {
+                await api.request('POST', '/api/price-alerts', payload, true);
+                document.getElementById('marketInput').value = '';
+                document.getElementById('targetPriceInput').value = '';
+                loadAlerts();
+            } catch (err) {
+                alert('فشل إنشاء التنبيه: ' + err.message);
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAlerts();
+        });
+    </script>
+</body>
+</html>

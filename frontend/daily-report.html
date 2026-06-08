@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionTrader AI - تقرير التداول اليومي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #ffffff;
+            color: #1a1a1a;
+            padding: 40px;
+            direction: rtl;
+            margin: 0;
+        }
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .report-title {
+            text-align: left;
+        }
+        .report-title h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            color: #0f172a;
+        }
+        .report-title p {
+            margin: 4px 0 0;
+            color: #64748b;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .metric-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .metric-card h3 {
+            margin: 0 0 8px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+        .metric-card p {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+        th, td {
+            padding: 14px;
+            text-align: right;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+        }
+        .win {
+            color: #10b981;
+            font-weight: bold;
+        }
+        .loss {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        .no-print-zone {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-print {
+            background: #0f172a;
+            color: white;
+        }
+        .btn-back {
+            background: #e2e8f0;
+            color: #334155;
+        }
+        @media print {
+            .no-print-zone {
+                display: none;
+            }
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print-zone">
+        <button class="btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة التقرير / حفظ كـ PDF</button>
+        <button class="btn btn-back" onclick="window.location.href='dashboard.html'">العودة للوحة التحكم</button>
+    </div>
+
+    <div class="report-header">
+        <div class="logo">VisionTrader AI</div>
+        <div class="report-title">
+            <h1>تقرير تداول اليوم</h1>
+            <p id="reportDate">التاريخ: --</p>
+        </div>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <h3>إجمالي صفقات اليوم</h3>
+            <p id="totalTrades">--</p>
+        </div>
+        <div class="metric-card">
+            <h3>نسبة النجاح</h3>
+            <p id="winRate">--</p>
+        </div>
+        <div class="metric-card">
+            <h3>إجمالي الربح/الخسارة</h3>
+            <p id="netPnL">--</p>
+        </div>
+        <div class="metric-card">
+            <h3>أفضل صفقة</h3>
+            <p id="bestTrade">--</p>
+        </div>
+    </div>
+
+    <h2>تفاصيل صفقات اليوم</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>الوقت</th>
+                <th>السوق</th>
+                <th>التوصية</th>
+                <th>النتيجة</th>
+                <th>الأرباح والخسائر ($)</th>
+                <th>ملاحظات</th>
+            </tr>
+        </thead>
+        <tbody id="tradesTableBody">
+            <tr>
+                <td colspan="6" style="text-align:center; color:#888;">جاري تحميل صفقات اليوم...</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 50px; text-align: center; color:#64748b; font-size: 0.85rem;">
+        صُدر هذا التقرير تلقائياً بواسطة منصة VisionTrader AI للتداول الذكي.
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('reportDate').innerText = 'التاريخ: ' + new Date().toLocaleDateString('ar-EG');
+
+        async function loadReportData() {
+            try {
+                const todayStats = await api.getTodayStats();
+                document.getElementById('totalTrades').innerText = todayStats.total_trades || 0;
+                document.getElementById('winRate').innerText = (todayStats.win_rate || 0) + '%';
+                
+                const pnl = todayStats.profit_loss || 0;
+                document.getElementById('netPnL').innerText = (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '$';
+                document.getElementById('netPnL').style.color = pnl >= 0 ? '#10b981' : '#ef4444';
+
+                // Load journal entries to display in the table
+                const entries = await api.getJournal();
+                const todayStr = new Date().toDateString();
+                const todayEntries = entries.filter(e => new Date(e.date).toDateString() === todayStr);
+
+                const body = document.getElementById('tradesTableBody');
+                if (todayEntries.length === 0) {
+                    body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">لا توجد صفقات مسجلة اليوم.</td></tr>';
+                    document.getElementById('bestTrade').innerText = '--';
+                    return;
+                }
+
+                let maxProfit = 0;
+                todayEntries.forEach(e => {
+                    if (e.profit_loss > maxProfit) {
+                        maxProfit = e.profit_loss;
+                    }
+                });
+                document.getElementById('bestTrade').innerText = maxProfit > 0 ? '+' + maxProfit.toFixed(2) + '$' : '--';
+
+                body.innerHTML = todayEntries.map(e => {
+                    const sign = e.profit_loss >= 0 ? '+' : '';
+                    const classPnl = e.profit_loss >= 0 ? 'win' : 'loss';
+                    return `
+                        <tr>
+                            <td>${new Date(e.date).toLocaleTimeString('ar-EG')}</td>
+                            <td><strong>${e.market}</strong></td>
+                            <td>${e.recommendation === 'Buy' || e.recommendation === 'شراء' ? 'شراء' : 'بيع'}</td>
+                            <td><span class="${classPnl}">${e.result === 'Win' || e.result === 'رابحة' ? 'رابحة ✅' : 'خاسرة ❌'}</span></td>
+                            <td class="${classPnl}">${sign}${e.profit_loss.toFixed(2)}$</td>
+                            <td style="color:#64748b; font-size:0.9rem;">${e.notes || ''}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Check auto-print param
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('autoprint') === 'true') {
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                }
+            } catch (err) {
+                console.error('Failed to load report data', err);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', loadReportData);
+    </script>
+</body>
+</html>

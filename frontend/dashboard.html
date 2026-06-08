@@ -18,20 +18,21 @@
         .smart-note { background: rgba(0, 189, 255, 0.05); border-right: 4px solid #00bdff; padding: 20px; border-radius: 10px; margin-top: 20px; }
         
         .alert-item { display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 12px; margin-bottom: 10px; border-right: 3px solid var(--accent-blue); }
-        .session-timeout { position: fixed; bottom: 20px; right: 20px; background: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; padding: 10px 20px; border-radius: 10px; font-size: 0.8rem; color: #ff4d4d; z-index: 1000; display: flex; align-items: center; gap: 10px; }
+        .badge-active { background: rgba(0, 255, 136, 0.1) !important; color: #00ff88 !important; border: 1px solid rgba(0, 255, 136, 0.2) !important; }
+        .badge-triggered { background: rgba(255, 77, 77, 0.1) !important; color: #ff4d4d !important; border: 1px solid rgba(255, 77, 77, 0.2) !important; }
+        .badge { padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
     <div class="app-layout">
-        <!-- Sidebar Same as before -->
         <aside class="sidebar">
             <div class="brand"><i class="fas fa-eye"></i><span>VisionTrader AI</span></div>
             <nav class="nav">
                 <a href="dashboard.html" class="active"><i class="fas fa-th-large"></i> <span>لوحة التحكم</span></a>
-                <a href="strategy_factory.html"><i class="fas fa-cogs"></i> <span>مصنع الاستراتيجيات</span></a>
+                <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
                 <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
-                <a href="chat.html"><i class="fas fa-comments"></i> <span>المساعد الذكي</span></a>
+                <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
                 <a href="journal.html"><i class="fas fa-book"></i> <span>دفتر اليوميات</span></a>
                 <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
                 <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
@@ -46,28 +47,48 @@
                             <h1 data-i18n="welcome_title">مرحباً، متداول Alpha</h1>
                             <p data-i18n="welcome_subtitle">آخر تحليلاتك كانت على <b>الذهب (XAUUSD)</b> بنسبة ثقة 92%.</p>
                         </div>
-                        <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:10px; position:relative;">
+                            <button class="btn btn-ghost" id="notiBell" onclick="toggleNotifications()" title="التنبيهات" style="position:relative;">🔔 <span id="notiCount" style="background:#ff4d4d; color:white; border-radius:50%; padding:2px 6px; font-size:0.7rem; position:absolute; top:-2px; right:-2px; display:none;">0</span></button>
                             <button class="btn btn-ghost" data-theme-toggle onclick="api.toggleTheme()" title="Toggle theme">☀️</button>
                             <button class="btn btn-ghost" data-lang-toggle onclick="api.toggleLanguage()" title="Toggle language">EN</button>
+                            
+                            <div id="notiDropdown" style="display:none; position:absolute; left:0; top:50px; background:#0b1426; border:1px solid rgba(0,242,254,0.3); border-radius:12px; padding:15px; width:280px; box-shadow:0 10px 30px rgba(0,0,0,0.5); z-index:999; text-align:right;">
+                                <h4 style="margin:0 0 10px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; color:#fff;">التنبيهات الأخيرة</h4>
+                                <div id="notiList" style="display:grid; gap:10px; font-size:0.85rem; max-height:200px; overflow-y:auto; color:#cbd5e1;">
+                                    لا توجد تنبيهات جديدة.
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div style="margin-top: 15px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                         <label class="switch-container" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                            <span data-i18n="shadow_mode">النمط الوهمي (Shadow Mode):</span>
-                            <input type="checkbox" id="shadowModeToggle">
+                            <span>الوضع التجريبي (Demo Mode):</span>
+                            <input type="checkbox" id="demoModeToggle" onchange="toggleDemoDashboard()">
                             <span class="slider"></span>
                         </label>
-                        <button id="voiceBtn" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
-                            <i class="fas fa-microphone"></i>
-                        </button>
-                        <span id="voiceStatus" style="font-size: 0.8rem; opacity: 0.7;"></span>
                     </div>
                 </div>
                 <div style="text-align: left; min-width: 220px;">
-                    <div style="font-size: 0.8rem; opacity: 0.8;" data-i18n="account_balance">رصيد الحساب</div>
-                    <div style="font-size: 1.8rem; font-weight: bold;" id="accountBalanceDisplay">$1,000,000.00</div>
-                    <div style="margin-top: 6px; color: #d1d5db; font-size: 0.95rem;" data-i18n="trading_mode">وضع التداول:</div>
-                    <div style="margin-top: 4px; color: #d1d5db; font-size: 0.95rem;"><strong id="tradingModeDisplay">day</strong></div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;" id="accountBalanceLabel">رصيد الحساب</div>
+                    <div style="font-size: 1.8rem; font-weight: bold;" id="accountBalanceDisplay">$--</div>
+                    <div style="margin-top: 6px; color: #d1d5db; font-size: 0.95rem;">وضع التداول:</div>
+                    <div style="margin-top: 4px; color: #d1d5db; font-size: 0.95rem;"><strong id="tradingModeDisplay">--</strong></div>
+                </div>
+            </div>
+
+            <!-- Real-time Price Tickers -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div class="card shimmer-card" style="padding:20px; text-align:center; position:relative;">
+                    <span style="color:var(--text-dim); font-size:0.9rem;">Bitcoin (BTC/USD)</span>
+                    <h2 style="margin: 10px 0 0; font-family:'Orbitron',sans-serif; color:#fff; font-weight:700; transition: color 0.3s;" id="price-BTC/USD">--.--</h2>
+                </div>
+                <div class="card shimmer-card" style="padding:20px; text-align:center; position:relative;">
+                    <span style="color:var(--text-dim); font-size:0.9rem;">Ethereum (ETH/USD)</span>
+                    <h2 style="margin: 10px 0 0; font-family:'Orbitron',sans-serif; color:#fff; font-weight:700; transition: color 0.3s;" id="price-ETH/USD">--.--</h2>
+                </div>
+                <div class="card shimmer-card" style="padding:20px; text-align:center; position:relative;">
+                    <span style="color:var(--text-dim); font-size:0.9rem;">Gold (XAU/USD)</span>
+                    <h2 style="margin: 10px 0 0; font-family:'Orbitron',sans-serif; color:#fff; font-weight:700; transition: color 0.3s;" id="price-XAU/USD">--.--</h2>
                 </div>
             </div>
 
@@ -78,6 +99,36 @@
             </div>
 
             <div class="memory-grid">
+                <!-- Market Clock Card -->
+                <div class="memory-card" id="marketClockCard">
+                    <h3>🕰️ ساعات السوق</h3>
+                    <div style="margin-top: 18px; display:grid; gap:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>طوكيو (Tokyo)</span>
+                            <span id="tokyoSession" class="badge badge-triggered">مغلق</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>لندن (London)</span>
+                            <span id="londonSession" class="badge badge-triggered">مغلق</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>نيويورك (New York)</span>
+                            <span id="nySession" class="badge badge-triggered">مغلق</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:#aaa; text-align:center; margin-top:8px;">
+                            التوقيت الحالي UTC: <span id="utcTime">00:00:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- P&L Chart Card -->
+                <div class="memory-card" style="grid-column: span 2;">
+                    <h3>📈 مخطط الأرباح والخسائر اليومي</h3>
+                    <div style="position: relative; height: 260px; width: 100%;">
+                        <canvas id="pnlChart"></canvas>
+                    </div>
+                </div>
+
                 <div class="memory-card" id="dailySummaryCard">
                     <h3>📊 ملخص اليوم</h3>
                     <div style="margin-top: 18px; display:grid; gap:12px;">
@@ -102,6 +153,9 @@
                     <h3 data-i18n="daily_report_title">التقرير اليومي</h3>
                     <div id="dailyReportMessage" style="margin-top: 18px; color:#d1fae5;">جاري جلب تقرير اليوم...</div>
                     <button class="btn btn-primary" id="sendTelegramReportBtn" style="margin-top: 18px; background: #10b981;" data-i18n="send_telegram">إرسال للتليجرام</button>
+                    <button class="btn btn-secondary" onclick="window.location.href='daily-report.html?autoprint=true'" style="margin-top: 10px; width: 100%; border: 1px solid rgba(16,185,129,0.3); color:#fff; display:flex; justify-content:center; align-items:center;">
+                        <i class="fas fa-file-pdf" style="margin-left: 8px;"></i> تحميل تقرير اليوم (PDF)
+                    </button>
                 </div>
                 <div class="memory-card" id="performanceSummaryCard">
                     <h3>📈 الأداء الزمني</h3>
@@ -162,174 +216,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="memory-card" id="performanceInsightsCard">
-                    <h3><i class="fas fa-chart-pie"></i> 📊 تحليل أدائك</h3>
-                    <div style="margin-top: 20px; display:grid; gap:12px;">
-                        <div style="font-size:0.9rem; color:#aaa;">أفضل وقت تداول</div>
-                        <div id="insightBestSession" style="font-weight:700;">-</div>
-                        <div style="font-size:0.9rem; color:#aaa;">أفضل زوج تداول</div>
-                        <div id="insightBestMarket" style="font-weight:700;">-</div>
-                        <div style="font-size:0.9rem; color:#aaa;">النصيحة</div>
-                        <div id="insightRecommendation" style="font-weight:700; color:#ffd700;">-</div>
-                    </div>
-                </div>
-                <div class="memory-card">
-                    <h3><i class="fas fa-brain"></i> ذاكرة المتداول</h3>
-                    <div style="margin-top: 20px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                            <span>دقتك في الذهب</span>
-                            <span style="color: #00ff88;">78%</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                            <span>دقتك في اليورو دولار</span>
-                            <span style="color: #ff8c00;">54%</span>
-                        </div>
-                        <div class="smart-note">
-                            <i class="fas fa-info-circle"></i> <b>ملاحظة ذكية:</b> لاحظت أنك تخسر غالباً في صفقات السكالبينج السريعة. هل تريد تشديد معايير الدخول من الإعدادات؟
-                        </div>
-                    </div>
-                </div>
-
-                <div class="memory-card" id="scannerAlertsCard">
-                    <h3><i class="fas fa-bolt"></i> أحدث تنبيهات المسح (Auto-Scan)</h3>
-                    <div style="display:grid; gap:12px; margin-top:18px;">
-                        <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px;">
-                            <div style="background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:14px;">
-                                <div style="font-size:0.85rem; color:#aaa;">الفرص الممسوحة</div>
-                                <div id="scannerTotalOpportunities" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.18); border-radius:16px; padding:14px;">
-                                <div style="font-size:0.85rem; color:#aaa;">النجاحات ✅</div>
-                                <div id="scannerWins" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(255,77,77,0.08); border:1px solid rgba(255,77,77,0.18); border-radius:16px; padding:14px;">
-                                <div style="font-size:0.85rem; color:#aaa;">الفشل ❌</div>
-                                <div id="scannerLosses" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(79, 70, 229, 0.05); border:1px solid rgba(79, 70, 229, 0.18); border-radius:16px; padding:14px;">
-                                <div style="font-size:0.85rem; color:#aaa;">نسبة النجاح</div>
-                                <div id="scannerWinRate" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                            <div style="font-size:0.9rem; color:#ddd;"><strong>أفضل زوج:</strong> <span id="scannerBestMarket">-</span></div>
-                        </div>
-                        <div id="scannerAlertsList" style="margin-top: 0px;">
-                            <div class="alert-item">
-                                <div style="color: #00ff88;"><i class="fas fa-arrow-up"></i></div>
-                                <div style="flex: 1;">
-                                    <b>BTCUSD: شراء قوي</b>
-                                    <div style="font-size: 0.8rem; color: #888;">ثقة 88% | قبل 12 دقيقة</div>
-                                </div>
-                            </div>
-                            <div class="alert-item">
-                                <div style="color: #ff4d4d;"><i class="fas fa-arrow-down"></i></div>
-                                <div style="flex: 1;">
-                                    <b>GBPUSD: بيع محتمل</b>
-                                    <div style="font-size: 0.8rem; color: #888;">ثقة 72% | قبل 25 دقيقة</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="memory-card card" id="binanceScannerCard">
-                    <h3><i class="fab fa-bitcoin"></i> Futures Scanner</h3>
-                    <div style="margin-top: 18px; display:grid; gap:12px;">
-                        <div style="display:flex; gap:10px; align-items:center;">
-                            <input id="binanceSymbolInput" type="text" value="BTCUSDT" placeholder="رمز السوق" style="flex:1; background: rgba(255,255,255,0.06); border:1px solid var(--border); color:white; padding:10px 12px; border-radius:10px;">
-                            <button id="scanBinanceBtn" class="btn btn-primary" style="background: var(--accent-gradient); border:none; padding:10px 18px; border-radius:12px; color:white; cursor:pointer;">مسح</button>
-                        </div>
-                        <div id="binanceScannerResult" style="font-size:0.9rem; color:#ddd; min-height:140px; padding:14px; background: rgba(255,255,255,0.03); border-radius: 16px; border:1px solid rgba(255,255,255,0.05);">
-                            أدخل رمز السوق واضغط مسح للحصول على تحليل السوق.
-                        </div>
-                    </div>
-                </div>
-                <div class="memory-card" id="tradingViewCard">
-                    <h3><i class="fas fa-chart-area"></i> جلب وتحليل الرسم البياني</h3>
-                    <div style="margin-top: 18px; display:grid; gap:12px;">
-                        <input id="tradingViewUrlInput" type="text" value="https://www.tradingview.com/chart/" placeholder="رابط الرسم البياني" style="width:100%; background: rgba(255,255,255,0.06); border:1px solid var(--border); color:white; padding:10px 12px; border-radius:10px;">
-                        <button id="fetchTradingViewBtn" class="btn btn-secondary" style="background: rgba(255,255,255,0.08); border:1px solid var(--border); color:white; padding:10px 18px; border-radius:12px; cursor:pointer; width: fit-content;">جلب التحليل</button>
-                        <div id="tradingViewResult" style="font-size:0.9rem; color:#ddd; min-height:110px; padding:14px; background: rgba(255,255,255,0.03); border-radius: 16px; border:1px solid rgba(255,255,255,0.05); overflow-wrap: break-word;">
-                            أدخل رابط الرسم البياني لتحليل سريع.
-                        </div>
-                    </div>
-                </div>
-                <div class="memory-card card" id="topOpportunitiesCard">
-                    <h3><i class="fas fa-trophy"></i> 🏆 أفضل الفرص الآن</h3>
-                    <div style="margin-top: 20px; display: grid; gap: 14px;" id="topOpportunitiesList">
-                        <div style="font-size:0.9rem; color:#bbb;">تحميل أفضل الفرص...</div>
-                    </div>
-                    <button id="refreshOpportunitiesBtn" class="btn btn-secondary" style="margin-top: 15px; background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: white; padding: 10px 18px; border-radius: 12px; cursor: pointer;">تحديث الفرص</button>
-                </div>
-                <div class="memory-card" id="tradeMoverCard">
-                    <h3><i class="fas fa-hands"></i> مراقبة الصفقات المفتوحة</h3>
-                    <div style="margin-top: 20px; display: grid; gap: 14px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                            <div>
-                                <div style="font-size:0.9rem; color:#aaa;">آخر تحليل مفتوح</div>
-                                <div id="tradeMoverMarket" style="font-weight:700;">-</div>
-                            </div>
-                            <button id="refreshTradeMoverBtn" class="btn btn-secondary" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: white; padding: 10px 18px; border-radius: 12px; cursor: pointer;">تحديث</button>
-                        </div>
-                        <div id="tradeMoverStatus" style="font-size:0.9rem; color:#ddd; min-height:80px; line-height:1.6;"></div>
-                        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap: wrap;">
-                            <div style="background: rgba(0,189,255,0.06); border-radius:14px; padding:15px; flex:1; min-width:150px;">
-                                <div style="font-size:0.8rem; color:#aaa;">الإجراء المقترح</div>
-                                <div id="tradeMoverAction" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(255,205,0,0.08); border-radius:14px; padding:15px; flex:1; min-width:150px;">
-                                <div style="font-size:0.8rem; color:#aaa;">وقف جديد</div>
-                                <div id="tradeMoverStop" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                        </div>
-                        <div id="tradeMoverReason" style="font-size:0.85rem; color:#bbb; min-height:48px;">النظام سيرشح لك تعديلاً عند توفر تحليل صالح.</div>
-                    </div>
-                </div>
-                <div class="memory-card" id="deepMarketCard">
-                    <h3><i class="fas fa-water"></i> 🌊 عمق السوق المؤسسي</h3>
-                    <div style="margin-top: 20px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:15px;">
-                            <select id="deepMarketSymbol" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;">
-                                <option value="XAUUSDT">الذهب (XAUUSDT)</option>
-                                <option value="BTCUSDT">البيتكوين (BTCUSDT)</option>
-                                <option value="EURUSD">اليورو دولار (EURUSD)</option>
-                                <option value="GBPUSD">الجنيه الإسترليني (GBPUSD)</option>
-                            </select>
-                            <button id="refreshDeepMarketBtn" class="btn btn-secondary" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer;">تحديث</button>
-                        </div>
-                        <div style="display:grid; gap:12px;">
-                            <div style="background: rgba(0,189,255,0.06); border-radius:14px; padding:15px;">
-                                <div style="font-size:0.8rem; color:#aaa;">نقطة السيطرة (POC)</div>
-                                <div id="pocValue" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(255,205,0,0.08); border-radius:14px; padding:15px;">
-                                <div style="font-size:0.8rem; color:#aaa;">سيطرة المشترين/البائعين</div>
-                                <div id="buyerSellerControl" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(255,77,77,0.08); border-radius:14px; padding:15px;">
-                                <div style="font-size:0.8rem; color:#aaa;">أقرب منطقة تصفية</div>
-                                <div id="nearestLiquidation" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                            <div style="background: rgba(0,255,136,0.08); border-radius:14px; padding:15px;">
-                                <div style="font-size:0.8rem; color:#aaa;">آخر صفقة حوت</div>
-                                <div id="lastWhaleTrade" style="font-weight:700; margin-top:8px;">-</div>
-                            </div>
-                        </div>
-                        <div id="deepMarketStatus" style="font-size:0.85rem; color:#bbb; margin-top:15px; min-height:24px;">اختر سوقاً واضغط تحديث لعرض عمق السوق المؤسسي.</div>
-                    </div>
-                </div>
-                <div class="memory-card" id="calendarEventsCard">
-                    <h3><i class="fas fa-newspaper"></i> Forex Factory Economic Calendar</h3>
-                    <div style="margin-top: 18px; display:grid; gap:12px;">
-                        <div id="calendarEventsList" style="min-height: 160px; padding: 14px; background: rgba(255,255,255,0.03); border-radius: 16px; border:1px solid rgba(255,255,255,0.05); color:#ddd;">
-                            جاري تحميل أحداث Forex Factory...
-                        </div>
-                        <button id="refreshCalendarBtn" class="btn btn-secondary" style="background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: white; padding: 10px 18px; border-radius: 12px; cursor: pointer; width: fit-content;">تحديث الأخبار</button>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/api.js"></script>
     <script>
         function formatNumber(value) {
@@ -342,24 +233,184 @@
             return value;
         }
 
-        function renderNewsTicker(items) {
-            const track = document.getElementById('newsTickerTrack');
-            if (!items || items.length === 0) {
-                track.innerHTML = `<div class="ticker-item"><i class="fas fa-bullhorn"></i> لا توجد أخبار مباشرة حالياً.</div>`;
-                return;
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notiDropdown');
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function loadNotifications() {
+            try {
+                const alerts = await api.getAlerts();
+                const notiList = document.getElementById('notiList');
+                const notiCount = document.getElementById('notiCount');
+                if (alerts && alerts.length > 0) {
+                    notiCount.innerText = alerts.length;
+                    notiCount.style.display = 'inline-block';
+                    notiList.innerHTML = alerts.slice(0, 5).map(a => `
+                        <div style="border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:6px; margin-bottom:6px;">
+                            <strong>${a.market} - ${a.recommendation}</strong>
+                            <div style="font-size:0.75rem; color:#aaa;">ثقة ${a.confidence}% | ${new Date(a.created_at).toLocaleTimeString('ar-EG')}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    notiCount.style.display = 'none';
+                    notiList.innerHTML = 'لا توجد تنبيهات جديدة.';
+                }
+            } catch(e) {
+                console.warn('Failed to load notifications', e);
             }
-            const html = items.map(item => `
-                <div class="ticker-item"><i class="fas ${item.icon}"></i> ${item.text}</div>
-            `).join('');
-            track.innerHTML = html + html;
+        }
+
+        function updatePriceCard(symbol, price) {
+            const el = document.getElementById('price-' + symbol);
+            if (!el || !price) return;
+            const oldPrice = parseFloat(el.innerText);
+            el.innerText = price.toFixed(2) + '$';
+            
+            if (!isNaN(oldPrice)) {
+                if (price > oldPrice) {
+                    el.style.color = '#00ff88';
+                    setTimeout(() => el.style.color = '#fff', 500);
+                } else if (price < oldPrice) {
+                    el.style.color = '#ff4d4d';
+                    setTimeout(() => el.style.color = '#fff', 500);
+                }
+            }
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/live`;
+            const socket = new WebSocket(wsUrl);
+            
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'update' && data.prices) {
+                        updatePriceCard('BTC/USD', data.prices['BTC/USD'] || data.prices['BTCUSDT']);
+                        updatePriceCard('ETH/USD', data.prices['ETH/USD'] || data.prices['ETHUSDT']);
+                        updatePriceCard('XAU/USD', data.prices['XAU/USD'] || data.prices['XAUUSDT']);
+                    }
+                } catch(e) {
+                    console.warn('WS parse error', e);
+                }
+            };
+            socket.onclose = function() {
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        let pnlChartInstance = null;
+        async function initPnLChart() {
+            try {
+                const entries = await api.getJournal();
+                entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                const labels = [];
+                const pnlData = [];
+                let cumulative = 0;
+                
+                entries.forEach(e => {
+                    labels.push(new Date(e.date).toLocaleDateString('ar-EG', {month: 'short', day: 'numeric'}));
+                    cumulative += e.profit_loss || 0;
+                    pnlData.push(cumulative);
+                });
+                
+                const ctx = document.getElementById('pnlChart').getContext('2d');
+                if (pnlChartInstance) pnlChartInstance.destroy();
+                
+                pnlChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'الأرباح والخسائر المجمعة ($)',
+                            data: pnlData,
+                            borderColor: '#00bdff',
+                            backgroundColor: 'rgba(0, 189, 255, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } },
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8892b0' } }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            } catch(e) {
+                console.warn('Failed to load P&L chart', e);
+            }
+        }
+
+        function updateMarketSessions() {
+            const now = new Date();
+            const utcHour = now.getUTCHours();
+            const utcMin = now.getUTCMinutes();
+            const utcSec = now.getUTCSeconds();
+            
+            const timeStr = `${String(utcHour).padStart(2, '0')}:${String(utcMin).padStart(2, '0')}:${String(utcSec).padStart(2, '0')}`;
+            const timeEl = document.getElementById('utcTime');
+            if (timeEl) timeEl.innerText = timeStr;
+            
+            const tokyo = document.getElementById('tokyoSession');
+            const london = document.getElementById('londonSession');
+            const ny = document.getElementById('nySession');
+            
+            if (tokyo) {
+                if (utcHour >= 0 && utcHour < 9) {
+                    tokyo.innerText = 'مفتوح';
+                    tokyo.className = 'badge badge-active';
+                } else {
+                    tokyo.innerText = 'مغلق';
+                    tokyo.className = 'badge badge-triggered';
+                }
+            }
+            
+            if (london) {
+                if (utcHour >= 8 && utcHour < 17) {
+                    london.innerText = 'مفتوح';
+                    london.className = 'badge badge-active';
+                } else {
+                    london.innerText = 'مغلق';
+                    london.className = 'badge badge-triggered';
+                }
+            }
+            
+            if (ny) {
+                if (utcHour >= 13 && utcHour < 22) {
+                    ny.innerText = 'مفتوح';
+                    ny.className = 'badge badge-active';
+                } else {
+                    ny.innerText = 'مغلق';
+                    ny.className = 'badge badge-triggered';
+                }
+            }
+        }
+
+        async function toggleDemoDashboard() {
+            const toggle = document.getElementById('demoModeToggle');
+            const demo_mode = toggle.checked;
+            try {
+                await api.updateUserPreferences({ demo_mode });
+                alert(demo_mode ? 'تم تفعيل الوضع التجريبي برأس مال 1,000,000$' : 'تم إلغاء تفعيل الوضع التجريبي');
+                loadDashboard();
+            } catch (err) {
+                alert('فشل تحديث وضع الديمو: ' + err.message);
+                toggle.checked = !demo_mode;
+            }
         }
 
         async function loadDashboard() {
             try {
                 const stats = await api.getComparisonStats();
-                const alerts = await api.getAlerts();
-                const tickerItems = [];
-
                 if (stats) {
                     document.getElementById('aiWinRate').innerText = (stats.ai_win_rate || 0) + '%';
                     const topStr = document.getElementById('topStrategies');
@@ -380,370 +431,39 @@
                 }
 
                 await loadAccountSummary();
-                const alertContainer = document.getElementById('scannerAlertsList');
-                if (alerts.length > 0) {
-                    alertContainer.innerHTML = alerts.map(a => `
-                        <div class="alert-item ${a.confidence >= 90 ? 'golden-glow' : ''}">
-                            <div style="color: ${a.recommendation === 'شراء' ? '#00ff88' : '#ff4d4d'};">
-                                <i class="fas fa-arrow-${a.recommendation === 'شراء' ? 'up' : 'down'}"></i>
-                            </div>
-                            <div style="flex: 1;">
-                                <b>${a.market}: ${a.recommendation} قوي</b>
-                                <div style="font-size: 0.8rem; color: #888;">ثقة ${a.confidence}% | ${new Date(a.created_at).toLocaleTimeString()}</div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-
-                alerts.slice(0, 4).forEach(a => {
-                    tickerItems.push({
-                        icon: a.recommendation === 'شراء' ? 'fa-arrow-up' : 'fa-arrow-down',
-                        text: `${a.market} — ${a.recommendation} بثقة ${a.confidence}%`
-                    });
-                });
-
-                await loadJournalInsights();
-                await loadTopOpportunities();
-                // load shadow recommendation stats
-                try {
-                    const shadowRes = await api.request('GET', '/api/shadow/stats', null, true);
-                    if (shadowRes && shadowRes.stats) {
-                        const el = document.createElement('div');
-                        el.className = 'memory-card';
-                        el.innerHTML = `
-                            <h3>توصيات الظل (Shadow Recommendations)</h3>
-                            <div style="margin-top:12px; display:grid; gap:8px;">
-                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>الإجمالي</span><strong>${shadowRes.stats.total}</strong></div>
-                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>المحلّلة</span><strong>${shadowRes.stats.closed}</strong></div>
-                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>الرابحة</span><strong>${shadowRes.stats.wins_count}</strong></div>
-                                <div style="display:flex; justify-content:space-between; color:#aaa;"><span>متوسط الربح</span><strong>${shadowRes.stats.wins_avg}</strong></div>
-                            </div>
-                        `;
-                        const container = document.querySelector('.memory-grid');
-                        if (container) container.insertBefore(el, container.firstChild.nextSibling);
-                    }
-                } catch (e) {
-                    console.warn('Failed to load shadow stats', e);
-                }
-                await loadTradeMover();
                 await loadTodaySummary();
                 await loadPerformanceSummary();
-                await loadScannerStats();
-                const calendarEvents = await loadCalendarEvents();
-                (calendarEvents || []).slice(0, 3).forEach(event => {
-                    tickerItems.push({ icon: 'fa-calendar-day', text: `${event.currency}: ${event.title} عند ${new Date(event.time).toLocaleTimeString()}` });
-                });
-                const deepMarketData = await loadDeepMarket();
-                if (deepMarketData?.whales?.largest_whale) {
-                    tickerItems.push({ icon: 'fa-fish', text: `آخر صفقة حوت: ${formatNumber(deepMarketData.whales.largest_whale.value)}$ على ${deepMarketData.whales.largest_whale.price}` });
-                }
-
-                renderNewsTicker(tickerItems);
+                await initPnLChart();
+                await loadNotifications();
             } catch (err) {
                 console.error('Dashboard load error', err);
-                renderNewsTicker([]);
             }
         }
-
-        async function loadTodaySummary() {
-            const totalEl = document.getElementById('todayTotalTrades');
-            const winsEl = document.getElementById('todayWins');
-            const lossesEl = document.getElementById('todayLosses');
-            const rateEl = document.getElementById('todayWinRate');
-            const pnlEl = document.getElementById('todayPnL');
-            [totalEl, winsEl, lossesEl, rateEl, pnlEl].forEach(el => el.innerHTML = '<span class="skeleton skeleton-inline"></span>');
-            try {
-                const stats = await api.getTodayStats();
-                totalEl.innerText = safeText(stats.total_trades);
-                winsEl.innerText = safeText(stats.wins);
-                lossesEl.innerText = safeText(stats.losses);
-                rateEl.innerText = stats.win_rate !== undefined && stats.win_rate !== null ? `${stats.win_rate}%` : '--';
-                pnlEl.innerText = stats.profit_loss !== undefined && stats.profit_loss !== null ? `${stats.profit_loss >= 0 ? '+' : ''}${stats.profit_loss.toFixed(2)}$` : '--';
-            } catch (err) {
-                totalEl.innerText = '--';
-                winsEl.innerText = '--';
-                lossesEl.innerText = '--';
-                rateEl.innerText = '--';
-                pnlEl.innerText = '--';
-                console.error('Today summary load error', err);
-            }
-        }
-
-        async function loadPerformanceSummary() {
-            const periods = ['weekly', 'monthly', 'yearly'];
-            periods.forEach(prefix => {
-                ['Total', 'Wins', 'Losses', 'Rate', 'PnL'].forEach(suffix => {
-                    document.getElementById(`${prefix}${suffix}`).innerHTML = '<span class="skeleton skeleton-inline"></span>';
-                });
-            });
-            try {
-                const stats = await api.getPerformanceStats();
-                periods.forEach(prefix => {
-                    const data = stats[prefix] || {};
-                    document.getElementById(`${prefix}Total`).innerText = safeText(data.total);
-                    document.getElementById(`${prefix}Wins`).innerText = safeText(data.wins);
-                    document.getElementById(`${prefix}Losses`).innerText = safeText(data.losses);
-                    document.getElementById(`${prefix}Rate`).innerText = data.rate !== undefined && data.rate !== null ? `${data.rate}%` : '--';
-                    document.getElementById(`${prefix}PnL`).innerText = data.pnl !== undefined && data.pnl !== null ? `${data.pnl >= 0 ? '+' : ''}${data.pnl.toFixed(2)}$` : '--';
-                });
-            } catch (err) {
-                ['weekly', 'monthly', 'yearly'].forEach(prefix => {
-                    document.getElementById(`${prefix}Total`).innerText = '--';
-                    document.getElementById(`${prefix}Wins`).innerText = '--';
-                    document.getElementById(`${prefix}Losses`).innerText = '--';
-                    document.getElementById(`${prefix}Rate`).innerText = '--';
-                    document.getElementById(`${prefix}PnL`).innerText = '--';
-                });
-                console.error('Performance summary load error', err);
-            }
-        }
-
-        async function loadScannerStats() {
-            try {
-                ['scannerTotalOpportunities', 'scannerWins', 'scannerLosses', 'scannerWinRate', 'scannerBestMarket'].forEach(id => {
-                    document.getElementById(id).innerHTML = '<span class="skeleton skeleton-inline"></span>';
-                });
-                const stats = await api.getScannerStats();
-                document.getElementById('scannerTotalOpportunities').innerText = stats.total_opportunities;
-                document.getElementById('scannerWins').innerText = stats.wins;
-                document.getElementById('scannerLosses').innerText = stats.losses;
-                document.getElementById('scannerWinRate').innerText = `${stats.win_rate}%`;
-                document.getElementById('scannerBestMarket').innerText = stats.best_market || 'غير محدد';
-            } catch (err) {
-                document.getElementById('scannerTotalOpportunities').innerText = '-';
-                document.getElementById('scannerWins').innerText = '-';
-                document.getElementById('scannerLosses').innerText = '-';
-                document.getElementById('scannerWinRate').innerText = '-';
-                document.getElementById('scannerBestMarket').innerText = '-';
-                console.error('Scanner stats load error', err);
-            }
-        }
-
-        async function loadTopOpportunities() {
-            const listElement = document.getElementById('topOpportunitiesList');
-            const button = document.getElementById('refreshOpportunitiesBtn');
-            listElement.innerHTML = '<div style="font-size:0.9rem; color:#bbb;">جاري جلب أفضل الفرص...</div>';
-            try {
-                const opportunities = await api.getTopOpportunities();
-                if (!Array.isArray(opportunities) || opportunities.length === 0) {
-                    listElement.innerHTML = '<div style="font-size:0.95rem; color:#ddd;">لا توجد فرص قوية الآن.</div>';
-                    return;
-                }
-                const strong = opportunities.filter(o => o.confidence >= 70);
-                if (strong.length === 0) {
-                    listElement.innerHTML = '<div style="font-size:0.95rem; color:#ddd;">لا توجد فرص قوية الآن.</div>';
-                    return;
-                }
-                listElement.innerHTML = strong.map(o => `
-                    <div class="alert-item" style="flex-direction:column; align-items:flex-start; gap:10px; padding:16px;">
-                        <div style="display:flex; justify-content:space-between; width:100%; align-items:center; gap:10px;">
-                            <div>
-                                <b>${o.market}</b>
-                                <div style="font-size:0.8rem; color:#888; margin-top:4px;">${o.recommendation} — ثقة ${o.confidence}%</div>
-                            </div>
-                            <div style="font-weight:700; color: ${o.recommendation === 'شراء' ? '#00ff88' : '#ff4d4d'};">${o.recommendation}</div>
-                        </div>
-                        <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; width:100%;">
-                            <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px;">
-                                <div style="font-size:0.75rem; color:#aaa;">الدخول</div>
-                                <div style="font-weight:700; margin-top:4px;">${o.entry}</div>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px;">
-                                <div style="font-size:0.75rem; color:#aaa;">الوقف</div>
-                                <div style="font-weight:700; margin-top:4px;">${o.sl}</div>
-                            </div>
-                            <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px;">
-                                <div style="font-size:0.75rem; color:#aaa;">الهدف</div>
-                                <div style="font-weight:700; margin-top:4px;">${o.tp}</div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                listElement.innerHTML = '<div style="font-size:0.95rem; color:#ff9999;">فشل جلب الفرص. حاول مرة أخرى.</div>';
-                console.error('Top opportunities load error', err);
-            }
-        }
-
-        document.getElementById('refreshOpportunitiesBtn').addEventListener('click', loadTopOpportunities);
-
-        async function loadJournalInsights() {
-            const sessionEl = document.getElementById('insightBestSession');
-            const marketEl = document.getElementById('insightBestMarket');
-            const recEl = document.getElementById('insightRecommendation');
-            sessionEl.innerText = 'جاري تحليل الأداء...';
-            marketEl.innerText = 'جاري تحليل الأداء...';
-            recEl.innerText = '';
-            try {
-                const insights = await api.getJournalInsights();
-                sessionEl.innerText = insights.best_session || 'لا توجد بيانات كافية لتحليل الوقت بعد.';
-                marketEl.innerText = insights.best_market || 'لا توجد بيانات كافية لتحليل الأسواق بعد.';
-                recEl.innerText = insights.recommendation || 'سجّل بعض الصفقات لتحصل على تحليل أداء أذكى.';
-            } catch (err) {
-                sessionEl.innerText = 'فشل جلب تحليل الأداء.';
-                marketEl.innerText = '-';
-                recEl.innerText = err.message || 'خطأ في الاتصال.';
-            }
-        }
-
-        async function loadCalendarEvents() {
-            const listEl = document.getElementById('calendarEventsList');
-            listEl.innerHTML = '<div style="font-size:0.95rem; color:#bbb;">جاري تحميل أحداث Forex Factory...</div>';
-            try {
-                const events = await api.getCalendarEvents(24);
-                if (!Array.isArray(events) || events.length === 0) {
-                    listEl.innerHTML = '<div style="font-size:0.95rem; color:#ddd;">لا توجد أحداث اقتصادية مرتقبة خلال 24 ساعة.</div>';
-                    return [];
-                }
-                listEl.innerHTML = events.slice(0, 5).map(event => `
-                    <div style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                            <strong>${event.title}</strong>
-                            <span style="font-size:0.78rem; color:#aaa;">${new Date(event.time).toLocaleString('ar-EG')}</span>
-                        </div>
-                        <div style="font-size:0.85rem; color:#ccc; margin-top:5px;">${event.currency} • تأثير ${event.impact || event.importance}</div>
-                        <div style="margin-top:6px; font-size:0.85rem; color:#bbb;">توقع: ${event.forecast || '-'} • السابق: ${event.previous || '-'}</div>
-                    </div>
-                `).join('');
-                return events;
-            } catch (err) {
-                listEl.innerHTML = '<div style="font-size:0.95rem; color:#ff9999;">فشل تحميل تقويم Forex Factory.</div>';
-                console.error('Calendar events load error', err);
-                return [];
-            }
-        }
-
-        async function loadBinanceScan() {
-            const symbol = document.getElementById('binanceSymbolInput').value.trim() || 'BTCUSDT';
-            const resultEl = document.getElementById('binanceScannerResult');
-            resultEl.innerHTML = 'جاري فحص Binance Futures...';
-            try {
-                const data = await api.scanBinance(symbol);
-                resultEl.innerHTML = `
-                    <div style="display:grid; gap:8px;">
-                        <div><strong>السعر الحالي:</strong> $${data.price.toFixed(2)}</div>
-                        <div><strong>Open Interest:</strong> ${data.open_interest.toLocaleString()}</div>
-                        <div><strong>Cumulative Delta:</strong> ${data.cumulative_delta.toLocaleString()}</div>
-                        <div><strong>آخر التصفية:</strong> ${data.last_liquidations?.length || 0} حدث</div>
-                    </div>
-                `;
-            } catch (err) {
-                resultEl.innerHTML = '<div style="color:#ff9999;">فشل جلب بيانات Binance. تحقق من الرمز وحاول مرة أخرى.</div>';
-                console.error('Binance scan error', err);
-            }
-        }
-
-        async function loadTradingViewAnalysis() {
-            const url = document.getElementById('tradingViewUrlInput').value.trim();
-            const resultEl = document.getElementById('tradingViewResult');
-            if (!url) {
-                resultEl.innerText = 'يرجى إدخال رابط TradingView صالح.';
-                return;
-            }
-            resultEl.innerText = 'جاري جلب التحليل من TradingView...';
-            try {
-                const response = await api.fetchTradingView(url);
-                const analysis = response.analysis || response;
-                resultEl.innerHTML = `
-                    <div style="display:grid; gap:10px;">
-                        <div><strong>المصدر:</strong> ${response.source || 'unknown'}</div>
-                        <div><strong>التوصية:</strong> ${analysis.recommendation || analysis.analysis?.recommendation || 'غير متوفر'}</div>
-                        <div><strong>الثقة:</strong> ${analysis.confidence || analysis.analysis?.confidence || '-'}%</div>
-                        <div style="font-size:0.9rem; color:#bbb;">${analysis.note || analysis.analysis?.note || 'تم جلب تحليل سريع.'}</div>
-                    </div>
-                `;
-            } catch (err) {
-                resultEl.innerHTML = '<div style="color:#ff9999;">فشل جلب تحليل TradingView. حاول مرة أخرى لاحقاً.</div>';
-                console.error('TradingView analysis error', err);
-            }
-        }
-
-        document.getElementById('refreshCalendarBtn').addEventListener('click', loadCalendarEvents);
-        document.getElementById('scanBinanceBtn').addEventListener('click', loadBinanceScan);
-        document.getElementById('fetchTradingViewBtn').addEventListener('click', loadTradingViewAnalysis);
-
-        // Voice Assistant Logic
-        const voiceBtn = document.getElementById('voiceBtn');
-        const voiceStatus = document.getElementById('voiceStatus');
-        
-        if ('webkitSpeechRecognition' in window) {
-            const recognition = new webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.lang = 'ar-SA';
-            
-            voiceBtn.onclick = () => {
-                recognition.start();
-                voiceStatus.innerText = 'Listening...';
-                voiceBtn.style.background = '#ff4d4d';
-            };
-            
-            recognition.onresult = (event) => {
-                const text = event.results[0][0].transcript;
-                voiceStatus.innerText = 'Processing: ' + text;
-                voiceBtn.style.background = 'rgba(255,255,255,0.1)';
-                
-                // Mock API call to backend
-                setTimeout(() => {
-                    alert('AI Reply: ' + text + ' Analysis coming soon!');
-                    voiceStatus.innerText = '';
-                }, 1000);
-            };
-            
-            recognition.onerror = () => {
-                voiceBtn.style.background = 'rgba(255,255,255,0.1)';
-                voiceStatus.innerText = 'Error in recording.';
-            };
-        }
-
-        async function loadTradeMover() {
-            const statusElement = document.getElementById('tradeMoverStatus');
-            const actionElement = document.getElementById('tradeMoverAction');
-            const stopElement = document.getElementById('tradeMoverStop');
-            const marketElement = document.getElementById('tradeMoverMarket');
-            const reasonElement = document.getElementById('tradeMoverReason');
-
-            const lastAnalysis = JSON.parse(localStorage.getItem('lastAnalysis') || 'null');
-            if (!lastAnalysis || !lastAnalysis.analysis_id) {
-                marketElement.innerText = 'لا توجد تحليل حديث متاح';
-                statusElement.innerText = 'احفظ آخر تحليل عبر لوحة التحكم حتى يمكن لمراقب الصفقة اقتراح تعديل.';
-                actionElement.innerText = '-';
-                stopElement.innerText = '-';
-                return;
-            }
-
-            marketElement.innerText = lastAnalysis.market || 'غير محدد';
-            statusElement.innerText = 'جاري جلب توصية Auto TP/SL...';
-            try {
-                const recommendation = await api.getTradeMoverRecommendation(lastAnalysis.analysis_id);
-                actionElement.innerText = recommendation.action || 'hold';
-                stopElement.innerText = recommendation.suggested_stop !== null && recommendation.suggested_stop !== undefined ? recommendation.suggested_stop : '-';
-                reasonElement.innerText = recommendation.reason || 'لم يتم العثور على توصية إضافية.';
-                statusElement.innerHTML = `آخر تحديث من التحليل رقم <strong>${recommendation.analysis_id}</strong>`;
-            } catch (loadErr) {
-                statusElement.innerText = 'فشل تحميل توصية الصفقة. حاول التحديث مرة أخرى.';
-                actionElement.innerText = '-';
-                stopElement.innerText = '-';
-                reasonElement.innerText = loadErr.message || 'خطأ في الاتصال بالخادم.';
-            }
-        }
-
-        document.getElementById('refreshTradeMoverBtn').addEventListener('click', loadTradeMover);
 
         async function loadAccountSummary() {
             const accountEl = document.getElementById('accountBalanceDisplay');
             const modeEl = document.getElementById('tradingModeDisplay');
-            const reportMessageEl = document.getElementById('dailyReportMessage');
-
-            accountEl.innerText = '--';
-            modeEl.innerText = '--';
-            reportMessageEl.innerText = 'جاري جلب بيانات الحساب...';
-
+            const labelEl = document.getElementById('accountBalanceLabel');
+            
             try {
                 const summary = await api.getAccountSummary();
-                accountEl.innerText = summary.account_balance !== undefined && summary.account_balance !== null ? `$${Number(summary.account_balance).toFixed(2)}` : '--';
+                accountEl.innerText = `$${Number(summary.account_balance).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
                 modeEl.innerText = summary.trading_mode || '--';
+                
+                const demoToggle = document.getElementById('demoModeToggle');
+                if (demoToggle) {
+                    demoToggle.checked = summary.demo_mode === true;
+                }
+                if (summary.demo_mode) {
+                    labelEl.innerText = 'رصيد الحساب التجريبي';
+                    labelEl.style.color = '#00f2fe';
+                } else {
+                    labelEl.innerText = 'رصيد الحساب';
+                    labelEl.style.color = '';
+                }
 
                 const dailyReportSummary = summary.daily_report?.summary;
+                const reportMessageEl = document.getElementById('dailyReportMessage');
                 if (dailyReportSummary) {
                     reportMessageEl.innerText = dailyReportSummary;
                 } else if (summary.daily_report?.report_date) {
@@ -751,197 +471,53 @@
                 } else {
                     reportMessageEl.innerText = 'لا يوجد تقرير اليوم.';
                 }
-
-                await loadWatchlist();
-                if (!dailyReportSummary) {
-                    await loadDailyReport();
-                }
             } catch (err) {
-                accountEl.innerText = '--';
-                modeEl.innerText = '--';
-                reportMessageEl.innerText = 'فشل جلب بيانات الحساب.';
-                console.error('Account summary load error', err);
+                console.error('Account summary error', err);
             }
         }
 
-        function renderWatchlist(items) {
-            const container = document.getElementById('watchlistItems');
-            if (!items || items.length === 0) {
-                container.innerHTML = `<div style="color:#bbb;" data-i18n="watchlist_empty">لا توجد أسواق مفضلة بعد. أضف أول رمز.</div>`;
-                api.applyLanguage();
-                return;
-            }
-            container.innerHTML = items.slice(0, 10).map(symbol => `
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 16px; background: rgba(255,255,255,0.04); border-radius: 12px;">
-                    <span>${symbol}</span>
-                    <button class="btn btn-ghost" style="padding:6px 12px;" onclick="handleRemoveWatchlist('${symbol}')">إزالة</button>
-                </div>
-            `).join('');
-        }
-
-        async function loadWatchlist() {
+        async function loadTodaySummary() {
             try {
-                const list = await api.getWatchlist();
-                renderWatchlist(list);
-            } catch (err) {
-                console.error('Watchlist load error', err);
-            }
-        }
-
-        async function handleAddWatchlist() {
-            const input = document.getElementById('watchlistInput');
-            const symbol = input.value.trim().toUpperCase();
-            if (!symbol) return;
-            const currentList = document.querySelectorAll('#watchlistItems > div');
-            if (currentList.length >= 10) {
-                alert('يمكنك إضافة حتى 10 أسواق فقط في القائمة المفضلة.');
-                return;
-            }
-            try {
-                const list = await api.addWatchlistItem(symbol);
-                renderWatchlist(list);
-                input.value = '';
-            } catch (err) {
-                alert(err.message || 'Failed to add watchlist symbol');
-            }
-        }
-
-        async function handleRemoveWatchlist(symbol) {
-            try {
-                const list = await api.removeWatchlistItem(symbol);
-                renderWatchlist(list);
-            } catch (err) {
-                alert(err.message || 'Failed to remove symbol');
-            }
-        }
-
-        async function loadDailyReport() {
-            try {
-                const report = await api.generateDailyReport();
-                const message = report.summary || 'لم يتم العثور على تقرير اليوم.';
-                document.getElementById('dailyReportMessage').innerText = message;
-            } catch (err) {
-                document.getElementById('dailyReportMessage').innerText = 'فشل تحميل تقرير اليوم. حاول لاحقاً.';
-                console.error('Daily report load error', err);
-            }
-        }
-
-        document.getElementById('addWatchlistBtn').addEventListener('click', handleAddWatchlist);
-        document.getElementById('sendTelegramReportBtn').addEventListener('click', async () => {
-            try {
-                await api.sendDailyReportTelegram();
-                alert('تم إرسال التقرير إلى Telegram');
-            } catch (err) {
-                alert(err.message || 'Failed to send report');
-            }
-        });
-
-        api.applyTheme();
-        api.applyLanguage();
-        loadDashboard();
-
-        async function loadDeepMarket() {
-            const symbol = document.getElementById('deepMarketSymbol').value;
-            const pocElement = document.getElementById('pocValue');
-            const controlElement = document.getElementById('buyerSellerControl');
-            const liquidationElement = document.getElementById('nearestLiquidation');
-            const whaleElement = document.getElementById('lastWhaleTrade');
-            const statusElement = document.getElementById('deepMarketStatus');
-
-            pocElement.innerHTML = '<span class="skeleton skeleton-inline"></span>';
-            controlElement.innerHTML = '<span class="skeleton skeleton-inline"></span>';
-            liquidationElement.innerHTML = '<span class="skeleton skeleton-inline"></span>';
-            whaleElement.innerHTML = '<span class="skeleton skeleton-inline"></span>';
-            statusElement.innerText = 'جاري تحليل عمق السوق المؤسسي...';
-
-            try {
-                const data = await api.getDeepMarketScan(symbol);
-                pocElement.innerText = data.volume_profile?.poc ? `$${data.volume_profile.poc.toFixed(2)}` : 'غير متوفر';
-                controlElement.innerText = data.cumulative_delta?.description || 'غير متوفر';
-                liquidationElement.innerText = data.liquidations?.closest_level ? `$${data.liquidations.closest_level}` : data.liquidations?.description || 'غير متوفر';
-                whaleElement.innerText = data.whales?.largest_whale ? `${formatNumber(data.whales.largest_whale.value)}$ @ ${data.whales.largest_whale.price}` : data.whales?.description || 'غير متوفر';
-                statusElement.innerText = `آخر تحديث: ${new Date().toLocaleTimeString()}`;
-                return data;
-            } catch (err) {
-                pocElement.innerText = 'خطأ';
-                controlElement.innerText = 'خطأ';
-                liquidationElement.innerText = 'خطأ';
-                whaleElement.innerText = 'خطأ';
-                statusElement.innerText = 'فشل تحميل بيانات عمق السوق. حاول مرة أخرى.';
-                console.error('Deep market scan error', err);
-                return null;
-            }
-        }
-
-        document.getElementById('refreshDeepMarketBtn').addEventListener('click', loadDeepMarket);
-        document.getElementById('deepMarketSymbol').addEventListener('change', loadDeepMarket);
-
-        // Chart Upload & Analysis Logic
-        const chartInput = document.getElementById('chartInput');
-        chartInput.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            document.getElementById('uploadZone').style.display = 'none';
-            document.getElementById('analyzingState').style.display = 'block';
-            
-            // Step 1: Visual analysis simulation
-            setTimeout(() => { document.getElementById('analysisStatus').innerText = 'نظام التحليل يحلل الهيكل المؤسسي...'; }, 1500);
-            
-            // Step 2: Voting Engine Simulation
-            setTimeout(() => { document.getElementById('analysisStatus').innerText = 'محرك التصويت (34 استراتيجية) يجمع البيانات...'; }, 3000);
-
-            try {
-                // Mock API call (In real app, use FormData for the image)
-                const result = await api.analyzeMarket('XAUUSD', []); 
-                localStorage.setItem('lastAnalysis', JSON.stringify(result));
+                const stats = await api.getTodayStats();
+                document.getElementById('todayTotalTrades').innerText = safeText(stats.total_trades);
+                document.getElementById('todayWins').innerText = safeText(stats.wins);
+                document.getElementById('todayLosses').innerText = safeText(stats.losses);
+                document.getElementById('todayWinRate').innerText = stats.win_rate !== undefined && stats.win_rate !== null ? `${stats.win_rate}%` : '--';
                 
-                setTimeout(() => {
-                    window.location.href = 'result.html';
-                }, 4500);
+                const pnl = stats.profit_loss || 0;
+                const pnlEl = document.getElementById('todayPnL');
+                pnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}$`;
+                pnlEl.style.color = pnl >= 0 ? '#00ff88' : '#ff4d4d';
             } catch (err) {
-                alert('Analysis failed: ' + err.message);
-                document.getElementById('uploadZone').style.display = 'block';
-                document.getElementById('analyzingState').style.display = 'none';
+                console.error('Today summary error', err);
             }
-        };
-
-        // Session Timeout Logic
-        let timeLeft = 30 * 60; // 30 minutes
-        const timerElement = document.createElement('div');
-        timerElement.className = 'session-timeout';
-        timerElement.innerHTML = `<i class="fas fa-clock"></i> ستنتهي جلستك بعد <span id="timer">30:00</span> دقيقة`;
-        document.body.appendChild(timerElement);
-
-        function updateTimer() {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            document.getElementById('timer').innerText = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-            
-            if (timeLeft <= 0) {
-                alert('Session expired. Redirecting to login...');
-                window.location.href = 'login.html';
-            }
-            timeLeft--;
         }
 
-        setInterval(updateTimer, 1000);
+        async function loadPerformanceSummary() {
+            try {
+                const stats = await api.getPerformanceStats();
+                ['weekly', 'monthly', 'yearly'].forEach(prefix => {
+                    const data = stats[prefix] || {};
+                    document.getElementById(`${prefix}Total`).innerText = safeText(data.total);
+                    document.getElementById(`${prefix}Wins`).innerText = safeText(data.wins);
+                    document.getElementById(`${prefix}Losses`).innerText = safeText(data.losses);
+                    document.getElementById(`${prefix}Rate`).innerText = data.rate !== undefined && data.rate !== null ? `${data.rate}%` : '--';
+                    
+                    const pnl = data.pnl || 0;
+                    const pnlEl = document.getElementById(`${prefix}PnL`);
+                    pnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}$`;
+                    pnlEl.style.color = pnl >= 0 ? '#00ff88' : '#ff4d4d';
+                });
+            } catch (err) {
+                console.error('Performance stats error', err);
+            }
+        }
 
-        // Reset timer on activity
-        ['mousemove', 'keydown', 'click'].forEach(event => {
-            document.addEventListener(event, () => {
-                timeLeft = 30 * 60;
-            });
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+            connectWebSocket();
+            updateMarketSessions();
         });
-    </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('Service Worker registered:', reg.scope))
-                    .catch(err => console.warn('SW registration failed:', err));
-            });
-        }
     </script>
     <script src="js/theme.js"></script>
 </body>

@@ -28,9 +28,12 @@
         <aside class="sidebar">
             <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
             <nav class="nav">
+                <a href="dashboard.html"><i class="fas fa-th-large"></i> <span>لوحة التحكم</span></a>
+                <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
                 <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
+                <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
+                <a href="journal.html"><i class="fas fa-book"></i> <span>دفتر اليوميات</span></a>
                 <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
-                <a href="ask-ai.html"><i class="fas fa-robot"></i> <span>المساعد الذكي</span></a>
                 <a href="settings.html" class="active"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
             </nav>
             <div style="padding: 16px;">
@@ -40,104 +43,106 @@
         <main class="main-content fade-in">
             <div class="settings-container">
                 <h1>إعدادات المنصة</h1>
-        <p style="color: #888; margin-bottom: 30px;">خصص تجربتك في VisionTrader AI بما يناسب احتياجاتك</p>
+                <p style="color: #888; margin-bottom: 30px;">خصص تجربتك في VisionTrader AI بما يناسب احتياجاتك</p>
 
-        <!-- UI Settings -->
-        <div class="settings-section card">
-            <h2><i class="fas fa-palette"></i> المظهر واللغة</h2>
-            <div class="settings-row">
-                <span>الوضع الداكن (Dark Mode)</span>
-                <label class="switch">
-                    <input id="themeToggle" type="checkbox" checked onchange="toggleTheme()">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="settings-row">
-                <span>لغة المنصة</span>
-                <select class="cosmic-input" id="langSelect" style="width: 150px;">
-                    <option value="ar">العربية</option>
-                    <option value="en">English</option>
-                    <option value="tr">Türkçe</option>
-                    <option value="zh">中文</option>
-                    <option value="es">Español</option>
-                </select>
-            </div>
-            <div class="settings-row">
-                <span>وضع التداول</span>
-                <select class="cosmic-input" id="tradingModeSelect" style="width: 150px;">
-                    <option value="day">يومي</option>
-                    <option value="swing">متأرجح</option>
-                    <option value="scalp">سكالب</option>
-                    <option value="position">موقفي</option>
-                </select>
-            </div>
-        </div>
+                <!-- UI Settings -->
+                <div class="settings-section card">
+                    <h2><i class="fas fa-palette"></i> المظهر واللغة</h2>
+                    <div class="settings-row">
+                        <span>الوضع الداكن (Dark Mode)</span>
+                        <label class="switch">
+                            <input id="themeToggle" type="checkbox" checked onchange="toggleTheme()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <span>لغة المنصة</span>
+                        <select class="cosmic-input" id="langSelect" style="width: 150px;">
+                            <option value="ar">العربية</option>
+                            <option value="en">English</option>
+                            <option value="tr">Türkçe</option>
+                            <option value="zh">中文</option>
+                            <option value="es">Español</option>
+                        </select>
+                    </div>
+                    <div class="settings-row">
+                        <span>وضع التداول</span>
+                        <select class="cosmic-input" id="tradingModeSelect" style="width: 150px;">
+                            <option value="day">يومي</option>
+                            <option value="swing">متأرجح</option>
+                            <option value="scalp">سكالب</option>
+                            <option value="position">موقفي</option>
+                        </select>
+                    </div>
+                </div>
 
-        <!-- Notification Settings -->
-        <div class="settings-section card">
-            <h2><i class="fas fa-bell"></i> التنبيهات</h2>
-            <div class="settings-row">
-                <span>إشعارات Telegram</span>
-                <button class="btn btn-ghost" onclick="promptTelegram()">ربط Telegram</button>
-            </div>
-            <div class="settings-row">
-                <span>تقرير أسبوعي عبر البريد</span>
-                <label class="switch">
-                    <input type="checkbox">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="settings-row">
-                <span>تنبيهات صوتية</span>
-                <label class="switch">
-                    <input type="checkbox" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
+                <!-- Notification Settings -->
+                <div class="settings-section card">
+                    <h2><i class="fas fa-bell"></i> التنبيهات</h2>
+                    <div class="settings-row">
+                        <span>إشعارات Telegram</span>
+                        <button class="btn btn-ghost" onclick="promptTelegram()">ربط Telegram</button>
+                    </div>
+                    <div class="settings-row">
+                        <span>تقرير أسبوعي عبر البريد</span>
+                        <label class="switch">
+                            <input type="checkbox">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <span>تنبيهات صوتية</span>
+                        <label class="switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
 
-        <!-- Favorite Strategies -->
-        <div class="settings-section card">
-            <h2><i class="fas fa-star"></i> استراتيجيات مفضلة</h2>
-            <div style="margin-bottom: 15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <input class="cosmic-input" id="favoriteStrategyInput" type="text" placeholder="أدخل اسم الاستراتيجية" style="flex:1;" />
-                <button class="btn btn-primary" onclick="addFavoriteStrategy()">إضافة</button>
-            </div>
-            <div id="favoriteStrategiesList" style="display:grid; gap: 10px;"></div>
-        </div>
+                <!-- Favorite Strategies -->
+                <div class="settings-section card">
+                    <h2><i class="fas fa-star"></i> استراتيجيات مفضلة</h2>
+                    <div style="margin-bottom: 15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input class="cosmic-input" id="favoriteStrategyInput" type="text" placeholder="أدخل اسم الاستراتيجية" style="flex:1;" />
+                        <button class="btn btn-primary" onclick="addFavoriteStrategy()">إضافة</button>
+                    </div>
+                    <div id="favoriteStrategiesList" style="display:grid; gap: 10px;"></div>
+                </div>
 
-        <!-- Sync & Backup -->
-        <div class="settings-section card">
-            <h2><i class="fas fa-sync"></i> المزامنة والنسخ الاحتياطي</h2>
-            <div class="settings-row">
-                <span>مزامنة Google Drive</span>
-                <button class="btn btn-ghost"><i class="fab fa-google-drive"></i> مزامنة الآن</button>
-            </div>
-            <div class="settings-row">
-                <span>تصدير البيانات (JSON)</span>
-                <button class="btn btn-ghost" onclick="exportData()"><i class="fas fa-download"></i> تصدير</button>
-            </div>
-            <div class="settings-row">
-                <span>استيراد البيانات</span>
-                <button class="btn btn-ghost"><i class="fas fa-upload"></i> استيراد</button>
-            </div>
-        </div>
+                <!-- Sync & Backup -->
+                <div class="settings-section card">
+                    <h2><i class="fas fa-sync"></i> المزامنة والنسخ الاحتياطي</h2>
+                    <div class="settings-row">
+                        <span>مزامنة Google Drive</span>
+                        <button class="btn btn-ghost"><i class="fab fa-google-drive"></i> مزامنة الآن</button>
+                    </div>
+                    <div class="settings-row">
+                        <span>تصدير البيانات (JSON)</span>
+                        <button class="btn btn-ghost" onclick="exportData()"><i class="fas fa-download"></i> تصدير</button>
+                    </div>
+                    <div class="settings-row">
+                        <span>استيراد البيانات</span>
+                        <button class="btn btn-ghost"><i class="fas fa-upload"></i> استيراد</button>
+                    </div>
+                </div>
 
-        <!-- Demo Mode -->
-        <div class="settings-section card">
-            <h2><i class="fas fa-flask"></i> الوضع التجريبي (Demo Mode)</h2>
-            <div class="settings-row">
-                <span>تفعيل الحساب التجريبي ($1M)</span>
-                <label class="switch">
-                    <input type="checkbox" onchange="toggleDemo()">
-                    <span class="slider"></span>
-                </label>
+                <!-- Demo Mode -->
+                <div class="settings-section card">
+                    <h2><i class="fas fa-flask"></i> الوضع التجريبي (Demo Mode)</h2>
+                    <div class="settings-row">
+                        <span>تفعيل الحساب التجريبي ($1M)</span>
+                        <label class="switch">
+                            <input id="demoToggle" type="checkbox" onchange="toggleDemo()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
     <script src="js/api.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             api.applyTheme();
             api.applyLanguage();
             loadFavoriteStrategies();
@@ -167,6 +172,15 @@
                     api.updateUserPreferences({ trading_mode: next }).catch(() => {});
                 });
             }
+
+            // Load initial demo mode state
+            try {
+                const prefs = await api.getUserPreferences();
+                const demoToggle = document.getElementById('demoToggle');
+                if (demoToggle) demoToggle.checked = prefs.demo_mode === true;
+            } catch (err) {
+                console.error('Failed to load user preferences', err);
+            }
         });
 
         function toggleTheme() {
@@ -178,8 +192,16 @@
             api.updateUserPreferences({ theme: next }).catch(() => {});
         }
 
-        function toggleDemo() {
-            alert('تم تفعيل الوضع التجريبي برأس مال 1,000,000$');
+        async function toggleDemo() {
+            const toggle = document.getElementById('demoToggle');
+            const demo_mode = toggle.checked;
+            try {
+                await api.updateUserPreferences({ demo_mode });
+                alert(demo_mode ? 'تم تفعيل الوضع التجريبي برأس مال 1,000,000$' : 'تم إلغاء تفعيل الوضع التجريبي');
+            } catch (err) {
+                alert('فشل تحديث وضع الديمو: ' + err.message);
+                toggle.checked = !demo_mode;
+            }
         }
 
         function promptTelegram() {
@@ -239,17 +261,6 @@
             a.click();
         }
     </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('Service Worker registered:', reg.scope))
-                    .catch(err => console.warn('SW registration failed:', err));
-            });
-        }
-    </script>
-        </main>
-    </div>
     <script src="js/theme.js"></script>
 </body>
 </html>
