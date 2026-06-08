@@ -2907,89 +2907,49 @@ async def conversational_agent(
         pair = conv["pair"]
         tf = conv["timeframe"]
 
+        from services.multi_tf_analyzer import ANALYSIS_TIMEFRAMES, DEFAULT_TFS
+        tfs_to_run = ANALYSIS_TIMEFRAMES.get(trade_type.lower(), DEFAULT_TFS)
+        tfs_str = ", ".join(tfs_to_run)
+
         # Start async analysis
         return reply(
-            f"🔍 **بدأت التحليل!**\n\nأفتح شارت **{pair}** على الإطار **{tf}** تلقائياً...\nسيصلك التحليل الكامل خلال ثوانٍ ⏳",
+            f"🔍 **بدأت التحليل الشامل!**\n\nأفتح شارت **{pair}** على الأطر الزمنية **({tfs_str})**...\nسيتم تشغيل الوكلاء واستراتيجيات النظام بالكامل. قد يستغرق هذا بضع ثوانٍ ⏳",
             "analyzing",
             [],
             "fetch_analysis"
         )
 
-    # ── STATE: analyzing — perform the actual screenshot + Gemini analysis ──
+    # ── STATE: analyzing — perform the actual multi-TF screenshot + AI analysis ──
     if conv["state"] == "analyzing":
         pair = conv.get("pair", "XAUUSD")
-        tf = conv.get("timeframe", "H1")
         trade_type = conv.get("trade_type", "يومي")
 
-        # Try to get TradingView screenshot
-        screenshot_b64 = None
+        from services.multi_tf_analyzer import full_multi_tf_analysis
+        
         try:
-            from services.tv_screenshot import get_chart_as_base64
-            screenshot_b64 = await asyncio.wait_for(
-                get_chart_as_base64(pair, tf),
-                timeout=30
+            api_key = getattr(settings, "GEMINI_API_KEY", "")
+            user_id_to_pass = current_user.id if current_user else None
+            
+            # This handles screenshots, agent_manager, voting_engine, and gemini
+            analysis_data = await asyncio.wait_for(
+                full_multi_tf_analysis(pair, trade_type, user_id_to_pass, api_key),
+                timeout=60
             )
+            analysis_result = analysis_data.get("final_analysis", "")
         except Exception as e:
-            logger.warning(f"TV screenshot failed in conv agent: {e}")
+            logger.exception("Multi-TF analysis failed in conv agent")
+            analysis_result = f"""📊 **تحليل {pair}**
 
-        # Build analysis prompt
-        analysis_prompt = f"""أنت محلل تداول خبير. حلل شارت {pair} على الإطار الزمني {tf} لتداول {trade_type}.
+⚠️ تعذّر إكمال التحليل الشامل: {e}
 
-قدم تحليلاً احترافياً شاملاً يشمل:
-1. 📈 **الاتجاه العام**: (صعودي/هابط/عرضي)
-2. 🎯 **نقطة الدخول المثلى**: السعر الدقيق أو المنطقة
-3. 🛑 **وقف الخسارة (SL)**: السعر الدقيق مع السبب
-4. 🎯 **الهدف الأول (TP1)**: 
-5. 🎯 **الهدف الثاني (TP2)**: 
-6. 🎯 **الهدف الثالث (TP3)**: 
-7. ⚖️ **نسبة المخاطرة/العائد (R:R)**
-8. 💡 **ملاحظات إضافية**: مستويات دعم/مقاومة، نماذج سعرية، أي تحذيرات
-
-أسلوبك: احترافي، واضح، ومباشر. استخدم الأرقام الفعلية قدر الإمكان."""
-
-        api_key = getattr(settings, "GEMINI_API_KEY", "")
-        analysis_result = ""
-
-        if api_key:
-            import httpx
-            for model_name in ["gemini-2.5-flash", "gemini-1.5-flash"]:
-                try:
-                    url_g = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-                    parts = [{"text": analysis_prompt}]
-                    if screenshot_b64:
-                        parts.append({"inlineData": {"mimeType": "image/png", "data": screenshot_b64}})
-                    payload = {
-                        "contents": [{"role": "user", "parts": parts}],
-                        "generationConfig": {"temperature": 0.5, "maxOutputTokens": 1500}
-                    }
-                    async with httpx.AsyncClient(timeout=30) as client:
-                        resp = await client.post(url_g, json=payload)
-                        resp.raise_for_status()
-                        analysis_result = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                        break
-                except Exception as e:
-                    logger.warning(f"Gemini analysis in conv agent failed ({model_name}): {e}")
-
-        if not analysis_result:
-            analysis_result = f"""📊 **تحليل {pair} — {tf}**
-
-⚠️ تعذّر الاتصال بمحرك التحليل الآن. لكن إليك توجيهات عامة:
-
-• تحقق من مستويات الدعم والمقاومة الرئيسية
-• انظر لاتجاه المتوسطات المتحركة (MA 20, MA 50)
-• تأكد من مؤشر RSI (شراء مفرط > 70، بيع مفرط < 30)
-• لا تدخل صفقة بدون تأكيد واضح من الشارت
-
-حاول مرة أخرى لاحقاً للحصول على تحليل كامل بالأرقام. 🔄"""
+حاول مرة أخرى لاحقاً أو جرب إطاراً زمنياً آخر. 🔄"""
 
         # Reset conversation after analysis
         session["conv"] = {"state": "idle", "pair": None, "timeframe": None, "trade_type": None}
         session["last_market"] = pair
 
-        chart_note = "\n\n📸 *تم فتح الشارت من TradingView تلقائياً وتحليله بالذكاء الاصطناعي*" if screenshot_b64 else "\n\n⚠️ *لم يتمكن من فتح الشارت تلقائياً — التحليل بناءً على بيانات السوق*"
-
         return reply(
-            analysis_result + chart_note,
+            analysis_result,
             "done",
             ["تحليل زوج آخر", "أبي تحليل جديد", "إعادة"],
             "analysis_complete"
