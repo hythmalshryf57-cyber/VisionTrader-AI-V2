@@ -198,15 +198,19 @@
         }
 
         async function sendToServer(question, file, market) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
             const form = new FormData();
             form.append('question', question);
             if (market) form.append('market', market);
             if (file) form.append('image', file);
-            const headers = {};
-            const token = localStorage.getItem('token');
-            if (token) {
-                headers['Authorization'] = 'Bearer ' + token;
-            }
+            const headers = {
+                'Authorization': 'Bearer ' + token
+            };
             const response = await fetch('/api/ai/agent', { method: 'POST', body: form, headers });
             if (!response.ok) {
                 let errorText = response.statusText;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'visiontrader-ai-cache-v2';
+const CACHE_NAME = 'visiontrader-ai-cache-v3';
 const ASSETS_TO_CACHE = [
   '/index.html',
   '/login.html',
@@ -56,27 +56,26 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request)
-        .then(networkResponse => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
-          }
-
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+    fetch(event.request)
+      .then(networkResponse => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
-        })
-        .catch(() => {
+        }
+
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
           if (event.request.mode === 'navigate') {
             return caches.match('/index.html');
           }
           return caches.match('/css/style.css');
         });
-    })
+      })
   );
 });
