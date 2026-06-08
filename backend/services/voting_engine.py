@@ -927,7 +927,20 @@ class VotingEngine:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
-        # News proximity filter removed: do not block analysis due to upcoming high-impact events.
+        # فحص الأخبار عالية التأثير: إذا كان هناك حدث عالي التأثير خلال ساعة، نوقف التحليل
+        upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
+        high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
+        if high_impact_events:
+            next_event = min(high_impact_events, key=lambda x: x.get('time_until', timedelta(hours=24)))
+            time_until = next_event.get('time_until', timedelta(hours=24))
+            if time_until < timedelta(hours=1):
+                return {
+                    "recommendation": "تعليق",
+                    "confidence": 0,
+                    "reason": "أخبار عالية التأثير قريبة",
+                    "market": market,
+                    "timestamp": datetime.now().isoformat()
+                }
 
         result = {
             "recommendation": ai_analysis["recommendation"],
