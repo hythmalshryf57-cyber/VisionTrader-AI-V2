@@ -2579,6 +2579,91 @@ async def super_ai_agent(
                 return symbol
         return ""
 
+    # ── Helper: Enhanced Analysis with Live Data and Footprint ────────────────
+    async def get_enhanced_engine_analysis(market_target: str, user_question: str) -> str:
+        engine_suffix = ""
+        try:
+            from services.binance_service import binance_service
+            from services.footprint_service import FootprintChartAnalyzer, BookmapDOMReader, CumulativeDeltaAnalyzer
+            from services.auto_scanner import auto_scanner
+            
+            # 1. Fetch live binance data
+            mapping = {"BTCUSD": "BTCUSDT", "ETHUSD": "ETHUSDT", "SOLUSD": "SOLUSDT", "BNBUSD": "BNBUSDT", "XRPUSD": "XRPUSDT"}
+            b_symbol = mapping.get(market_target.upper().replace(' ', ''), market_target.upper().replace(' ', ''))
+            
+            market_live_data = None
+            if binance_service.ws_service:
+                market_live_data = binance_service.ws_service.get_live_data(b_symbol)
+            
+            footprint_text = ""
+            if market_live_data:
+                recent_trades = market_live_data.get("recent_trades", [])
+                ob = market_live_data.get("order_book", {})
+                
+                if recent_trades or ob:
+                    fp = FootprintChartAnalyzer()
+                    bm = BookmapDOMReader()
+                    cd = CumulativeDeltaAnalyzer()
+                    
+                    for t in recent_trades:
+                        fp.ingest_trade(t['price'], t['qty'], t.get('side'))
+                        cd.ingest_trade(t['price'], t['qty'], t.get('side'))
+                    
+                    if ob.get('bids') or ob.get('asks'):
+                        bm.ingest_snapshot(ob.get('bids', []), ob.get('asks', []))
+                        
+                    fp_res = fp.analyze()
+                    bm_res = bm.analyze()
+                    cd_res = cd.analyze()
+                    
+                    footprint_text = f"\n\n📊 **تحليل السيولة الحي (Footprint & Bookmap):**\n- توازن السيولة: {fp_res.get('imbalance_signal', 'محايد')}\n- ضغط صانع السوق: {bm_res.get('pressure_side', 'محايد')}\n- دلتا التراكمية: {cd_res.get('delta', 0)}"
+
+            # 2. Add to context and analyze
+            visual_context = [{"description": (user_question or "تحليل شارت") + footprint_text}]
+            unified = voting_engine.data_adapter.normalize_input(visual_context, market_target)
+            ap = agent_manager.run(unified)
+            ow = ap.get("orchestrator", {}).get("weights")
+            rr = await asyncio.wait_for(
+                asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=ow),
+                timeout=12
+            )
+            
+            rec = rr.get("recommendation", "محايد")
+            conf = rr.get("confidence", 0)
+            reason = rr.get("reason", "")
+            targets = rr.get("targets", [])
+            sl = rr.get("stop_loss", "")
+            
+            # 3. Check Confidence < 60%
+            if conf < 60 or rec not in ["شراء", "بيع"]:
+                best_ops = auto_scanner.get_top_opportunities()
+                if best_ops:
+                    best = best_ops[0]
+                    engine_suffix = (
+                        f"\n\n⚠️ **ما فيه فرصة واضحة على {market_target} الآن.** (الثقة: {conf}%)\n\n"
+                        f"💡 **أفضل فرصة حالياً هي على [{best['market']}] بثقة {best['confidence']}%**\n"
+                        f"- التوصية: {best['recommendation']}\n"
+                        f"- الدخول: {best['entry']}\n"
+                        f"- الأهداف: {best['tp']} | الوقف: {best['sl']}"
+                    )
+                else:
+                    engine_suffix = f"\n\n⚠️ **ما فيه فرصة واضحة على {market_target} الآن.** (الثقة: {conf}%) ولا توجد فرص قوية في الأسواق الأخرى."
+            else:
+                engine_suffix = f"\n\n📊 **نظام VisionTrader ({market_target})**: {rec} | ثقة {conf}%"
+                if footprint_text:
+                    engine_suffix += footprint_text
+                if targets:
+                    engine_suffix += f"\n🎯 أهداف: {', '.join(map(str, targets))}"
+                if sl:
+                    engine_suffix += f"\n🛑 وقف: {sl}"
+                if reason:
+                    engine_suffix += f"\n💡 {reason}"
+                    
+        except Exception as e:
+            logger.warning(f"Enhanced Voting engine failed: {e}")
+            
+        return engine_suffix
+
     try:
         SYSTEM_METRICS["gemini_calls"] += 1
 
@@ -2599,35 +2684,12 @@ async def super_ai_agent(
 
             gemini_answer = await call_gemini(vision_prompt, image_b64, mime)
 
-            # Also run voting engine if market context available
+            # Also run enhanced voting engine if market context available
             market_target = detect_market(question) or session.get("last_market") or (market or "")
             engine_suffix = ""
             if market_target:
-                try:
-                    visual_context = [{"description": question or "تحليل شارت"}]
-                    unified = voting_engine.data_adapter.normalize_input(visual_context, market_target)
-                    ap = agent_manager.run(unified)
-                    ow = ap.get("orchestrator", {}).get("weights")
-                    rr = await asyncio.wait_for(
-                        asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=ow),
-                        timeout=12
-                    )
-                    rec = rr.get("recommendation", "")
-                    conf = rr.get("confidence", 0)
-                    reason = rr.get("reason", "")
-                    targets = rr.get("targets", [])
-                    sl = rr.get("stop_loss", "")
-                    if rec:
-                        engine_suffix = f"\n\n📊 **نظام VisionTrader ({market_target})**: {rec} | ثقة {conf}%"
-                        if targets:
-                            engine_suffix += f" | أهداف: {', '.join(map(str, targets))}"
-                        if sl:
-                            engine_suffix += f" | وقف: {sl}"
-                        if reason:
-                            engine_suffix += f"\n{reason}"
-                        session["last_market"] = market_target
-                except Exception as e:
-                    logger.warning(f"Voting engine (image): {e}")
+                session["last_market"] = market_target
+                engine_suffix = await get_enhanced_engine_analysis(market_target, question)
 
             if not gemini_answer:
                 gemini_answer = "تم استلام الصورة لكن تعذّر تحليلها. تأكد من وضوح الشارت وحاول مرة أخرى."
@@ -2659,32 +2721,9 @@ async def super_ai_agent(
         ])
 
         engine_suffix = ""
-        if market_target:
-            try:
-                visual_context = [{"description": question}]
-                unified = voting_engine.data_adapter.normalize_input(visual_context, market_target)
-                ap = agent_manager.run(unified)
-                ow = ap.get("orchestrator", {}).get("weights")
-                rr = await asyncio.wait_for(
-                    asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=ow),
-                    timeout=12
-                )
-                rec = rr.get("recommendation", "")
-                conf = rr.get("confidence", 0)
-                reason = rr.get("reason", "")
-                targets = rr.get("targets", [])
-                sl = rr.get("stop_loss", "")
-                if rec:
-                    engine_suffix = f"\n\n📊 **تحليل {market_target} من نظام VisionTrader**:\nالتوصية: **{rec}** | الثقة: {conf}%"
-                    if targets:
-                        engine_suffix += f"\nالأهداف: {', '.join(map(str, targets))}"
-                    if sl:
-                        engine_suffix += f"\nوقف الخسارة: {sl}"
-                    if reason:
-                        engine_suffix += f"\n{reason}"
-                    session["last_market"] = market_target
-            except Exception as e:
-                logger.warning(f"Voting engine (text): {e}")
+        if wants_analysis and market_target:
+            session["last_market"] = market_target
+            engine_suffix = await get_enhanced_engine_analysis(market_target, question)
 
         # Fallback if Gemini had no API key or failed
         if not gemini_answer:
