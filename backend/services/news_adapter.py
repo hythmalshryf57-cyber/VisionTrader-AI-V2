@@ -249,27 +249,41 @@ class GoogleNewsFetcher:
         return items
 
 
-class TwitterSimFetcher:
-    """محاكاة بيانات Twitter/X (بسبب قيود API مدفوع)"""
+class InvestingFetcher:
+    """Fetches top market news from Investing.com RSS"""
 
-    MOCK_TWEETS = [
-        {"text": "FED signals possible rate cut next quarter #USD #Forex", "likes": 4200},
-        {"text": "Gold surges as geopolitical tensions rise #XAU #SafeHaven", "likes": 8900},
-        {"text": "Strong US jobs data beats expectations – dollar rallying", "likes": 3100},
-        {"text": "Oil prices crash on demand concerns #recession", "likes": 2800},
-        {"text": "Breaking: Central bank emergency meeting called #crisis", "likes": 15000},
+    FEED_URLS = [
+        "https://www.investing.com/rss/news_25.rss",
+        "https://www.investing.com/rss/economic-calendar.rss",
     ]
 
     def fetch(self) -> List[NewsItem]:
         items: List[NewsItem] = []
-        for tw in self.MOCK_TWEETS:
-            items.append(NewsItem(
-                title=tw["text"],
-                source="Twitter/X",
-                published=datetime.now(timezone.utc).isoformat(),
-                url="https://twitter.com",
-                confidence=min(tw["likes"] / 20000, 1.0),
-            ))
+        headers = {"User-Agent": "VisionTrader/2.0"}
+        for feed_url in self.FEED_URLS:
+            try:
+                r = requests.get(feed_url, timeout=12, headers=headers)
+                if r.status_code != 200:
+                    logger.warning(f"Investing RSS {feed_url} -> {r.status_code}")
+                    continue
+                root = ET.fromstring(r.content)
+                for item_el in root.findall('.//item'):
+                    title = (item_el.findtext('title') or '').strip()
+                    link = (item_el.findtext('link') or '').strip()
+                    pub = (item_el.findtext('pubDate') or '').strip()
+                    desc = (item_el.findtext('description') or '').strip()
+                    if not title:
+                        continue
+                    items.append(NewsItem(
+                        title=title,
+                        source='Investing',
+                        published=pub,
+                        url=link,
+                        summary=desc,
+                        confidence=0.65
+                    ))
+            except Exception as exc:
+                logger.error(f"Investing fetch error for {feed_url}: {exc}")
         return items
 
 
@@ -457,7 +471,7 @@ class NewsAdapter:
     HISTORY_FILE     = "news_adaptation_history.json"
 
     def __init__(self):
-        self.fetchers  = [ForexFactoryFetcher(), GoogleNewsFetcher(), TwitterSimFetcher()]
+        self.fetchers  = [ForexFactoryFetcher(), GoogleNewsFetcher(), InvestingFetcher()]
         self.analyzer  = ImpactAnalyzer()
         self.state     = SystemState()
         self.history:  List[Dict] = []

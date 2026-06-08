@@ -58,7 +58,7 @@
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; margin-bottom:18px;">
                         <div>
                             <h1 data-i18n="welcome_title">مرحباً، متداول Alpha</h1>
-                            <p data-i18n="welcome_subtitle">آخر تحليلاتك كانت على <b>الذهب (XAUUSD)</b> بنسبة ثقة 92%.</p>
+                            <p data-i18n="welcome_subtitle">أحدث بيانات الأداء والسوق الحقيقية متاحة في الوقت الفعلي.</p>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px; position:relative;">
                             <button class="btn btn-ghost" id="notiBell" onclick="toggleNotifications()" title="التنبيهات" style="position:relative;">🔔 <span id="notiCount" style="background:#ff4d4d; color:white; border-radius:50%; padding:2px 6px; font-size:0.7rem; position:absolute; top:-2px; right:-2px; display:none;">0</span></button>
@@ -74,11 +74,7 @@
                         </div>
                     </div>
                     <div style="margin-top: 15px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
-                        <label class="switch-container" style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                            <span>الوضع التجريبي (Demo Mode):</span>
-                            <input type="checkbox" id="demoModeToggle" onchange="toggleDemoDashboard()">
-                            <span class="slider"></span>
-                        </label>
+                        <span style="color: #d1d5db; font-size: 0.95rem;">كل الأرقام المعروضة تعتمد على بيانات محفظتك ودفتر التداول.</span>
                     </div>
                 </div>
                 <div style="text-align: left; min-width: 220px;">
@@ -152,23 +148,11 @@
                         <div style="display:flex; justify-content:space-between; color:#aaa;"><span>الربح/الخسارة بالدولار</span><strong id="todayPnL">-</strong></div>
                     </div>
                 </div>
-                <div class="memory-card" id="watchlistCard">
-                    <h3 data-i18n="watchlist_title">قائمة المراقبة</h3>
-                    <div style="margin-top: 18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                        <input id="watchlistInput" placeholder="BTCUSD" style="flex:1; min-width:180px; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background: var(--panel); color: var(--text);" />
-                        <button class="btn btn-primary" id="addWatchlistBtn" data-i18n="add_watchlist">أضف للسجل</button>
+                <div class="memory-card" id="recentTradesCard" style="background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
+                    <h3>آخر الصفقات المسجلة</h3>
+                    <div id="recentTradesList" style="margin-top: 18px; display:grid; gap:12px; color:#ddd;">
+                        <div style="color:#bbb;">يتم تحميل الصفقات من دفتر التداول...</div>
                     </div>
-                    <div id="watchlistItems" style="margin-top: 16px; display:grid; gap:10px;">
-                        <div style="color:#bbb;" data-i18n="watchlist_empty">لا توجد أسواق مفضلة بعد. أضف أول رمز.</div>
-                    </div>
-                </div>
-                <div class="memory-card" id="dailyReportCard" style="background: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.2);">
-                    <h3 data-i18n="daily_report_title">التقرير اليومي</h3>
-                    <div id="dailyReportMessage" style="margin-top: 18px; color:#d1fae5;">جاري جلب تقرير اليوم...</div>
-                    <button class="btn btn-primary" id="sendTelegramReportBtn" style="margin-top: 18px; background: #10b981;" data-i18n="send_telegram">إرسال للتليجرام</button>
-                    <button class="btn btn-secondary" onclick="window.location.href='daily-report.html?autoprint=true'" style="margin-top: 10px; width: 100%; border: 1px solid rgba(16,185,129,0.3); color:#fff; display:flex; justify-content:center; align-items:center;">
-                        <i class="fas fa-file-pdf" style="margin-left: 8px;"></i> تحميل تقرير اليوم (PDF)
-                    </button>
                 </div>
                 <div class="memory-card" id="performanceSummaryCard">
                     <h3>📈 الأداء الزمني</h3>
@@ -408,19 +392,6 @@
             }
         }
 
-        async function toggleDemoDashboard() {
-            const toggle = document.getElementById('demoModeToggle');
-            const demo_mode = toggle.checked;
-            try {
-                await api.updateUserPreferences({ demo_mode });
-                alert(demo_mode ? 'تم تفعيل الوضع التجريبي برأس مال 1,000,000$' : 'تم إلغاء تفعيل الوضع التجريبي');
-                loadDashboard();
-            } catch (err) {
-                alert('فشل تحديث وضع الديمو: ' + err.message);
-                toggle.checked = !demo_mode;
-            }
-        }
-
         async function loadDashboard() {
             try {
                 const stats = await api.getComparisonStats();
@@ -446,6 +417,7 @@
                 await loadAccountSummary();
                 await loadTodaySummary();
                 await loadPerformanceSummary();
+                await loadRecentTrades();
                 await initPnLChart();
                 await loadNotifications();
             } catch (err) {
@@ -460,15 +432,10 @@
             
             try {
                 const summary = await api.getAccountSummary();
-                accountEl.innerText = `$${Number(summary.account_balance).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+                accountEl.innerText = summary.account_balance !== undefined && summary.account_balance !== null ? `$${Number(summary.account_balance).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}` : '--';
                 modeEl.innerText = summary.trading_mode || '--';
-                
-                const demoToggle = document.getElementById('demoModeToggle');
-                if (demoToggle) {
-                    demoToggle.checked = summary.demo_mode === true;
-                }
                 if (summary.demo_mode) {
-                    labelEl.innerText = 'رصيد الحساب التجريبي';
+                    labelEl.innerText = 'رصيد الحساب (تجريبي)';
                     labelEl.style.color = '#00f2fe';
                 } else {
                     labelEl.innerText = 'رصيد الحساب';
@@ -523,6 +490,36 @@
                 });
             } catch (err) {
                 console.error('Performance stats error', err);
+            }
+        }
+
+        async function loadRecentTrades() {
+            try {
+                const entries = await api.getJournal();
+                const recentTradesEl = document.getElementById('recentTradesList');
+                if (!entries || entries.length === 0) {
+                    recentTradesEl.innerHTML = '<div style="color:#bbb;">لا توجد صفقات مسجلة حتى الآن.</div>';
+                    return;
+                }
+                const sorted = entries.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+                recentTradesEl.innerHTML = sorted.map(entry => {
+                    const result = entry.result || '--';
+                    const pnl = entry.profit_loss !== undefined && entry.profit_loss !== null ? `${entry.profit_loss >= 0 ? '+' : ''}${Number(entry.profit_loss).toFixed(2)}$` : '--';
+                    return `
+                        <div style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:14px;">
+                            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+                                <span style="font-weight:700;">${entry.market || 'غير محدد'}</span>
+                                <span style="font-size:0.85rem; color:#aaa;">${new Date(entry.date).toLocaleDateString('ar-EG')} ${new Date(entry.date).toLocaleTimeString('ar-EG')}</span>
+                            </div>
+                            <div style="margin-top:8px; display:flex; justify-content:space-between; gap:12px; font-size:0.92rem; color:#ddd;">
+                                <span>الحالة: ${result}</span>
+                                <span>الربح/الخسارة: ${pnl}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('Recent trades load error', err);
             }
         }
 

@@ -890,7 +890,7 @@ def get_comparison(db: Session = Depends(get_db), current_user: models.User = De
     top3_list = [{"strategy": s.strategy_name, "wins": s.wins, "losses": s.losses, "total_profit": getattr(s, 'total_profit', 0)} for s in top3]
 
     # Markets success from journal entries
-    journals = db.query(models.JournalEntry).all()
+    journals = db.query(models.JournalEntry).filter(models.JournalEntry.user_id == current_user.id).all()
     market_stats = {}
     for j in journals:
         if not j.market:
@@ -907,8 +907,9 @@ def get_comparison(db: Session = Depends(get_db), current_user: models.User = De
 
     market_list = sorted(market_list, key=lambda x: x['win_rate'], reverse=True)[:5]
 
+    human_win_rate = int((sum(1 for j in journals if j.result and str(j.result).lower().startswith('win')) / len(journals) * 100) if journals else 0)
     return {
-        "human_win_rate": 62,
+        "human_win_rate": human_win_rate,
         "ai_win_rate": ai_win_rate,
         "best_strategy": top3_list[0]['strategy'] if top3_list else None,
         "total_profit": sum(getattr(s, 'total_profit', 0) for s in strategies),
@@ -1653,8 +1654,10 @@ def get_system_pulse():
     }
 
 @app.get("/api/system/strategies")
-def get_system_strategies():
+def get_system_strategies(current_user: models.User = Depends(auth.get_current_user)):
     """قائمة الاستراتيجيات مع الأداء مرتبة من الأفضل للأسوأ"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
     try:
         from .voting_engine import strategy_loader
     except:
@@ -1863,6 +1866,81 @@ def get_market_session(current_user: models.User = Depends(auth.get_current_user
 @app.get("/api/market/spread")
 def get_market_spread(current_user: models.User = Depends(auth.get_current_user)):
     return market_protection_service.get_spread_report()
+
+
+def _format_binance_symbol(symbol: str) -> str:
+    if not symbol:
+        return ""
+    normalized = re.sub(r'[^A-Z0-9]', '', symbol.upper())
+    if normalized.endswith("USD") and not normalized.endswith("USDT") and len(normalized) > 3:
+        normalized = normalized[:-3] + "USDT"
+    return normalized
+
+
+def _format_twelvedata_symbol(symbol: str) -> str:
+    if not symbol:
+        return ""
+    normalized = symbol.strip().upper().replace('_', '/').replace('-', '/').replace(':', '/')
+    if normalized.endswith('USDT'):
+        normalized = normalized[:-4] + '/USD'
+    elif normalized.endswith('USD') and not normalized.endswith('/USD'):
+        normalized = normalized[:-3] + '/USD'
+    elif '/' not in normalized and len(normalized) > 3:
+        normalized = normalized[:-3] + '/USD'
+    return normalized
+
+
+@app.get("/api/market/price")
+def get_market_price(symbol: str = "BTCUSDT"):
+    symbol = (symbol or "BTCUSDT").strip().upper()
+    binance_symbol = _format_binance_symbol(symbol)
+    twelvedata_symbol = _format_twelvedata_symbol(symbol)
+
+    binance_price = 0.0
+    twelvedata_price = None
+    binance_status = "failed"
+    twelvedata_status = "failed"
+
+    try:
+        if binance_symbol:
+            price = binance_service.get_ticker_price(binance_symbol)
+            if price is not None:
+                binance_price = float(price)
+                binance_status = 'ok' if binance_price > 0 else 'no_data'
+            else:
+                binance_status = 'no_data'
+    except Exception:
+        binance_status = 'failed'
+
+    try:
+        if twelvedata_symbol:
+            price = tradingview_service.get_symbol_price(twelvedata_symbol)
+            if price is not None:
+                twelvedata_price = float(price)
+                twelvedata_status = 'ok'
+            else:
+                twelvedata_status = 'no_data'
+    except Exception:
+        twelvedata_status = 'failed'
+
+    price_diff_pct = None
+    if twelvedata_price is not None and binance_price:
+        try:
+            price_diff_pct = round(abs(binance_price - twelvedata_price) / max(abs(binance_price), 1) * 100, 3)
+        except Exception:
+            price_diff_pct = None
+
+    return {
+        "symbol": symbol,
+        "binance_symbol": binance_symbol,
+        "twelvedata_symbol": twelvedata_symbol,
+        "binance_price": binance_price,
+        "twelvedata_price": twelvedata_price,
+        "binance_status": binance_status,
+        "twelvedata_status": twelvedata_status,
+        "price_diff_pct": price_diff_pct,
+    }
+
 
 @app.get("/api/price-alerts")
 def get_price_alerts(current_user: models.User = Depends(auth.get_current_user)):
