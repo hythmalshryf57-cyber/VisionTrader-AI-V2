@@ -246,8 +246,10 @@
                 const result = await sendToServer(text, attachedImage, market);
                 const answer = result.answer || 'تعذّر الحصول على رد. حاول مرة أخرى.';
                 createBubble(answer, 'ai');
-                if (result.visual_analysis) {
-                    createBubble('تحليل الصورة: ' + result.visual_analysis.analysis, 'ai');
+                if (result.visual_analysis && result.visual_analysis.analysis) {
+                    const va = result.visual_analysis.analysis;
+                    const vaText = typeof va === 'string' ? va : (va.note || va.recommendation || JSON.stringify(va));
+                    if (vaText) createBubble('📷 تحليل الصورة: ' + vaText, 'ai');
                 }
             } catch (error) {
                 systemBubble('خطأ في الاتصال: ' + error.message);

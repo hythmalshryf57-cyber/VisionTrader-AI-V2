@@ -2472,157 +2472,203 @@ async def super_ai_agent(
     db: Session = Depends(get_db)
 ):
     question = (question or "").strip()
-    
-    # 1. Session State Management
+
+    # ── Session init ───────────────────────────────────────────────────────────
     if current_user.id not in USER_SESSIONS:
-        USER_SESSIONS[current_user.id] = {"history": [], "pending": {}, "last_market": None, "last_timeframe": None}
+        USER_SESSIONS[current_user.id] = {"history": [], "last_market": None}
     session = USER_SESSIONS[current_user.id]
-    
-    if question:
+
+    SYSTEM_PROMPT = (
+        "أنت وكيل تداول ذكي في منصة VisionTrader AI. "
+        "أنت خبير في التحليل الفني والأساسي. "
+        "تجيب على أسئلة المستخدمين عن الأسواق المالية والعملات والذهب والنفط والمؤشرات. "
+        "تقدم تحليلات مفيدة ونصائح ذكية. "
+        "تتحدث بالعربية بطلاقة. أسلوبك ودود ومحترف. "
+        "إذا طُلب منك تحليل سوق، اذكر الاتجاه والتوصية ومستويات الدعم والمقاومة."
+    )
+
+    # ── Helper: call Gemini REST API ───────────────────────────────────────────
+    async def call_gemini(user_text: str, image_b64: str = None, image_mime: str = None) -> str:
+        api_key = getattr(settings, "GEMINI_API_KEY", "")
+        if not api_key:
+            return ""
+        import httpx
+        contents = []
+        # Prepend system as first user turn (Gemini has no system role)
+        contents.append({
+            "role": "user",
+            "parts": [{"text": SYSTEM_PROMPT}]
+        })
+        contents.append({"role": "model", "parts": [{"text": "تمام، أنا جاهز لمساعدتك."}]})
+        # Add conversation history (last 16 turns)
+        for msg in session["history"][-16:]:
+            role = "user" if msg["role"] == "user" else "model"
+            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        # Current user turn
+        current_parts = [{"text": user_text}]
+        if image_b64 and image_mime:
+            current_parts.append({"inlineData": {"mimeType": image_mime, "data": image_b64}})
+        contents.append({"role": "user", "parts": current_parts})
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": contents,
+            "generationConfig": {"temperature": 0.75, "maxOutputTokens": 1024}
+        }
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.post(url, json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except Exception as exc:
+            logger.exception(f"Gemini API call failed: {exc}")
+            return ""
+
+    # ── Helper: detect market symbol from text ─────────────────────────────────
+    def detect_market(text: str) -> str:
+        t = text.lower()
+        mapping = [
+            (["ذهب", "gold", "xauusd"], "XAUUSD"),
+            (["بيتكوين", "bitcoin", "btc"], "BTCUSDT"),
+            (["يورو", "euro", "eurusd"], "EURUSD"),
+            (["باوند", "جنيه", "pound", "gbpusd"], "GBPUSD"),
+            (["نفط", "oil", "crude", "usoil"], "USOIL"),
+            (["ناسداك", "nasdaq", "nas100"], "NAS100"),
+            (["داو جونز", "dow", "us30"], "US30"),
+            (["فضة", "silver", "xagusd"], "XAGUSD"),
+            (["ايثيريوم", "ethereum", "eth"], "ETHUSDT"),
+            (["دولار ين", "usdjpy"], "USDJPY"),
+        ]
+        for keywords, symbol in mapping:
+            if any(k in t for k in keywords):
+                return symbol
+        return ""
+
+    try:
+        SYSTEM_METRICS["gemini_calls"] += 1
+
+        # ── IMAGE PATH ──────────────────────────────────────────────────────────
+        if image is not None:
+            image_bytes = await image.read()
+            if not image_bytes:
+                return _build_simple_response("الصورة فارغة. يرجى إرسال صورة واضحة.", "error")
+            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            mime = image.content_type or "image/jpeg"
+
+            vision_prompt = (
+                (question + "\n\n") if question else ""
+            ) + (
+                "حلل هذا الشارت بالتفصيل: حدد الاتجاه العام، مستويات الدعم والمقاومة، "
+                "أي نماذج سعرية، وقدم توصية واضحة (شراء/بيع/انتظار) مع السبب."
+            )
+
+            gemini_answer = await call_gemini(vision_prompt, image_b64, mime)
+
+            # Also run voting engine if market context available
+            market_target = detect_market(question) or session.get("last_market") or (market or "")
+            engine_suffix = ""
+            if market_target:
+                try:
+                    visual_context = [{"description": question or "تحليل شارت"}]
+                    unified = voting_engine.data_adapter.normalize_input(visual_context, market_target)
+                    ap = agent_manager.run(unified)
+                    ow = ap.get("orchestrator", {}).get("weights")
+                    rr = await asyncio.wait_for(
+                        asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=ow),
+                        timeout=12
+                    )
+                    rec = rr.get("recommendation", "")
+                    conf = rr.get("confidence", 0)
+                    reason = rr.get("reason", "")
+                    targets = rr.get("targets", [])
+                    sl = rr.get("stop_loss", "")
+                    if rec:
+                        engine_suffix = f"\n\n📊 **نظام VisionTrader ({market_target})**: {rec} | ثقة {conf}%"
+                        if targets:
+                            engine_suffix += f" | أهداف: {', '.join(map(str, targets))}"
+                        if sl:
+                            engine_suffix += f" | وقف: {sl}"
+                        if reason:
+                            engine_suffix += f"\n{reason}"
+                        session["last_market"] = market_target
+                except Exception as e:
+                    logger.warning(f"Voting engine (image): {e}")
+
+            if not gemini_answer:
+                gemini_answer = "تم استلام الصورة لكن تعذّر تحليلها. تأكد من وضوح الشارت وحاول مرة أخرى."
+
+            final_answer = gemini_answer + engine_suffix
+            session["history"].append({"role": "user", "content": f"[صورة] {question}"})
+            session["history"].append({"role": "ai", "content": final_answer})
+            if len(session["history"]) > 20:
+                session["history"] = session["history"][-20:]
+            resp = _build_simple_response(final_answer, "visual_analysis")
+            return resp
+
+        # ── TEXT PATH ───────────────────────────────────────────────────────────
+        if not question:
+            return _build_simple_response("أهلاً! كيف يمكنني مساعدتك في التداول اليوم؟", "general")
+
         session["history"].append({"role": "user", "content": question})
         if len(session["history"]) > 20:
             session["history"] = session["history"][-20:]
-            
-    pending = session["pending"]
-    q_norm = _normalize_text(question)
 
-    try:
-        # 2. Image upload bypasses conversational flow
-        if image is not None:
-            visual_analysis = {}
+        # 1. Get Gemini's natural language answer (pass history minus current msg)
+        gemini_answer = await call_gemini(question)
+
+        # 2. Detect market and enrich with voting engine if relevant
+        market_target = detect_market(question) or session.get("last_market") or (market or "")
+        wants_analysis = any(w in question for w in [
+            "حلل", "تحليل", "كيف حال", "وين", "ايش رأيك", "رأيك",
+            "توصية", "ادخل", "اشتري", "بيع", "اشوف", "تتوقع"
+        ])
+
+        engine_suffix = ""
+        if market_target:
             try:
-                visual_analysis = await _analyze_image_file(image) or {}
-            except Exception as exc:
-                logger.exception(f"Image processing failed: {exc}")
-                
-            try:
-                market_target = pending.get("market") or market or "Unknown"
-                visual_context = [{"description": question, "visual_analysis": visual_analysis}]
-                unified_data = voting_engine.data_adapter.normalize_input(visual_context, market_target)
-                agent_payload = agent_manager.run(unified_data)
-                orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
-                real_result = await asyncio.wait_for(
-                    asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=orchestrator_weights),
-                    timeout=15
+                visual_context = [{"description": question}]
+                unified = voting_engine.data_adapter.normalize_input(visual_context, market_target)
+                ap = agent_manager.run(unified)
+                ow = ap.get("orchestrator", {}).get("weights")
+                rr = await asyncio.wait_for(
+                    asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=ow),
+                    timeout=12
                 )
-                rec = real_result.get('recommendation', 'غير واضح')
-                conf = real_result.get('confidence', 0)
-                thesis = real_result.get('reason', '')
-                targets = real_result.get('targets', [])
-                stop_loss = real_result.get('stop_loss')
-                
-                target_str = f"الأهداف: {', '.join(map(str, targets))}." if targets else ""
-                stop_str = f"وقف الخسارة: {stop_loss}." if stop_loss else ""
-                
-                answer = f"تم تحليل الصورة. التوصية: {rec} (بثقة {conf}%). {target_str} {stop_str} التفاصيل: {thesis}"
+                rec = rr.get("recommendation", "")
+                conf = rr.get("confidence", 0)
+                reason = rr.get("reason", "")
+                targets = rr.get("targets", [])
+                sl = rr.get("stop_loss", "")
+                if rec:
+                    engine_suffix = f"\n\n📊 **تحليل {market_target} من نظام VisionTrader**:\nالتوصية: **{rec}** | الثقة: {conf}%"
+                    if targets:
+                        engine_suffix += f"\nالأهداف: {', '.join(map(str, targets))}"
+                    if sl:
+                        engine_suffix += f"\nوقف الخسارة: {sl}"
+                    if reason:
+                        engine_suffix += f"\n{reason}"
+                    session["last_market"] = market_target
             except Exception as e:
-                logger.exception(f"Image analysis failed: {e}")
-                answer = "التحليل غير متاح حالياً. جرب مرة أخرى."
-                
-            session["history"].append({"role": "ai", "content": answer})
-            pending.clear()
-            resp = _build_simple_response(answer, "visual_analysis")
-            resp["visual_analysis"] = visual_analysis
-            return resp
+                logger.warning(f"Voting engine (text): {e}")
 
-        # 3. Contextual Understanding
-        if "نفس السوق السابق" in q_norm or "السوق السابق" in q_norm:
-            if session.get("last_market"):
-                pending["market"] = session["last_market"]
-        if "نفس الفريم" in q_norm:
-            if session.get("last_timeframe"):
-                pending["timeframe"] = session["last_timeframe"]
-
-        # 4. Extract parameters
-        if "تحليل" in q_norm or "حلل" in q_norm:
-            pending["intent"] = "analysis"
-        elif "توصية" in q_norm:
-            pending["intent"] = "recommendation"
-        elif "footprint" in q_norm:
-            pending["intent"] = "footprint"
-
-        extracted_market = _map_named_market(question)
-        if extracted_market and extracted_market != "Unknown":
-            pending["market"] = extracted_market
-        elif market and market != "Unknown":
-            pending["market"] = market
-
-        timeframes = ["5 دقائق", "15 دقيقة", "ساعة", "4 ساعات", "يومي", "5m", "15m", "1h", "4h", "1d"]
-        for tf in timeframes:
-            if tf in q_norm:
-                pending["timeframe"] = tf
-
-        numbers = _find_numbers(question)
-        if ("مخاطرة" in q_norm or "risk" in q_norm) and numbers:
-            pending["risk"] = numbers[0]
-        if ("رأس مال" in q_norm or "capital" in q_norm or "دولار" in q_norm) and numbers:
-            pending["capital"] = numbers[-1]
-
-        # 5. Conversational Router
-        if pending.get("market") and not pending.get("intent"):
-            answer = "هل تريد تحليل فني، ولا توصية سريعة، ولا تحليل Footprint؟"
-            session["history"].append({"role": "ai", "content": answer})
-            return _build_simple_response(answer, "clarification")
-
-        if pending.get("intent") == "analysis" and not pending.get("timeframe"):
-            answer = "على أي فريم؟ (5 دقائق، 15 دقيقة، ساعة، 4 ساعات، يومي)؟"
-            session["history"].append({"role": "ai", "content": answer})
-            return _build_simple_response(answer, "clarification")
-
-        if pending.get("intent") == "recommendation" and (not pending.get("capital") or not pending.get("risk")):
-            answer = "ما هو رأس مالك؟ وكم نسبة المخاطرة اللي ترتاح لها؟"
-            session["history"].append({"role": "ai", "content": answer})
-            return _build_simple_response(answer, "clarification")
-
-        # General Chat Handling
-        if not pending.get("market") and not pending.get("intent"):
-            if "شكرا" in q_norm or "شكر" in q_norm or "يعطيك العافية" in q_norm:
-                answer = "العفو! أنا هنا دائماً لمساعدتك في التداول. هل تحتاج إلى تحليل لأي سوق؟"
-            elif "مرحبا" in q_norm or "اهلا" in q_norm or "السلام" in q_norm:
-                answer = "أهلاً بك في VisionTrader AI. كيف يمكنني مساعدتك في التداول اليوم؟"
+        # Fallback if Gemini had no API key or failed
+        if not gemini_answer:
+            if engine_suffix:
+                gemini_answer = f"بناءً على تحليل السوق لـ {market_target}:"
             else:
-                answer = "أنا أفهمك. يرجى توضيح السوق أو الطلب الذي تريده (مثل: حلل الذهب، أو توصية للبيتكوين)."
-            session["history"].append({"role": "ai", "content": answer})
-            return _build_simple_response(answer, "general")
+                gemini_answer = "يمكنني مساعدتك في تحليل الأسواق المالية. اذكر لي السوق الذي تريد تحليله (مثل: الذهب، اليورو، البيتكوين)."
 
-        # 6. Execute Real Analysis
-        market_target = pending.get("market", "Unknown")
-        try:
-            visual_context = [{"description": f"User asked for {pending.get('intent')} on timeframe {pending.get('timeframe')} with risk {pending.get('risk')} and capital {pending.get('capital')}"}]
-            unified_data = voting_engine.data_adapter.normalize_input(visual_context, market_target)
-            agent_payload = agent_manager.run(unified_data)
-            orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
-            real_result = await asyncio.wait_for(
-                asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=orchestrator_weights),
-                timeout=15
-            )
-            rec = real_result.get('recommendation', 'غير واضح')
-            conf = real_result.get('confidence', 0)
-            thesis = real_result.get('reason', '')
-            targets = real_result.get('targets', [])
-            stop_loss = real_result.get('stop_loss')
+        final_answer = gemini_answer + engine_suffix
+        session["history"].append({"role": "ai", "content": final_answer})
 
-            target_str = f"الأهداف: {', '.join(map(str, targets))}." if targets else ""
-            stop_str = f"وقف الخسارة: {stop_loss}." if stop_loss else ""
-
-            answer = f"التحليل الفعلي للسوق ({market_target}): التوصية {rec} (بثقة {conf}%). {target_str} {stop_str} أطروحة السوق: {thesis}"
-        except Exception as e:
-            logger.exception(f"Real analysis failed: {e}")
-            answer = "التحليل غير متاح حالياً. جرب مرة أخرى."
-
-        # Commit memory
-        session["last_market"] = pending.get("market") or session.get("last_market")
-        session["last_timeframe"] = pending.get("timeframe") or session.get("last_timeframe")
-        pending.clear()
-        
-        session["history"].append({"role": "ai", "content": answer})
-        return _build_simple_response(answer, "market_analysis")
+        return _build_simple_response(final_answer, "market_analysis" if engine_suffix else "conversational")
 
     except HTTPException:
         raise
     except Exception as exc:
         logger.exception(f"super_ai_agent failed: {exc}")
-        return _build_simple_response('حدث خطأ مؤقت أثناء معالجة الطلب. يرجى المحاولة مرة أخرى لاحقًا.', "error")
+        return _build_simple_response("حدث خطأ مؤقت. يرجى المحاولة مرة أخرى.", "error")
 
 @app.post("/api/chart/detect")
 async def detect_chart_screenshot(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
