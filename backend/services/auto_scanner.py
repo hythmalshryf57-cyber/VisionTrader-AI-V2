@@ -440,7 +440,8 @@ class AutoScanner:
                     "confidence": confidence,
                     "entry": levels["entry"],
                     "sl": levels["sl"],
-                    "tp": levels["tp"]
+                    "tp": levels["tp"],
+                    "rr": "1:3"
                 })
             except Exception as e:
                 print(f"Error building opportunity for {market}: {e}")
