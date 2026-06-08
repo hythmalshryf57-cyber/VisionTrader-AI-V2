@@ -78,24 +78,57 @@
             font-size: 0.85rem;
             padding: 6px 12px;
         }
+        .main-content {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        @media (max-width: 1024px) {
+            .main-content {
+                height: auto;
+                overflow: visible;
+                padding: 15px;
+            }
+            .chart-layout {
+                height: auto;
+                gap: 15px;
+            }
+            .chart-card {
+                height: 450px;
+            }
+            .chat-side-card {
+                height: 450px;
+            }
+        }
     </style>
 </head>
 <body class="dark-theme">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<header class="topbar-mobile">
+    <div class="brand-mobile">🤖 VisionTrader</div>
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="القائمة"><i class="fas fa-bars"></i></button>
+</header>
     <div class="app-layout">
-        <aside class="sidebar">
-            <div class="brand"><i class="fas fa-eye"></i> <span>VisionTrader AI</span></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="brand"><div class="brand-icon">🤖</div><span>VisionTrader AI</span></div>
             <nav class="nav">
-                <a href="dashboard.html"><i class="fas fa-th-large"></i> <span>لوحة التحكم</span></a>
+                <a href="dashboard.html"><i class="fas fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+                <a href="upload.html"><i class="fas fa-robot"></i> <span>الوكيل الذكي</span></a>
                 <a href="tv-chart.html" class="active"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
-                <a href="upload.html"><i class="fas fa-upload"></i> <span>رفع الشارت</span></a>
                 <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
-                <a href="journal.html"><i class="fas fa-book"></i> <span>دفتر اليوميات</span></a>
                 <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+                <a href="journal.html"><i class="fas fa-book-open"></i> <span>دفتر التداول</span></a>
+                <a href="strategy_factory.html"><i class="fas fa-flask"></i> <span>مختبر الاستراتيجيات</span></a>
                 <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
             </nav>
+            <div style="padding:12px 10px;">
+                <button class="btn btn-danger" style="width:100%;" onclick="localStorage.removeItem('token');window.location.href='login.html';"><i class="fas fa-sign-out-alt"></i> خروج</button>
+            </div>
         </aside>
 
-        <main class="main-content fade-in" style="height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding: 20px;">
+        <main class="main-content fade-in">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                 <div>
                     <h1 style="font-size: 1.5rem; margin: 0;"><i class="fas fa-chart-area"></i> الشارت الحي والتحليل الذكي</h1>
@@ -198,6 +231,25 @@
                 sendChat();
             }
         });
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+        (function() {
+            function fix() {
+                var m = document.querySelector('.main-content');
+                if (!m) return;
+                m.style.marginRight = window.innerWidth <= 1024 ? '0' : '';
+                m.style.marginTop  = window.innerWidth <= 1024 ? '60px' : '';
+            }
+            fix(); window.addEventListener('resize', fix);
+        })();
     </script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

@@ -2752,6 +2752,21 @@ def _is_analysis_request(text: str) -> bool:
     keywords = ["حلل", "تحليل", "ابي", "أبي", "اريد", "أريد", "اعطني", "صفقة", "trade", "analyze", "analysis", "شارت", "chart", "توصية"]
     return any(k in text.lower() for k in keywords)
 
+@app.get("/api/ai/screenshot")
+async def get_tv_screenshot(
+    symbol: str,
+    timeframe: str = "H1",
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Get a direct screenshot of a TradingView chart.
+    """
+    from services.tv_screenshot import capture_tradingview_chart
+    screenshot_bytes = await capture_tradingview_chart(symbol, timeframe)
+    if not screenshot_bytes:
+        raise HTTPException(status_code=500, detail="Failed to capture screenshot")
+    return Response(content=screenshot_bytes, media_type="image/png")
+
 @app.post("/api/ai/conversational-agent")
 async def conversational_agent(
     message: str = Form(""),
