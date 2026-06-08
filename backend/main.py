@@ -2371,6 +2371,20 @@ def _build_agent_answer(question: str, intent: str, mood: str, profile: dict, ma
     elif intent == 'backtest' and quick_backtest:
         perf = quick_backtest.get('metrics', {})
         base.append(f"إليك نتائج backtest السريع لـ {market}: معدل الفوز {perf.get('win_rate', 0.0):.1f}%, العائد الإجمالي {perf.get('total_return', 0.0):.1f}.")
+    elif action_result and 'real_analysis' in action_result:
+        real = action_result['real_analysis']
+        rec = real.get('recommendation', 'غير واضح')
+        conf = real.get('confidence', 0)
+        thesis = real.get('reason', 'لا يوجد سبب مفصل.')
+        targets = real.get('targets', [])
+        stop_loss = real.get('stop_loss')
+        
+        target_str = f"الأهداف: {', '.join(map(str, targets))}." if targets else ""
+        stop_str = f"وقف الخسارة: {stop_loss}." if stop_loss else ""
+        
+        base.append(f"التحليل الفعلي للسوق: التوصية {rec} (بثقة {conf}%). {target_str} {stop_str} أطروحة السوق: {thesis}")
+    elif action_result and 'error' in action_result:
+        base.append(action_result['error'])
     else:
         base.append(f"سأقدم لك تحليل السوق في {market} مع توصية واضحة ورؤية مبسطة.")
 
@@ -2550,6 +2564,24 @@ async def super_ai_agent(
                 )
             except Exception as exc:
                 quick_backtest = {'error': str(exc)}
+        else:
+            try:
+                visual_context = [{"description": question}]
+                if visual_analysis:
+                     visual_context.append({"visual_analysis": visual_analysis})
+                
+                unified_data = voting_engine.data_adapter.normalize_input(visual_context, market)
+                agent_payload = agent_manager.run(unified_data)
+                orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
+                
+                real_result = await asyncio.wait_for(
+                    asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id, orchestrator_weights=orchestrator_weights),
+                    timeout=15
+                )
+                action_result = {"real_analysis": real_result}
+            except Exception as e:
+                logger.exception(f"Real analysis failed: {e}")
+                action_result = {"error": "التحليل غير متاح حالياً. جرب مرة أخرى."}
 
         answer = _build_agent_answer(
             question=question,
