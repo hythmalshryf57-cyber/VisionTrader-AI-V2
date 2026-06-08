@@ -303,7 +303,7 @@ async def _run_gemini_final_analysis(
         parts.append({"text": "\n\n⚠️ ملاحظة: لم تُلتقط الشاشات تلقائياً. حلل بناءً على نتائج الوكلاء فقط."})
 
     import httpx
-    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    for model_name in ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
             payload = {
@@ -322,6 +322,36 @@ async def _run_gemini_final_analysis(
         except Exception as e:
             logger.warning(f"Gemini {model_name} failed: {e}")
             continue
+
+    # DeepSeek Fallback
+    try:
+        from backend.config import settings
+        deepseek_key = getattr(settings, "DEEPSEEK_API_KEY", "")
+    except ImportError:
+        deepseek_key = ""
+        
+    if deepseek_key:
+        try:
+            url = "https://api.deepseek.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {deepseek_key}",
+                "Content-Type": "application/json"
+            }
+            messages = [{"role": "user", "content": prompt_text}]
+            payload = {
+                "model": "deepseek-chat",
+                "messages": messages,
+                "temperature": 0.4,
+                "max_tokens": 2500
+            }
+            async with httpx.AsyncClient(timeout=45) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                text = resp.json()["choices"][0]["message"]["content"].strip()
+                note = f"\n\n---\n🤖 **التحليل عبر DeepSeek (نموذج احتياطي)** - تم التحليل النصي فقط لعدم دعم الصور."
+                return text + note
+        except Exception as e:
+            logger.warning(f"DeepSeek fallback failed in multi_tf_analyzer: {e}")
 
     return _fallback_analysis_text(symbol, trade_type, signals_summary, tf_results, timeframes)
 
@@ -360,5 +390,5 @@ def _fallback_analysis_text(
         lines.append("- انتظر تأكيد أوضح قبل الدخول")
 
     lines.append("\n---")
-    lines.append("⚠️ *تعذّر الاتصال بـ Gemini — التحليل من نتائج نظام التصويت فقط*")
+    lines.append("⚠️ *التحليل من نظام التصويت فقط - Gemini غير متاح*")
     return "\n".join(lines)

@@ -2527,7 +2527,37 @@ async def super_ai_agent(
                     return data["candidates"][0]["content"]["parts"][0]["text"].strip()
             except Exception as exc:
                 logger.warning(f"Gemini API call with {model_name} failed: {exc}")
-        return ""
+        
+        # DeepSeek Fallback
+        deepseek_key = getattr(settings, "DEEPSEEK_API_KEY", "")
+        if deepseek_key:
+            try:
+                url = "https://api.deepseek.com/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {deepseek_key}",
+                    "Content-Type": "application/json"
+                }
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+                for msg in session["history"][-16:]:
+                    messages.append({"role": msg["role"], "content": msg["content"]})
+                # DeepSeek does not support images usually, so we only pass text
+                messages.append({"role": "user", "content": user_text})
+                
+                payload = {
+                    "model": "deepseek-chat",
+                    "messages": messages,
+                    "temperature": 0.75,
+                    "max_tokens": 1024
+                }
+                async with httpx.AsyncClient(timeout=20) as client:
+                    resp = await client.post(url, json=payload, headers=headers)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"].strip()
+            except Exception as exc:
+                logger.warning(f"DeepSeek fallback failed: {exc}")
+
+        return "التحليل من نظام التصويت فقط - Gemini غير متاح"
 
     # ── Helper: detect market symbol from text ─────────────────────────────────
     def detect_market(text: str) -> str:
