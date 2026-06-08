@@ -213,6 +213,11 @@
             };
             const response = await fetch('/api/ai/agent', { method: 'POST', body: form, headers });
             if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = 'login.html';
+                    return;
+                }
                 let errorText = response.statusText;
                 try {
                     const json = await response.json();

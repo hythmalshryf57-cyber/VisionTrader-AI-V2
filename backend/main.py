@@ -68,6 +68,7 @@ SYSTEM_METRICS = {
 }
 
 FREE_ANALYSIS_LIMIT = 3
+USER_SESSIONS = {}
 
 logger = logging.getLogger(__name__)
 
@@ -2454,6 +2455,14 @@ async def _analyze_image_file(image: UploadFile) -> dict:
         return {}
 
 
+def _build_simple_response(answer: str, intent: str = "conversational"):
+    return {
+        'answer': answer,
+        'intent': intent,
+        'mood': 'neutral',
+        'profile': {}, 'market_data': {}, 'session_info': {}, 'spread_report': {}, 'memory_matches': [], 'visual_analysis': {}, 'action_result': {}, 'quick_backtest': {}
+    }
+
 @app.post("/api/ai/agent")
 async def super_ai_agent(
     question: str = Form(""),
@@ -2463,180 +2472,157 @@ async def super_ai_agent(
     db: Session = Depends(get_db)
 ):
     question = (question or "").strip()
-    if not question:
-        question = "حلل السوق الحالي وقدّم توصية عامة بناءً على أحوال السوق."
+    
+    # 1. Session State Management
+    if current_user.id not in USER_SESSIONS:
+        USER_SESSIONS[current_user.id] = {"history": [], "pending": {}, "last_market": None, "last_timeframe": None}
+    session = USER_SESSIONS[current_user.id]
+    
+    if question:
+        session["history"].append({"role": "user", "content": question})
+        if len(session["history"]) > 20:
+            session["history"] = session["history"][-20:]
+            
+    pending = session["pending"]
+    q_norm = _normalize_text(question)
 
     try:
-        intent = _infer_intent(question)
-        mood = _infer_mood(question)
-        profile = _build_user_profile(current_user, db)
-        memory_matches = vector_memory.find_similar(question, top_k=4, db=db)
-        visual_analysis = {}
+        # 2. Image upload bypasses conversational flow
         if image is not None:
+            visual_analysis = {}
             try:
                 visual_analysis = await _analyze_image_file(image) or {}
             except Exception as exc:
                 logger.exception(f"Image processing failed: {exc}")
-                visual_analysis = {
-                    'analysis': {
-                        'recommendation': 'فشل تحليل الصورة، سأتابع بدونها.',
-                        'note': 'تعذّر قراءة الصورة المرفقة. يرجى تجربة صورة أخرى أو إرسال سؤالك بدون صورة.',
-                        'confidence': 0
-                    }
-                }
-
-        market = (market or "").strip() or _map_named_market(question)
-        market_data = {}
-        try:
-            market_data = binance_service.scan(market) or {}
-        except Exception as exc:
-            logger.exception(f"Market scan failed for {market}: {exc}")
-            market_data = {}
-
-        try:
-            session_info = market_protection_service.get_current_session() or {}
-        except Exception as exc:
-            logger.exception(f"Session info retrieval failed: {exc}")
-            session_info = {}
-
-        try:
-            spread_report = market_protection_service.get_spread_report() or {}
-        except Exception as exc:
-            logger.exception(f"Spread report retrieval failed: {exc}")
-            spread_report = {}
-
-        action_result = None
-        quick_backtest = None
-
-        if intent == 'price_alert':
-            price_candidates = _find_numbers(question)
-            target_price = price_candidates[0] if price_candidates else market_data.get('price')
-            direction = 'above' if any(word in _normalize_text(question) for word in ['فوق', 'أعلى', 'ارتفاع', 'شراء', 'buy']) else 'below'
-            if target_price is None:
-                action_result = {
-                    'error': 'تعذّر تحديد سعر الهدف من السؤال. الرجاء ذكر السعر أو إعادة صياغة الطلب.'
-                }
-            else:
-                try:
-                    action_result = market_protection_service.create_price_alert(
-                        user_id=current_user.id,
-                        market=market,
-                        target_price=float(target_price),
-                        direction=direction
-                    )
-                except Exception as exc:
-                    logger.exception(f"Price alert creation failed: {exc}")
-                    action_result = {
-                        'error': 'فشل إنشاء تنبيه السعر. يرجى المحاولة مرة أخرى.'
-                    }
-        elif intent == 'settings':
-            updates = {}
-            risk_numbers = [n for n in _find_numbers(question) if 0 < n < 100]
-            if risk_numbers and any(word in _normalize_text(question) for word in ['risk', 'مخاطر', 'نسبة']):
-                risk_value = risk_numbers[0]
-                if risk_value > 5:
-                    risk_value = max(0.1, min(risk_value / 100.0, 5.0))
-                updates['risk_percentage'] = round(risk_value, 2)
-            if any(word in _normalize_text(question) for word in ['فاتح', 'light']):
-                updates['theme'] = 'light'
-            if any(word in _normalize_text(question) for word in ['داكن', 'dark']):
-                updates['theme'] = 'dark'
-            if updates:
-                prefs = _ensure_preferences(db, current_user)
-                for key, value in updates.items():
-                    if hasattr(prefs, key):
-                        setattr(prefs, key, value)
-                db.add(prefs)
-                db.commit()
-                action_result = {'updated': updates}
-        elif intent == 'backtest':
-            try:
-                start_date = (datetime.now(timezone.utc) - timedelta(days=21)).date().isoformat()
-                end_date = datetime.now(timezone.utc).date().isoformat()
-                quick_backtest = backtest_engine.run_backtest(
-                    market=market,
-                    timeframe='1d',
-                    start_date=start_date,
-                    end_date=end_date,
-                    initial_capital=profile.get('settings', {}).get('capital', 10000.0),
-                    simulations=250,
-                    n_windows=3,
-                )
-            except Exception as exc:
-                quick_backtest = {'error': str(exc)}
-        else:
-            try:
-                visual_context = [{"description": question}]
-                if visual_analysis:
-                     visual_context.append({"visual_analysis": visual_analysis})
                 
-                unified_data = voting_engine.data_adapter.normalize_input(visual_context, market)
+            try:
+                market_target = pending.get("market") or market or "Unknown"
+                visual_context = [{"description": question, "visual_analysis": visual_analysis}]
+                unified_data = voting_engine.data_adapter.normalize_input(visual_context, market_target)
                 agent_payload = agent_manager.run(unified_data)
                 orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
-                
                 real_result = await asyncio.wait_for(
-                    asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id, orchestrator_weights=orchestrator_weights),
+                    asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=orchestrator_weights),
                     timeout=15
                 )
-                action_result = {"real_analysis": real_result}
+                rec = real_result.get('recommendation', 'غير واضح')
+                conf = real_result.get('confidence', 0)
+                thesis = real_result.get('reason', '')
+                targets = real_result.get('targets', [])
+                stop_loss = real_result.get('stop_loss')
+                
+                target_str = f"الأهداف: {', '.join(map(str, targets))}." if targets else ""
+                stop_str = f"وقف الخسارة: {stop_loss}." if stop_loss else ""
+                
+                answer = f"تم تحليل الصورة. التوصية: {rec} (بثقة {conf}%). {target_str} {stop_str} التفاصيل: {thesis}"
             except Exception as e:
-                logger.exception(f"Real analysis failed: {e}")
-                action_result = {"error": "التحليل غير متاح حالياً. جرب مرة أخرى."}
+                logger.exception(f"Image analysis failed: {e}")
+                answer = "التحليل غير متاح حالياً. جرب مرة أخرى."
+                
+            session["history"].append({"role": "ai", "content": answer})
+            pending.clear()
+            resp = _build_simple_response(answer, "visual_analysis")
+            resp["visual_analysis"] = visual_analysis
+            return resp
 
-        answer = _build_agent_answer(
-            question=question,
-            intent=intent,
-            mood=mood,
-            profile=profile,
-            market=market,
-            market_data=market_data,
-            memory_matches=memory_matches,
-            visual_analysis=visual_analysis,
-            action_result=action_result,
-            quick_backtest=quick_backtest,
-            session_info=session_info,
-        )
+        # 3. Contextual Understanding
+        if "نفس السوق السابق" in q_norm or "السوق السابق" in q_norm:
+            if session.get("last_market"):
+                pending["market"] = session["last_market"]
+        if "نفس الفريم" in q_norm:
+            if session.get("last_timeframe"):
+                pending["timeframe"] = session["last_timeframe"]
 
+        # 4. Extract parameters
+        if "تحليل" in q_norm or "حلل" in q_norm:
+            pending["intent"] = "analysis"
+        elif "توصية" in q_norm:
+            pending["intent"] = "recommendation"
+        elif "footprint" in q_norm:
+            pending["intent"] = "footprint"
+
+        extracted_market = _map_named_market(question)
+        if extracted_market and extracted_market != "Unknown":
+            pending["market"] = extracted_market
+        elif market and market != "Unknown":
+            pending["market"] = market
+
+        timeframes = ["5 دقائق", "15 دقيقة", "ساعة", "4 ساعات", "يومي", "5m", "15m", "1h", "4h", "1d"]
+        for tf in timeframes:
+            if tf in q_norm:
+                pending["timeframe"] = tf
+
+        numbers = _find_numbers(question)
+        if ("مخاطرة" in q_norm or "risk" in q_norm) and numbers:
+            pending["risk"] = numbers[0]
+        if ("رأس مال" in q_norm or "capital" in q_norm or "دولار" in q_norm) and numbers:
+            pending["capital"] = numbers[-1]
+
+        # 5. Conversational Router
+        if pending.get("market") and not pending.get("intent"):
+            answer = "هل تريد تحليل فني، ولا توصية سريعة، ولا تحليل Footprint؟"
+            session["history"].append({"role": "ai", "content": answer})
+            return _build_simple_response(answer, "clarification")
+
+        if pending.get("intent") == "analysis" and not pending.get("timeframe"):
+            answer = "على أي فريم؟ (5 دقائق، 15 دقيقة، ساعة، 4 ساعات، يومي)؟"
+            session["history"].append({"role": "ai", "content": answer})
+            return _build_simple_response(answer, "clarification")
+
+        if pending.get("intent") == "recommendation" and (not pending.get("capital") or not pending.get("risk")):
+            answer = "ما هو رأس مالك؟ وكم نسبة المخاطرة اللي ترتاح لها؟"
+            session["history"].append({"role": "ai", "content": answer})
+            return _build_simple_response(answer, "clarification")
+
+        # General Chat Handling
+        if not pending.get("market") and not pending.get("intent"):
+            if "شكرا" in q_norm or "شكر" in q_norm or "يعطيك العافية" in q_norm:
+                answer = "العفو! أنا هنا دائماً لمساعدتك في التداول. هل تحتاج إلى تحليل لأي سوق؟"
+            elif "مرحبا" in q_norm or "اهلا" in q_norm or "السلام" in q_norm:
+                answer = "أهلاً بك في VisionTrader AI. كيف يمكنني مساعدتك في التداول اليوم؟"
+            else:
+                answer = "أنا أفهمك. يرجى توضيح السوق أو الطلب الذي تريده (مثل: حلل الذهب، أو توصية للبيتكوين)."
+            session["history"].append({"role": "ai", "content": answer})
+            return _build_simple_response(answer, "general")
+
+        # 6. Execute Real Analysis
+        market_target = pending.get("market", "Unknown")
         try:
-            _record_agent_memory(db, current_user, question, answer, _summarize_visual_analysis(visual_analysis))
-        except Exception:
-            pass
+            visual_context = [{"description": f"User asked for {pending.get('intent')} on timeframe {pending.get('timeframe')} with risk {pending.get('risk')} and capital {pending.get('capital')}"}]
+            unified_data = voting_engine.data_adapter.normalize_input(visual_context, market_target)
+            agent_payload = agent_manager.run(unified_data)
+            orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
+            real_result = await asyncio.wait_for(
+                asyncio.to_thread(voting_engine.analyze, visual_context, market_target, current_user.id, orchestrator_weights=orchestrator_weights),
+                timeout=15
+            )
+            rec = real_result.get('recommendation', 'غير واضح')
+            conf = real_result.get('confidence', 0)
+            thesis = real_result.get('reason', '')
+            targets = real_result.get('targets', [])
+            stop_loss = real_result.get('stop_loss')
 
-        # Sanitize strings/objects before returning to the client to avoid leaking system/provider names
-        safe_answer = _sanitize_string_for_user(answer)
-        safe_visual = _sanitize_obj_for_user(visual_analysis or {})
-        safe_memory = _sanitize_obj_for_user(memory_matches or [])
+            target_str = f"الأهداف: {', '.join(map(str, targets))}." if targets else ""
+            stop_str = f"وقف الخسارة: {stop_loss}." if stop_loss else ""
 
-        return {
-            'answer': safe_answer,
-            'intent': intent,
-            'mood': mood,
-            'profile': _sanitize_obj_for_user(profile or {}),
-            'market_data': _sanitize_obj_for_user(market_data or {}),
-            'session_info': _sanitize_obj_for_user(session_info or {}),
-            'spread_report': _sanitize_obj_for_user(spread_report or {}),
-            'memory_matches': safe_memory,
-            'visual_analysis': safe_visual,
-            'action_result': _sanitize_obj_for_user(action_result or {}),
-            'quick_backtest': _sanitize_obj_for_user(quick_backtest or {}),
-        }
+            answer = f"التحليل الفعلي للسوق ({market_target}): التوصية {rec} (بثقة {conf}%). {target_str} {stop_str} أطروحة السوق: {thesis}"
+        except Exception as e:
+            logger.exception(f"Real analysis failed: {e}")
+            answer = "التحليل غير متاح حالياً. جرب مرة أخرى."
+
+        # Commit memory
+        session["last_market"] = pending.get("market") or session.get("last_market")
+        session["last_timeframe"] = pending.get("timeframe") or session.get("last_timeframe")
+        pending.clear()
+        
+        session["history"].append({"role": "ai", "content": answer})
+        return _build_simple_response(answer, "market_analysis")
+
     except HTTPException:
         raise
     except Exception as exc:
         logger.exception(f"super_ai_agent failed: {exc}")
-        return {
-            'answer': 'حدث خطأ مؤقت أثناء معالجة الطلب. يرجى المحاولة مرة أخرى لاحقًا.',
-            'intent': 'market_analysis',
-            'mood': 'neutral',
-            'profile': {},
-            'market_data': {},
-            'session_info': {},
-            'spread_report': {},
-            'memory_matches': [],
-            'visual_analysis': {},
-            'action_result': {'error': 'حدث خطأ داخلي خلال معالجة الطلب.'},
-            'quick_backtest': {},
-        }
+        return _build_simple_response('حدث خطأ مؤقت أثناء معالجة الطلب. يرجى المحاولة مرة أخرى لاحقًا.', "error")
 
 @app.post("/api/chart/detect")
 async def detect_chart_screenshot(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user)):
