@@ -11,11 +11,17 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 logger = logging.getLogger(__name__)
-
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/analyze")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+try:
+    from backend.config import settings as cfg
+    DEEPSEEK_API_KEY = getattr(cfg, 'DEEPSEEK_API_KEY', None) or os.getenv("DEEPSEEK_API_KEY")
+    DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/analyze")
+    OPENROUTER_API_KEY = getattr(cfg, 'OPENROUTER_API_KEY', None) or os.getenv("OPENROUTER_API_KEY")
+    GEMINI_API_KEY = getattr(cfg, 'GEMINI_API_KEY', None) or os.getenv("GEMINI_API_KEY")
+except Exception:
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+    DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/analyze")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 CLUSTER_WEIGHTS_DEFAULT = {
     "Power": 40,

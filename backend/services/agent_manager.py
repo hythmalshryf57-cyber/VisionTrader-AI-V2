@@ -29,10 +29,18 @@ from .advanced_protection import AdvancedProtection
 from .research_agent import ResearchAgent
 
 logger = logging.getLogger(__name__)
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or None
-DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.ai/v1/analyze")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or None
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or None
+try:
+    from backend.config import settings as cfg
+    DEEPSEEK_API_KEY = getattr(cfg, 'DEEPSEEK_API_KEY', None) or os.getenv("DEEPSEEK_API_KEY")
+    DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.ai/v1/analyze")
+    OPENROUTER_API_KEY = getattr(cfg, 'OPENROUTER_API_KEY', None) or os.getenv("OPENROUTER_API_KEY")
+    GEMINI_API_KEY = getattr(cfg, 'GEMINI_API_KEY', None) or os.getenv("GEMINI_API_KEY")
+except Exception:
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or None
+    DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.ai/v1/analyze")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or None
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or None
+
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL") or None
 AGENT_API_TIMEOUT = int(os.getenv("AGENT_API_TIMEOUT", "30"))
 
@@ -838,7 +846,7 @@ class AgentManager:
         allow_heavy = os.getenv("ALLOW_HEAVY_AGENT_ANALYSIS", "0") == "1"
         if not allow_heavy:
             # lightweight, non-blocking default for quick tests
-            return {"signal": "neutral", "score": 0.0, "avg_confidence": 0, "note": "quick-fallback"}
+            return {"recommendation": "neutral", "confidence": 0, "note": "quick-fallback"}
 
         if isinstance(market_or_unified, dict):
             unified = market_or_unified
@@ -851,12 +859,142 @@ class AgentManager:
                 "quality_score": 0.0
             }
         try:
+            # Run agents and aggregate results
             out = self.run(unified)
-            ens = out.get("ensemble") or {}
-            return {"signal": ens.get("signal", "neutral"), "score": ens.get("score", 0.0), "avg_confidence": ens.get("avg_confidence", 0)}
+
+            # Try to obtain orchestrator plan if available
+            orchestrator_result = out.get("orchestrator") if isinstance(out, dict) else None
+
+            # Prepare a visual context for the VotingEngine using best-effort market price
+            price = None
+            try:
+                ob = (unified.get("order_book") if isinstance(unified, dict) else None) or out.get("order_book")
+                if ob and isinstance(ob, dict):
+                    bids = ob.get("bids", [])
+                    asks = ob.get("asks", [])
+                    if bids and asks and isinstance(bids[0], (list, tuple)) and isinstance(asks[0], (list, tuple)):
+                        best_bid = float(bids[0][0])
+                        best_ask = float(asks[0][0])
+                        price = (best_bid + best_ask) / 2.0
+                if price is None:
+                    recent = (unified.get("recent_trades") if isinstance(unified, dict) else None) or out.get("recent_trades")
+                    if recent and isinstance(recent, list) and len(recent) > 0:
+                        last = recent[-1]
+                        if isinstance(last, dict):
+                            price = float(last.get("price") or last.get("p") or 0)
+                        elif isinstance(last, (list, tuple)) and len(last) > 0:
+                            price = float(last[0])
+            except Exception:
+                price = None
+
+            visual_ctx = [{
+                "market": unified.get("market"),
+                "order_book": unified.get("order_book") or out.get("order_book"),
+                "recent_trades": unified.get("recent_trades") or out.get("recent_trades"),
+                "chart_data": unified.get("chart_data") or out.get("chart_data"),
+                "price": price,
+            }]
+
+            # Call Voting Engine for a full recommendation (best-effort)
+            try:
+                from .voting_engine import voting_engine
+                voting_result = voting_engine.analyze(visual_ctx, market=unified.get("market"))
+            except Exception:
+                logger.exception("Voting engine analyze failed")
+                voting_result = None
+
+            # Collate final output fields: recommendation, confidence, entry, sl, tp1,tp2,tp3, rr
+            recommendation = None
+            confidence = 0
+            entry = sl = tp1 = tp2 = tp3 = None
+
+            if isinstance(voting_result, dict):
+                recommendation = voting_result.get("recommendation") or voting_result.get("final_score")
+                confidence = int(voting_result.get("confidence", 0)) if voting_result.get("confidence") is not None else int(voting_result.get("final_score", 0))
+                entry = voting_result.get("entry") or voting_result.get("entry_price")
+                sl = voting_result.get("stop_loss") or voting_result.get("stop")
+                targets = voting_result.get("targets") or voting_result.get("targets") or []
+                if targets and isinstance(targets, list):
+                    tp1 = targets[0] if len(targets) > 0 else None
+                    tp2 = targets[1] if len(targets) > 1 else None
+                    tp3 = targets[2] if len(targets) > 2 else None
+
+            # Fallback to orchestrator plan if voting engine didn't provide targets
+            if (not entry or not sl or not tp1) and orchestrator_result:
+                try:
+                    if not recommendation:
+                        recommendation = orchestrator_result.get("final_recommendation")
+                    confidence = confidence or int(out.get("ensemble", {}).get("avg_confidence", 0) or out.get("ensemble", {}).get("confidence", 0) or 0)
+                    entry = entry or orchestrator_result.get("entry")
+                    sl = sl or orchestrator_result.get("stop")
+                    orch_targets = orchestrator_result.get("targets") or []
+                    if not tp1 and orch_targets:
+                        tp1 = orch_targets[0] if len(orch_targets) > 0 else None
+                        tp2 = tp2 or (orch_targets[1] if len(orch_targets) > 1 else None)
+                        tp3 = tp3 or (orch_targets[2] if len(orch_targets) > 2 else None)
+                except Exception:
+                    pass
+
+            # Final fallback to ensemble
+            if not recommendation:
+                ens = out.get("ensemble") or {}
+                recommendation = ens.get("signal", "neutral")
+                confidence = confidence or int(ens.get("avg_confidence", 0))
+
+            def _normalize_rec(r):
+                if not r:
+                    return "neutral"
+                s = str(r).strip().lower()
+                if s in ("شراء", "buy", "long"):
+                    return "buy"
+                if s in ("بيع", "sell", "short"):
+                    return "sell"
+                return "neutral"
+
+            final_rec = _normalize_rec(recommendation)
+
+            def _fmt(n):
+                try:
+                    if n is None:
+                        return ""
+                    return f"{float(n):.2f}"
+                except Exception:
+                    return str(n)
+
+            entry_f = _fmt(entry)
+            sl_f = _fmt(sl)
+            tp1_f = _fmt(tp1)
+            tp2_f = _fmt(tp2)
+            tp3_f = _fmt(tp3)
+
+            # compute risk-reward using first target if possible
+            rr = ""
+            try:
+                if entry is not None and sl is not None and tp1 is not None:
+                    e = float(entry)
+                    s = float(sl)
+                    t1 = float(tp1)
+                    if final_rec == "buy":
+                        rr_val = (t1 - e) / max(1e-9, e - s)
+                    else:
+                        rr_val = (e - t1) / max(1e-9, s - e)
+                    rr = f"{round(rr_val,2)}"
+            except Exception:
+                rr = ""
+
+            return {
+                "recommendation": final_rec,
+                "confidence": int(confidence or 0),
+                "entry": entry_f,
+                "sl": sl_f,
+                "tp1": tp1_f,
+                "tp2": tp2_f,
+                "tp3": tp3_f,
+                "rr": rr,
+            }
         except Exception:
             logger.exception("AgentManager.analyze heavy call failed")
-            return {"signal": "neutral", "score": 0.0, "avg_confidence": 0}
+            return {"recommendation": "neutral", "confidence": 0, "entry": "", "sl": "", "tp1": "", "tp2": "", "tp3": "", "rr": ""}
 
 
 def example_usage():
