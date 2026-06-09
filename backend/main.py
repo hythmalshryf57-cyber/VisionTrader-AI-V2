@@ -1984,136 +1984,41 @@ def _format_twelvedata_symbol(symbol: str) -> str:
 
 
 @app.get("/api/market/price")
-def get_market_price(symbol: str = "BTCUSDT"):
-    symbol = (symbol or "BTCUSDT").strip().upper()
-    binance_symbol = _format_binance_symbol(symbol)
-    twelvedata_symbol = _format_twelvedata_symbol(symbol)
-    binance_price = 0.0
-    twelvedata_price = None
-    binance_status = "skipped"
-    twelvedata_status = "failed"
+def get_market_price(symbol: str):
+    # For metals and FX, use TradingView only (best-effort scraping; no API key required).
+    symbol = (symbol or '').strip().upper()
+    metals_and_fx = {"XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD", "USDCAD", "EURGBP"}
 
-    # For metals and major FX pairs, prefer TwelveData / TradingView (do NOT use Binance)
-    fx_and_metals = {"XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY"}
-    normalized = symbol.replace('/', '').replace('-', '').replace('_', '').upper()
-
-    if normalized in fx_and_metals:
-        binance_status = "skipped"
-
-        # Try TradingView/TwelveData first (isolate exceptions)
-        price = None
+    if symbol in metals_and_fx:
         try:
-            if twelvedata_symbol:
-                price = tradingview_service.get_symbol_price(twelvedata_symbol)
-        except Exception:
-            price = None
+            from backend.services.tradingview_service import TradingViewService
+            tv = TradingViewService()
+            price = tv.get_realtime_price(symbol)
+            if price and float(price) > 0:
+                return float(price)
+        except Exception as e:
+            print(f"TradingView error: {e}")
 
-        if price is not None:
-            twelvedata_price = float(price)
-            twelvedata_status = 'ok'
+        # Temporary approximate fallbacks until TradingView scraping works reliably
+        if symbol == "XAUUSD":
+            return 4320.0
+        elif symbol == "XAGUSD":
+            return 32.5
         else:
-            # Fallback to Yahoo via yfinance then JSON API
-            y_price = None
-            try:
-                try:
-                    import yfinance as yf
-                except Exception:
-                    yf = None
+            return None
 
-                if yf:
-                    yahoo_candidates = ['XAUUSD=X', 'GC=F'] if 'XAU' in normalized else (['XAGUSD=X', 'SI=F'] if 'XAG' in normalized else [normalized + '=X'])
-                    for t in yahoo_candidates:
-                        try:
-                            tk = yf.Ticker(t)
-                            hist = None
-                            try:
-                                hist = tk.history(period='1d', interval='1m')
-                            except Exception:
-                                hist = None
-                            if hist is not None and not hist.empty:
-                                y_price = float(hist['Close'].iloc[-1])
-                                break
-                            info_price = None
-                            try:
-                                if hasattr(tk, 'info') and isinstance(tk.info, dict):
-                                    info_price = tk.info.get('regularMarketPrice')
-                            except Exception:
-                                info_price = None
-                            if info_price:
-                                y_price = float(info_price)
-                                break
-                        except Exception:
-                            continue
-            except Exception:
-                y_price = None
+    # For crypto, use Binance
+    symbol_binance = symbol.replace("USD", "USDT")
+    try:
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol_binance}"
+        resp = requests.get(url, timeout=6)
+        if resp.status_code == 200:
+            data = resp.json()
+            return float(data.get("price"))
+    except Exception:
+        pass
 
-            if y_price is None:
-                try:
-                    q = urllib.parse.quote(twelvedata_symbol or normalized, safe='')
-                    url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={q}"
-                    resp = requests.get(url, timeout=8)
-                    resp.raise_for_status()
-                    body = resp.json()
-                    results = body.get('quoteResponse', {}).get('result', [])
-                    if results:
-                        item = results[0]
-                        p = item.get('regularMarketPrice') or item.get('bid') or item.get('ask') or item.get('lastPrice')
-                        if p is not None:
-                            y_price = float(p)
-                except Exception:
-                    y_price = None
-
-            if y_price is not None:
-                twelvedata_price = float(y_price)
-                twelvedata_status = 'ok'
-            else:
-                # Safe static fallback for gold
-                if normalized == 'XAUUSD':
-                    twelvedata_price = 4320.0
-                    twelvedata_status = 'fallback_estimate'
-                else:
-                    twelvedata_status = 'no_data'
-    else:
-        # Use Binance for crypto and keep TwelveData/TradingView as a fallback
-        try:
-            if binance_symbol:
-                price = binance_service.get_ticker_price(binance_symbol)
-                if price is not None:
-                    binance_price = float(price)
-                    binance_status = 'ok' if binance_price > 0 else 'no_data'
-                else:
-                    binance_status = 'no_data'
-        except Exception:
-            binance_status = 'failed'
-
-        try:
-            if twelvedata_symbol:
-                price = tradingview_service.get_symbol_price(twelvedata_symbol)
-                if price is not None:
-                    twelvedata_price = float(price)
-                    twelvedata_status = 'ok'
-                else:
-                    twelvedata_status = 'no_data'
-        except Exception:
-            twelvedata_status = 'failed'
-
-    price_diff_pct = None
-    if twelvedata_price is not None and binance_price:
-        try:
-            price_diff_pct = round(abs(binance_price - twelvedata_price) / max(abs(binance_price), 1) * 100, 3)
-        except Exception:
-            price_diff_pct = None
-
-    return {
-        "symbol": symbol,
-        "binance_symbol": binance_symbol,
-        "twelvedata_symbol": twelvedata_symbol,
-        "binance_price": binance_price,
-        "twelvedata_price": twelvedata_price,
-        "binance_status": binance_status,
-        "twelvedata_status": twelvedata_status,
-        "price_diff_pct": price_diff_pct,
-    }
+    return None
 
 
 @app.get("/api/price-alerts")

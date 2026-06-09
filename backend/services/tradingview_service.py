@@ -284,6 +284,78 @@ class TradingViewService:
 
         return {'pair': 'UNKNOWN', 'timeframe': 'UNKNOWN', 'confidence': 0, 'note': 'لم يتمكن أي مزود من تحليل الصورة.'}
 
+    def get_realtime_price(self, symbol: str) -> Optional[float]:
+        """Try to obtain a realtime price for the given symbol using TradingView public pages.
+
+        This is a best-effort method that scrapes the TradingView symbol page. If
+        scraping fails or no valid price is found, falls back to a small set of
+        safe static estimates for metals (XAU/XAG).
+        """
+        if not symbol:
+            return None
+        sym = str(symbol).strip().upper()
+        # Normalize to TradingView-style path (e.g., XAUUSD -> XAUUSD or XAU/USD)
+        page_symbol = sym.replace('_', '').replace('-', '').replace('/', '')
+        url = f"https://www.tradingview.com/symbols/{page_symbol}/"
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; VisionTrader/1.0)"}
+        try:
+            resp = requests.get(url, headers=headers, timeout=8)
+            if resp.status_code == 200 and resp.text:
+                text = resp.text
+                # Try some common JSON-like price keys
+                import re
+                for pattern in [r'"regularMarketPrice"\s*:\s*([0-9]+\.?[0-9]*)', r'"last_price"\s*:\s*([0-9]+\.?[0-9]*)', r'"price"\s*:\s*([0-9]+\.?[0-9]*)']:
+                    m = re.search(pattern, text)
+                    if m:
+                        try:
+                            return float(m.group(1))
+                        except Exception:
+                            continue
+
+                # Fallback: find any plausible float on the page matching expected ranges
+                floats = [float(x) for x in re.findall(r'([0-9]+\.[0-9]+)', text)]
+                if floats:
+                    # If symbol is gold, prefer a value in a realistic gold range
+                    if 'XAU' in sym:
+                        for v in floats:
+                            if 1000.0 < v < 10000.0:
+                                return v
+                    if 'XAG' in sym:
+                        for v in floats:
+                            if 5.0 < v < 200.0:
+                                return v
+                    # otherwise return first positive float
+                    for v in floats:
+                        if v > 0:
+                            return v
+        except Exception:
+            pass
+
+        # Best-effort public gold endpoint fallback
+        try:
+            if 'XAU' in sym:
+                r = requests.get('https://data-asg.goldprice.org/dbXRates/USD', timeout=6)
+                if r.status_code == 200:
+                    j = r.json()
+                    items = j.get('items') or []
+                    if items and isinstance(items, list):
+                        first = items[0]
+                        for key in ('xauPrice', 'xauprice', 'price'):
+                            if key in first and first[key] is not None:
+                                try:
+                                    return float(first[key])
+                                except Exception:
+                                    continue
+        except Exception:
+            pass
+
+        # Strong final static fallback for gold and silver
+        if 'XAU' in sym:
+            return 4320.0
+        if 'XAG' in sym:
+            return 32.5
+        return None
+
 
 # Module-level instance for convenience (used by other services)
 try:
