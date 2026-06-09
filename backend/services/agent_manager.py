@@ -825,6 +825,32 @@ class AgentManager:
                 "market": payload.get("market"),
                 "quality_score": payload.get("quality_score")
             }
+            # Derive a best-effort price for orchestrator execution planning
+            try:
+                price = None
+                ob = market_data.get("order_book") or {}
+                if isinstance(ob, dict):
+                    bids = ob.get("bids", [])
+                    asks = ob.get("asks", [])
+                    if bids and asks:
+                        try:
+                            best_bid = float(bids[0][0]) if isinstance(bids[0], (list, tuple)) else float(bids[0])
+                            best_ask = float(asks[0][0]) if isinstance(asks[0], (list, tuple)) else float(asks[0])
+                            price = (best_bid + best_ask) / 2.0
+                        except Exception:
+                            price = None
+                if price is None:
+                    recent = market_data.get("recent_trades") or []
+                    if recent and isinstance(recent, list) and len(recent) > 0:
+                        last = recent[-1]
+                        if isinstance(last, dict):
+                            price = float(last.get("price") or last.get("p") or 0)
+                        elif isinstance(last, (list, tuple)) and len(last) > 0:
+                            price = float(last[0])
+                if price is not None:
+                    market_data["price"] = price
+            except Exception:
+                pass
             # payload['agents'] is a dict of agent_name -> result; orchestrator expects list of reports
             agent_reports = []
             agents_obj = payload.get("agents")
