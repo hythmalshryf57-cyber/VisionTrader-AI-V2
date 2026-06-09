@@ -7,6 +7,8 @@
 
     <title>Trading Journal - VisionTrader AI</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/upload-theme.css">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .journal-container { padding: 30px; max-width: 1200px; margin: 0 auto; }
@@ -35,7 +37,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
-    <div class="journal-container">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<header class="topbar-mobile" id="topbarMobile">
+    <div class="brand-mobile">🤖 VisionTrader</div>
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="القائمة"><i class="fas fa-bars"></i></button>
+</header>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand"><div class="brand-icon">🤖</div><span>VisionTrader AI</span></div>
+        <nav class="nav">
+            <a href="dashboard.html"><i class="fas fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+            <a href="upload.html"><i class="fas fa-robot"></i> <span>الوكيل الذكي</span></a>
+            <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
+            <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
+            <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+            <a href="journal.html" class="active"><i class="fas fa-book-open"></i> <span>دفتر التداول</span></a>
+            <a href="daily-report.html"><i class="fas fa-file-pdf"></i> <span>التقرير اليومي</span></a>
+            <a href="strategy_factory.html"><i class="fas fa-flask"></i> <span>مختبر الاستراتيجيات</span></a>
+            <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+        </nav>
+        <div style="padding:12px 10px;">
+            <button class="btn btn-danger" style="width:100%;" onclick="localStorage.removeItem('token');window.location.href='login.html';"><i class="fas fa-sign-out-alt"></i> خروج</button>
+        </div>
+    </aside>
+    <main class="main-content fade-in">
+        <div class="journal-container">
         <div class="journal-header">
             <h1><i class="fas fa-book"></i> دفتر يوميات التداول</h1>
             <button class="add-btn" onclick="openModal()"><i class="fas fa-plus"></i> إضافة صفقة جديدة</button>
@@ -132,6 +158,8 @@
             </form>
         </div>
     </div>
+    </main>
+</div>
 
     <script src="js/api.js"></script>
     <script>
@@ -202,6 +230,28 @@
         };
 
         loadJournal();
+    </script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+        function fixMobileLayout() {
+            const main = document.querySelector('.main-content');
+            if (window.innerWidth <= 1024 && main) {
+                main.style.marginRight = '0';
+                main.style.marginTop = '60px';
+            } else if (main) {
+                main.style.marginRight = '';
+                main.style.marginTop = '';
+            }
+        }
+        window.addEventListener('resize', fixMobileLayout);
+        fixMobileLayout();
     </script>
     <script>
         if ('serviceWorker' in navigator) {

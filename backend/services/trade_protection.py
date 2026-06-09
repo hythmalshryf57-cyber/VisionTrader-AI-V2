@@ -183,34 +183,22 @@ class TradeProtectionService:
                 pass
             changed = True
 
+        # Restore automatic analysis lock for 3 consecutive losses.
+        if self._has_three_consecutive_losses(db, user_id) and not (user_prefs.analysis_locked_until and user_prefs.analysis_locked_until > now):
+            user_prefs.analysis_locked_until = now + timedelta(hours=1)
+            db.add(models.PsychologyLog(
+                user_id=user_id,
+                event_type="analysis_lock_3_losses",
+                description="تم تعليق الوصول إلى التحليل لمدة ساعة بعد 3 خسائر متتالية."
+            ))
+            changed = True
+
         # Handle profit target similarly (existing behavior)
         daily_profit_target = capital * (float(user_prefs.daily_profit_target_percent or 30.0) / 100.0)
         if daily_loss >= daily_profit_target and not user_prefs.trading_locked_today:
             user_prefs.trading_locked_today = True
             user_prefs.lock_reason = f"🎉 حققت هدفك اليومي {user_prefs.daily_profit_target_percent}%. تداولك متوقف لليوم"
             changed = True
-
-        # Automatic analysis lock on 3 consecutive losses: restore previous behavior
-        try:
-            if self._has_three_consecutive_losses(db, user_id) and not user_prefs.analysis_locked_until:
-                # Lock analysis for one hour
-                user_prefs.analysis_locked_until = now + timedelta(hours=1)
-                try:
-                    db.add(models.PsychologyLog(
-                        user_id=user_id,
-                        event_type="analysis_locked_three_losses",
-                        description=f"تم قفل التحليل تلقائياً لمدة ساعة بعد 3 خسائر متتالية ({now.isoformat()})."
-                    ))
-                except Exception:
-                    pass
-                try:
-                    if user_prefs.telegram_chat_id:
-                        telegram_service.send_message(user_prefs.telegram_chat_id, "تم قفل التحليل مؤقتاً لمدة ساعة بعد 3 خسائر متتالية.")
-                except Exception:
-                    pass
-                changed = True
-        except Exception:
-            pass
 
         if changed:
             db.commit()

@@ -271,17 +271,17 @@ class EnvironmentFilter:
         minutes_to_event: Optional[int] = None
 
         # فحص إذا كان حدث عالي التأثير قد وقع خلال آخر 10 دقائق — في هذه الحالة نعيد التداول
-        today_events = self.calendar_service.get_today_events()
-        recent_past_high = [e for e in today_events
-                            if e.get('impact') == 'high'
-                            and 'time' in e
-                            and isinstance(e['time'], datetime)
-                            and e['time'] < utc_now
-                            and (utc_now - e['time']) <= timedelta(minutes=10)]
-        if recent_past_high:
-            # حدث وقع خلال آخر 10 دقائق => نسمح باستئناف التداول إذا استقرت الأسعار
-            issues.append('High impact news occurred within last 10 minutes; resume if stable')
-            message = 'مرور 10 دقائق على خبر عالي التأثير - يستأنف التداول إذا استقرت الأسعار'
+        upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
+        high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
+        if high_impact_events:
+            next_event = min(high_impact_events, key=lambda x: x.get('time_until', timedelta(hours=24)))
+            time_until = next_event.get('time_until', timedelta(hours=24))
+            minutes = int(time_until.total_seconds() / 60)
+            minutes_to_event = max(0, minutes)
+
+            if time_until <= timedelta(minutes=60):
+                issues.append('High impact news within 60 minutes')
+                message = f"خبر عالي التأثير قادم خلال {minutes_to_event} دقيقة - تم تعليق التوصيات"
 
         # Remove session-based cautions (Asia/London/NewYork) — allow analysis anytime
         utc_hour = utc_now.hour
@@ -292,7 +292,7 @@ class EnvironmentFilter:
 
         # الخروج بثلاث حالات
         suspend_flag = False
-        if minutes_to_event is not None and minutes_to_event <= 15:
+        if minutes_to_event is not None and minutes_to_event <= 60:
             suspend_flag = True
 
         if suspend_flag:
@@ -927,20 +927,7 @@ class VotingEngine:
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
-        # فحص الأخبار عالية التأثير: إذا كان هناك حدث عالي التأثير خلال ساعة، نوقف التحليل
-        upcoming_events = self.calendar_service.get_upcoming_events(hours=4)
-        high_impact_events = [e for e in upcoming_events if e.get('impact') == 'high']
-        if high_impact_events:
-            next_event = min(high_impact_events, key=lambda x: x.get('time_until', timedelta(hours=24)))
-            time_until = next_event.get('time_until', timedelta(hours=24))
-            if time_until < timedelta(hours=1):
-                return {
-                    "recommendation": "تعليق",
-                    "confidence": 0,
-                    "reason": "أخبار عالية التأثير قريبة",
-                    "market": market,
-                    "timestamp": datetime.now().isoformat()
-                }
+        # News proximity filter removed: do not block analysis due to upcoming high-impact events.
 
         result = {
             "recommendation": ai_analysis["recommendation"],

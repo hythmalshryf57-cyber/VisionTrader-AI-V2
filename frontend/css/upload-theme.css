@@ -1,0 +1,133 @@
+:root {
+    --bg-dark: #050812;
+    --bg-surface: rgba(10, 16, 32, 0.94);
+    --bg-surface-soft: rgba(255, 255, 255, 0.05);
+    --text-primary: #eef5ff;
+    --text-muted: #9fb5d0;
+    --accent-cyan: #22d3ee;
+    --accent-blue: #38bdf8;
+    --accent-purple: #8b5cf6;
+    --accent-green: #2dd4bf;
+    --border: rgba(255, 255, 255, 0.08);
+    --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    --radius: 22px;
+}
+
+body {
+    margin: 0 !important;
+    min-height: 100vh;
+    color: var(--text-primary) !important;
+    background: radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.12), transparent 28%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.08), transparent 22%),
+                radial-gradient(circle at 50% 120%, rgba(34, 211, 238, 0.08), transparent 35%),
+                linear-gradient(180deg, #02040f 0%, #050812 100%) !important;
+    font-family: 'Cairo', 'Inter', sans-serif !important;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle at 80% 10%, rgba(14, 165, 233, 0.08), transparent 15%),
+                      radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.06), transparent 12%),
+                      radial-gradient(circle at 50% 80%, rgba(34, 211, 238, 0.05), transparent 18%);
+    opacity: 1;
+}
+
+html, body, .main-content, .app-layout, .container, .journal-container, .card, .glass, .report-header, .charts-container, .alerts-panel, .metric-card, .stat-card, .history-card, .price-item, .sidebar, .topbar-mobile {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+}
+
+.main-content, .container, .journal-container, .card, .glass, .report-header, .charts-container, .alerts-panel, .metric-card, .stat-card, .history-card {
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow) !important;
+    border-radius: var(--radius) !important;
+}
+
+.sidebar {
+    background: rgba(5, 9, 20, 0.98) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar .brand {
+    color: #fff !important;
+}
+
+.nav a {
+    color: #cbd5e1 !important;
+    border-radius: 18px !important;
+}
+
+.nav a.active, .nav a:hover {
+    background: rgba(56, 189, 248, 0.12) !important;
+    color: #ffffff !important;
+}
+
+.nav a i {
+    color: var(--accent-cyan) !important;
+}
+
+button, input, select, textarea, .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .hamburger-btn {
+    font-family: inherit !important;
+}
+
+button, .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost, .hamburger-btn {
+    border-radius: 14px !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #22c55e, #06b6d4) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+.btn-secondary, .btn-ghost {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #e2e8f0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #f97316, #ef4444) !important;
+    color: #ffffff !important;
+}
+
+input, select, textarea {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    color: #eef5ff !important;
+}
+
+table, th, td, .journal-table, .history-table, .report-table {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: #eef5ff !important;
+}
+
+th {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #94a3b8 !important;
+}
+
+.price-item, .alert-item, .status-pill, .badge, .card .btn, .metric-card, .stat-card, .history-card {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.35);
+    border-radius: 999px;
+}
+
+@media (max-width: 1024px) {
+    .main-content { margin-right: 0 !important; margin-top: 60px !important; }
+}

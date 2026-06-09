@@ -8,6 +8,8 @@
 
     <title>Dashboard - VisionTrader AI</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/upload-theme.css">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -109,26 +111,6 @@
 
             <div class="memory-grid">
                 <!-- Market Clock Card -->
-                <div class="memory-card" id="marketClockCard">
-                    <h3>🕰️ ساعات السوق</h3>
-                    <div style="margin-top: 18px; display:grid; gap:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>طوكيو (Tokyo)</span>
-                            <span id="tokyoSession" class="badge badge-triggered">مغلق</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>لندن (London)</span>
-                            <span id="londonSession" class="badge badge-triggered">مغلق</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>نيويورك (New York)</span>
-                            <span id="nySession" class="badge badge-triggered">مغلق</span>
-                        </div>
-                        <div style="font-size:0.8rem; color:#aaa; text-align:center; margin-top:8px;">
-                            التوقيت الحالي UTC: <span id="utcTime">00:00:00</span>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- P&L Chart Card -->
                 <div class="memory-card" style="grid-column: span 2;">
@@ -180,21 +162,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="memory-card" style="grid-column: span 2; background: rgba(79, 70, 229, 0.05); border: 2px dashed rgba(79, 70, 229, 0.3); text-align: center; padding: 50px;">
-                    <div id="uploadZone">
-                        <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #818cf8; margin-bottom: 20px;"></i>
-                        <h3>حلل الشارت الآن (Smart Scan)</h3>
-                        <p style="color: #888; margin-bottom: 20px;">اسحب صورة الشارت هنا أو اضغط للاختيار</p>
-                        <input type="file" id="chartInput" hidden accept="image/*">
-                        <button class="btn btn-primary" onclick="document.getElementById('chartInput').click()" style="background: var(--accent-gradient); border: none; padding: 12px 30px; border-radius: 10px; color: white; cursor: pointer; font-weight: bold;">
-                            <i class="fas fa-search-dollar"></i> ابدأ التحليل الذكي
-                        </button>
-                    </div>
-                    <div id="analyzingState" style="display: none;">
-                        <div class="spinner" style="border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #818cf8; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-                        <h3>جاري التحليل...</h3>
-                        <p id="analysisStatus">نظام الرؤية يقرأ مستويات السيولة...</p>
-                    </div>
+                <div class="memory-card" style="grid-column: span 2;">
+                    <h3><i class="fas fa-robot"></i> استخدم صفحة الوكيل الذكي</h3>
+                    <p style="color: #aaa; margin-top: 12px;">تم نقل واجهة تحميل الشارت إلى صفحة الوكيل الذكي. اضغط للانتقال مباشرة إلى التحليل الذكي.</p>
+                    <a class="btn btn-primary" href="upload.html" style="margin-top: 16px; display: inline-flex; align-items: center; gap: 10px; text-decoration: none;">الذهاب إلى الوكيل الذكي</a>
                 </div>
                 <div class="memory-card" id="systemStatsCard">
                     <h3><i class="fas fa-chart-line"></i> معدل دقة النظام</h3>
@@ -260,41 +231,42 @@
 
         function updatePriceCard(symbol, price) {
             const el = document.getElementById('price-' + symbol);
-            if (!el || !price) return;
-            const oldPrice = parseFloat(el.innerText);
-            el.innerText = price.toFixed(2) + '$';
+            if (!el || price === undefined || price === null || Number.isNaN(Number(price))) return;
+            const oldPrice = parseFloat(el.innerText.replace(/[^0-9.-]+/g, ''));
+            const displayPrice = Number(price).toFixed(2);
+            el.innerText = `${displayPrice}$`;
             
             if (!isNaN(oldPrice)) {
-                if (price > oldPrice) {
+                if (Number(price) > oldPrice) {
                     el.style.color = '#00ff88';
                     setTimeout(() => el.style.color = '#fff', 500);
-                } else if (price < oldPrice) {
+                } else if (Number(price) < oldPrice) {
                     el.style.color = '#ff4d4d';
                     setTimeout(() => el.style.color = '#fff', 500);
                 }
             }
         }
 
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/live`;
-            const socket = new WebSocket(wsUrl);
-            
-            socket.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'update' && data.prices) {
-                        updatePriceCard('BTC/USD', data.prices['BTC/USD'] || data.prices['BTCUSDT']);
-                        updatePriceCard('ETH/USD', data.prices['ETH/USD'] || data.prices['ETHUSDT']);
-                        updatePriceCard('XAU/USD', data.prices['XAU/USD'] || data.prices['XAUUSDT']);
-                    }
-                } catch(e) {
-                    console.warn('WS parse error', e);
+        async function refreshMarketPrices() {
+            const symbols = [
+                { id: 'BTC/USD', symbol: 'BTCUSDT' },
+                { id: 'ETH/USD', symbol: 'ETHUSDT' },
+                { id: 'XAU/USD', symbol: 'XAUUSDT' }
+            ];
+            try {
+                for (const item of symbols) {
+                    const data = await api.getMarketPrice(item.symbol);
+                    const price = data?.binance_price || data?.twelvedata_price || data?.price || null;
+                    updatePriceCard(item.id, price !== undefined ? Number(price) : null);
                 }
-            };
-            socket.onclose = function() {
-                setTimeout(connectWebSocket, 5000);
-            };
+            } catch (err) {
+                console.warn('Market price fetch error', err);
+            }
+        }
+
+        function connectWebSocket() {
+            refreshMarketPrices();
+            setInterval(refreshMarketPrices, 30000);
         }
 
         let pnlChartInstance = null;
@@ -344,51 +316,6 @@
                 });
             } catch(e) {
                 console.warn('Failed to load P&L chart', e);
-            }
-        }
-
-        function updateMarketSessions() {
-            const now = new Date();
-            const utcHour = now.getUTCHours();
-            const utcMin = now.getUTCMinutes();
-            const utcSec = now.getUTCSeconds();
-            
-            const timeStr = `${String(utcHour).padStart(2, '0')}:${String(utcMin).padStart(2, '0')}:${String(utcSec).padStart(2, '0')}`;
-            const timeEl = document.getElementById('utcTime');
-            if (timeEl) timeEl.innerText = timeStr;
-            
-            const tokyo = document.getElementById('tokyoSession');
-            const london = document.getElementById('londonSession');
-            const ny = document.getElementById('nySession');
-            
-            if (tokyo) {
-                if (utcHour >= 0 && utcHour < 9) {
-                    tokyo.innerText = 'مفتوح';
-                    tokyo.className = 'badge badge-active';
-                } else {
-                    tokyo.innerText = 'مغلق';
-                    tokyo.className = 'badge badge-triggered';
-                }
-            }
-            
-            if (london) {
-                if (utcHour >= 8 && utcHour < 17) {
-                    london.innerText = 'مفتوح';
-                    london.className = 'badge badge-active';
-                } else {
-                    london.innerText = 'مغلق';
-                    london.className = 'badge badge-triggered';
-                }
-            }
-            
-            if (ny) {
-                if (utcHour >= 13 && utcHour < 22) {
-                    ny.innerText = 'مفتوح';
-                    ny.className = 'badge badge-active';
-                } else {
-                    ny.innerText = 'مغلق';
-                    ny.className = 'badge badge-triggered';
-                }
             }
         }
 
@@ -526,7 +453,6 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadDashboard();
             connectWebSocket();
-            updateMarketSessions();
         });
     </script>
     <script src="js/theme.js"></script>

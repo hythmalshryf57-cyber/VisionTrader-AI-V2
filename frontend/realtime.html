@@ -128,6 +128,7 @@
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/upload-theme.css">
 </head>
 <body>
 
@@ -224,6 +225,30 @@
             
             if (container.children.length > 20) {
                 container.removeChild(container.lastChild);
+            }
+        }
+
+        async function refreshMarketPrices() {
+            const symbols = [
+                { symbol: 'BTCUSDT', display: 'BTC/USD' },
+                { symbol: 'ETHUSDT', display: 'ETH/USD' },
+                { symbol: 'XAUUSDT', display: 'XAU/USD' }
+            ];
+            try {
+                const pricesGrid = document.getElementById('prices-grid');
+                pricesGrid.innerHTML = '';
+                for (const item of symbols) {
+                    const data = await api.getMarketPrice(item.symbol);
+                    const price = Number(data?.binance_price || data?.twelvedata_price || data?.price || 0);
+                    pricesGrid.innerHTML += `
+                        <div class="price-item">
+                            <span class="symbol">${item.display}</span>
+                            <span class="price ${price >= 0 ? 'price-up' : 'price-down'}">$${price.toFixed(2)}</span>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.warn('Live market price fetch error', err);
             }
         }
 
