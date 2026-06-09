@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    # TwelveData API key (optional). If not provided, code should prefer TradingView/Yahoo fallbacks.
+    TWELVEDATA_API_KEY: str = os.getenv("TWELVEDATA_API_KEY", "")
     # Gemini / Google Generative Language API
     GEMINI_API_URL: str = os.getenv(
         "GEMINI_API_URL",
