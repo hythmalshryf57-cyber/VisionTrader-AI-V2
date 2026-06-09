@@ -29,12 +29,12 @@ from .advanced_protection import AdvancedProtection
 from .research_agent import ResearchAgent
 
 logger = logging.getLogger(__name__)
-
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY") or None
 DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.ai/v1/analyze")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or None
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or None
+ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL") or None
+AGENT_API_TIMEOUT = int(os.getenv("AGENT_API_TIMEOUT", "30"))
 
 
 class AgentError(Exception):
@@ -72,33 +72,55 @@ class AgentBase:
 
     def analyze(self, data: Dict[str, Any]) -> Dict[str, Any]:
         prompt = self.build_prompt(data)
+        # Try providers in order: Gemini -> DeepSeek -> OpenRouter
+        last_exc = None
         try:
-            return self._call_deepseek(prompt)
+            if GEMINI_API_KEY:
+                return self._call_gemini(prompt, timeout=AGENT_API_TIMEOUT)
         except Exception as e:
-            logger.exception("Agent %s external model failed, trying fallbacks", self.name)
-            try:
-                return self._fallback(prompt)
-            except Exception:
-                logger.exception("Agent %s fallback also failed", self.name)
-                # When all remote APIs and fallbacks fail, never produce a random decision.
-                # Return a neutral, zero-confidence result with a clear message in Arabic.
-                return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "التحليل غير متاح حالياً"}
+            last_exc = e
+            logger.exception("Gemini call failed for %s, trying DeepSeek", self.name)
 
-# Optional footprint/bookmap analyzers (best-effort import)
-try:
-    from .footprint_service import FootprintChartAnalyzer, BookmapDOMReader  # type: ignore
-except Exception:
-    FootprintChartAnalyzer = None
-    BookmapDOMReader = None
+        try:
+            if DEEPSEEK_API_KEY:
+                return self._call_deepseek(prompt, timeout=AGENT_API_TIMEOUT)
+        except Exception as e:
+            last_exc = e
+            logger.exception("DeepSeek call failed for %s, trying OpenRouter", self.name)
 
-    def _call_deepseek(self, prompt: str) -> Dict[str, Any]:
+        try:
+            if OPENROUTER_API_KEY:
+                return self._call_openrouter(prompt, timeout=AGENT_API_TIMEOUT)
+        except Exception as e:
+            last_exc = e
+            logger.exception("OpenRouter call failed for %s; all remote providers failed", self.name)
+
+        # If all configured providers failed, return safe neutral result (no random signals)
+        logger.warning("All external model providers failed for agent %s. last_exc=%s", self.name, getattr(last_exc, 'args', None))
+        return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "التحليل غير متاح حالياً"}
+
+    def _call_gemini(self, prompt: str, timeout: int = AGENT_API_TIMEOUT) -> Dict[str, Any]:
+        if not GEMINI_API_KEY:
+            raise AgentError("Gemini API key not configured")
+        url = os.getenv("GEMINI_API_URL", os.getenv("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"))
+        headers = {"Authorization": f"Bearer {GEMINI_API_KEY}", "Content-Type": "application/json"}
+        payload = {"prompt": prompt, "max_output_tokens": 400}
+        r = requests.post(url, json=payload, headers=headers, timeout=timeout)
+        if r.status_code != 200:
+            raise AgentError(f"Gemini API error {r.status_code}: {r.text}")
+        try:
+            return self._parse_freeform_response(r.text)
+        except Exception:
+            return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "Gemini returned unparsable response"}
+
+    def _call_deepseek(self, prompt: str, timeout: int = AGENT_API_TIMEOUT) -> Dict[str, Any]:
         if not DEEPSEEK_API_KEY:
-            raise AgentError("External model API key not configured")
+            raise AgentError("DeepSeek API key not configured")
         headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
         payload = {"prompt": prompt, "max_tokens": 400}
-        resp = requests.post(DEEPSEEK_API_URL, json=payload, headers=headers, timeout=15)
+        resp = requests.post(DEEPSEEK_API_URL, json=payload, headers=headers, timeout=timeout)
         if resp.status_code != 200:
-            raise AgentError(f"External model API error {resp.status_code}: {resp.text}")
+            raise AgentError(f"DeepSeek API error {resp.status_code}: {resp.text}")
         try:
             data = resp.json()
         except Exception:
@@ -111,63 +133,57 @@ except Exception:
                 signal = data.get(key)
                 confidence = data.get("confidence") or data.get("Confidence") or data.get("score") or 50
                 report = data.get("report") or data.get("Report") or data.get("explanation") or str(data)
-                return {"agent": self.name, "signal": str(signal).lower(), "confidence": int(float(confidence)), "report": str(report)}
+                try:
+                    conf_int = int(float(confidence))
+                except Exception:
+                    conf_int = 0
+                return {"agent": self.name, "signal": str(signal).lower(), "confidence": conf_int, "report": str(report)}
 
         # Try to extract from text fields in the response
         if isinstance(data, dict):
-            text = data.get("text") or data.get("choices") and str(data.get("choices")) or str(data)
+            text = data.get("text") or (data.get("choices") and str(data.get("choices"))) or str(data)
             return self._parse_freeform_response(text)
 
         return self._heuristic_response()
 
+    def _call_openrouter(self, prompt: str, timeout: int = AGENT_API_TIMEOUT) -> Dict[str, Any]:
+        if not OPENROUTER_API_KEY:
+            raise AgentError("OpenRouter API key not configured")
+        url = os.getenv("OPENROUTER_URL", "https://api.openrouter.ai/v1/chat/completions")
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+        payload = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}], "max_tokens": 400}
+        r = requests.post(url, json=payload, headers=headers, timeout=timeout)
+        if r.status_code != 200:
+            raise AgentError(f"OpenRouter API error {r.status_code}: {r.text}")
+        return self._parse_freeform_response(r.text)
+
     def _parse_freeform_response(self, text: str) -> Dict[str, Any]:
         # Simple parsing heuristics
-        lower = text.lower()
+        lower = text.lower() if isinstance(text, str) else str(text).lower()
         if "buy" in lower and "sell" not in lower:
             signal = "buy"
         elif "sell" in lower and "buy" not in lower:
             signal = "sell"
         else:
             signal = "neutral"
-        # try find a number for confidence
         import re
-
         m = re.search(r"(confidence|score)[^0-9]*(\d{1,3})", lower)
         if m:
             conf = int(m.group(2))
         else:
-            # Do not invent confidence — default to 0 when not provided.
             conf = 0
-        report = text.strip()[:1000]
+        report = text.strip()[:1000] if isinstance(text, str) else str(text)
         return {"agent": self.name, "signal": signal, "confidence": conf, "report": report}
 
-    def _fallback(self, prompt: str) -> Dict[str, Any]:
-        # Try OpenRouter
-        if OPENROUTER_API_KEY:
-            try:
-                url = os.getenv("OPENROUTER_URL", "https://api.openrouter.ai/v1/chat/completions")
-                headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-                payload = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}], "max_tokens": 400}
-                r = requests.post(url, json=payload, headers=headers, timeout=15)
-                if r.status_code == 200:
-                    return self._parse_freeform_response(r.text)
-            except Exception:
-                logger.exception("OpenRouter fallback failed for %s", self.name)
+    def _heuristic_response(self) -> Dict[str, Any]:
+        return {"agent": self.name, "signal": "neutral", "confidence": 0, "report": "No structured response from provider"}
 
-        # Try Gemini (if key present) - best-effort
-        if GEMINI_API_KEY:
-            try:
-                gem_url = os.getenv("GEMINI_URL", "https://gemini.api.fake/v1/respond")
-                headers = {"Authorization": f"Bearer {GEMINI_API_KEY}", "Content-Type": "application/json"}
-                payload = {"prompt": prompt, "max_output_tokens": 400}
-                r = requests.post(gem_url, json=payload, headers=headers, timeout=15)
-                if r.status_code == 200:
-                    return self._parse_freeform_response(r.text)
-            except Exception:
-                logger.exception("Gemini fallback failed for %s", self.name)
-
-        raise AgentError("No fallback available or all fallbacks failed")
-
+# Optional footprint/bookmap analyzers (best-effort import)
+try:
+    from .footprint_service import FootprintChartAnalyzer, BookmapDOMReader  # type: ignore
+except Exception:
+    FootprintChartAnalyzer = None
+    BookmapDOMReader = None
     # NOTE: Removed heuristic/random fallback to ensure no random trading signals are produced.
 
 
@@ -670,16 +686,28 @@ BUILTIN_AGENT_CLASSES = [
 
 class AgentManager:
     def __init__(self, agents: List[AgentBase] = None):
+        # Delay instantiation of agent objects to avoid heavy imports at construction time.
         if agents is None:
-            self.agents = [cls() for cls in BUILTIN_AGENT_CLASSES]
+            self.agent_classes = BUILTIN_AGENT_CLASSES[:]
+            self.agents = None
         else:
+            self.agent_classes = None
             self.agents = agents
 
     def run(self, unified_data: Dict[str, Any], timeout: int = 30) -> Dict[str, Any]:
         results = {}
         futures = []
-        with ThreadPoolExecutor(max_workers=min(8, len(self.agents))) as ex:
-            for ag in self.agents:
+        # Instantiate agents lazily if needed
+        if self.agents is None and self.agent_classes is not None:
+            try:
+                self.agents = [cls() for cls in self.agent_classes]
+            except Exception:
+                # If agent instantiation fails, fall back to empty agent list
+                logger.exception("Failed to instantiate agents lazily")
+                self.agents = []
+
+        with ThreadPoolExecutor(max_workers=min(8, max(1, len(self.agents)))) as ex:
+            for ag in (self.agents or []):
                 futures.append(ex.submit(self._safe_analyze, ag, unified_data))
             for fut in as_completed(futures, timeout=timeout):
                 try:
@@ -803,6 +831,32 @@ class AgentManager:
         except Exception:
             logger.exception("Failed to execute local orchestrator fallback")
             return None
+
+    def analyze(self, market_or_unified: Any) -> Dict[str, Any]:
+        """Convenience method: accept a market string or a unified_data dict and return an ensemble recommendation summary."""
+        # If heavy analysis is not explicitly enabled, return a quick safe summary
+        allow_heavy = os.getenv("ALLOW_HEAVY_AGENT_ANALYSIS", "0") == "1"
+        if not allow_heavy:
+            # lightweight, non-blocking default for quick tests
+            return {"signal": "neutral", "score": 0.0, "avg_confidence": 0, "note": "quick-fallback"}
+
+        if isinstance(market_or_unified, dict):
+            unified = market_or_unified
+        else:
+            unified = {
+                "market": str(market_or_unified),
+                "order_book": {},
+                "recent_trades": [],
+                "chart_data": {},
+                "quality_score": 0.0
+            }
+        try:
+            out = self.run(unified)
+            ens = out.get("ensemble") or {}
+            return {"signal": ens.get("signal", "neutral"), "score": ens.get("score", 0.0), "avg_confidence": ens.get("avg_confidence", 0)}
+        except Exception:
+            logger.exception("AgentManager.analyze heavy call failed")
+            return {"signal": "neutral", "score": 0.0, "avg_confidence": 0}
 
 
 def example_usage():

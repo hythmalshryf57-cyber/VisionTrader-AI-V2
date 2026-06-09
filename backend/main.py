@@ -728,22 +728,109 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
             asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id, orchestrator_weights=orchestrator_weights),
             timeout=12
         )
+
+        # If AI reported insufficient data, fall back to strategy-only voting (no external AI)
+        if isinstance(result, dict) and result.get("recommendation") == "بيانات غير كافية":
+            try:
+                ud = unified_data if 'unified_data' in locals() else voting_engine.data_adapter.normalize_input(visual_context, market)
+                strategy_weights = voting_engine.internal_brain.get_strategy_weights(user_id=current_user.id)
+                cluster_results = voting_engine.cluster_voting.vote_clusters(ud.get("chart_data", {}), market, strategy_weights, orchestrator_weights=orchestrator_weights)
+                judge_result = voting_engine.brain_judge._internal_judge(cluster_results)
+                final_decision = voting_engine.decision_matrix.calculate_final_score(cluster_results, judge_result)
+                result = {
+                    "recommendation": final_decision["recommendation"],
+                    "strength": final_decision.get("strength"),
+                    "confidence": final_decision["confidence"],
+                    "final_score": final_decision.get("final_score"),
+                    "reason": "Fallback to strategy-only Voting Engine (no external AI available)",
+                    "cluster_breakdown": {
+                        "power": cluster_results["power"],
+                        "geometric": cluster_results["geometric"],
+                        "momentum": cluster_results["momentum"]
+                    },
+                    "judge_result": judge_result,
+                    "ai_analysis": None,
+                    "environment_status": "fallback",
+                    "data_quality": ud.get("quality_score", 0),
+                    "issues": ud.get("issues", []),
+                    "market": market,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            except Exception:
+                logger.exception("Strategy-only fallback failed after AI reported insufficient data")
+
     except asyncio.TimeoutError:
-        result = {
-            "recommendation": "تعليق",
-            "confidence": 0,
-            "reason": "انتهت المهلة أثناء تحليل البيانات.",
-            "market": market,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        # Try strategy-only fallback before returning suspended
+        try:
+            ud = unified_data if 'unified_data' in locals() else voting_engine.data_adapter.normalize_input(visual_context, market)
+            strategy_weights = voting_engine.internal_brain.get_strategy_weights(user_id=current_user.id)
+            cluster_results = voting_engine.cluster_voting.vote_clusters(ud.get("chart_data", {}), market, strategy_weights, orchestrator_weights=orchestrator_weights)
+            judge_result = voting_engine.brain_judge._internal_judge(cluster_results)
+            final_decision = voting_engine.decision_matrix.calculate_final_score(cluster_results, judge_result)
+            result = {
+                "recommendation": final_decision["recommendation"],
+                "strength": final_decision.get("strength"),
+                "confidence": final_decision["confidence"],
+                "final_score": final_decision.get("final_score"),
+                "reason": "Timeout — fallback to strategy-only Voting Engine",
+                "cluster_breakdown": {
+                    "power": cluster_results["power"],
+                    "geometric": cluster_results["geometric"],
+                    "momentum": cluster_results["momentum"]
+                },
+                "judge_result": judge_result,
+                "ai_analysis": None,
+                "environment_status": "fallback",
+                "data_quality": ud.get("quality_score", 0),
+                "issues": ud.get("issues", []),
+                "market": market,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        except Exception:
+            logger.exception("Strategy-only fallback failed after timeout")
+            result = {
+                "recommendation": "تعليق",
+                "confidence": 0,
+                "reason": "انتهت المهلة أثناء تحليل البيانات.",
+                "market": market,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
     except Exception as e:
-        result = {
-            "recommendation": "تعليق",
-            "confidence": 0,
-            "reason": f"فشل التحليل: {str(e)}",
-            "market": market,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        # Try strategy-only fallback when AI raises unexpected exception
+        try:
+            ud = unified_data if 'unified_data' in locals() else voting_engine.data_adapter.normalize_input(visual_context, market)
+            strategy_weights = voting_engine.internal_brain.get_strategy_weights(user_id=current_user.id)
+            cluster_results = voting_engine.cluster_voting.vote_clusters(ud.get("chart_data", {}), market, strategy_weights, orchestrator_weights=orchestrator_weights)
+            judge_result = voting_engine.brain_judge._internal_judge(cluster_results)
+            final_decision = voting_engine.decision_matrix.calculate_final_score(cluster_results, judge_result)
+            result = {
+                "recommendation": final_decision["recommendation"],
+                "strength": final_decision.get("strength"),
+                "confidence": final_decision["confidence"],
+                "final_score": final_decision.get("final_score"),
+                "reason": f"AI failed: {str(e)} — fallback to strategy-only Voting Engine",
+                "cluster_breakdown": {
+                    "power": cluster_results["power"],
+                    "geometric": cluster_results["geometric"],
+                    "momentum": cluster_results["momentum"]
+                },
+                "judge_result": judge_result,
+                "ai_analysis": None,
+                "environment_status": "fallback",
+                "data_quality": ud.get("quality_score", 0),
+                "issues": ud.get("issues", []),
+                "market": market,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        except Exception:
+            logger.exception("Strategy-only fallback failed after AI exception: %s", e)
+            result = {
+                "recommendation": "تعليق",
+                "confidence": 0,
+                "reason": f"فشل التحليل: {str(e)}",
+                "market": market,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
 
     try:
         analysis = models.Analysis(
