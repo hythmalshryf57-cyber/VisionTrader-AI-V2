@@ -1991,9 +1991,8 @@ def get_market_price(symbol: str):
 
     if symbol in metals_and_fx:
         try:
-            from backend.services.tradingview_service import TradingViewService
-            tv = TradingViewService()
-            price = tv.get_realtime_price(symbol)
+            # Use the module-level TradingViewService instance to avoid package import issues
+            price = tradingview_service.get_realtime_price(symbol)
             if price and float(price) > 0:
                 return float(price)
         except Exception as e:
