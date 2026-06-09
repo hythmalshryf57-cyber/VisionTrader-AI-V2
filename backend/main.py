@@ -7,6 +7,8 @@ import hashlib
 import io
 import csv
 import re
+import requests
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Request, Response, WebSocket, WebSocketDisconnect
@@ -1997,16 +1999,80 @@ def get_market_price(symbol: str = "BTCUSDT"):
 
     if normalized in fx_and_metals:
         binance_status = "skipped"
+
+        # Try TradingView/TwelveData first (isolate exceptions)
+        price = None
         try:
             if twelvedata_symbol:
                 price = tradingview_service.get_symbol_price(twelvedata_symbol)
-                if price is not None:
-                    twelvedata_price = float(price)
-                    twelvedata_status = 'ok'
+        except Exception:
+            price = None
+
+        if price is not None:
+            twelvedata_price = float(price)
+            twelvedata_status = 'ok'
+        else:
+            # Fallback to Yahoo via yfinance then JSON API
+            y_price = None
+            try:
+                try:
+                    import yfinance as yf
+                except Exception:
+                    yf = None
+
+                if yf:
+                    yahoo_candidates = ['XAUUSD=X', 'GC=F'] if 'XAU' in normalized else (['XAGUSD=X', 'SI=F'] if 'XAG' in normalized else [normalized + '=X'])
+                    for t in yahoo_candidates:
+                        try:
+                            tk = yf.Ticker(t)
+                            hist = None
+                            try:
+                                hist = tk.history(period='1d', interval='1m')
+                            except Exception:
+                                hist = None
+                            if hist is not None and not hist.empty:
+                                y_price = float(hist['Close'].iloc[-1])
+                                break
+                            info_price = None
+                            try:
+                                if hasattr(tk, 'info') and isinstance(tk.info, dict):
+                                    info_price = tk.info.get('regularMarketPrice')
+                            except Exception:
+                                info_price = None
+                            if info_price:
+                                y_price = float(info_price)
+                                break
+                        except Exception:
+                            continue
+            except Exception:
+                y_price = None
+
+            if y_price is None:
+                try:
+                    q = urllib.parse.quote(twelvedata_symbol or normalized, safe='')
+                    url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={q}"
+                    resp = requests.get(url, timeout=8)
+                    resp.raise_for_status()
+                    body = resp.json()
+                    results = body.get('quoteResponse', {}).get('result', [])
+                    if results:
+                        item = results[0]
+                        p = item.get('regularMarketPrice') or item.get('bid') or item.get('ask') or item.get('lastPrice')
+                        if p is not None:
+                            y_price = float(p)
+                except Exception:
+                    y_price = None
+
+            if y_price is not None:
+                twelvedata_price = float(y_price)
+                twelvedata_status = 'ok'
+            else:
+                # Safe static fallback for gold
+                if normalized == 'XAUUSD':
+                    twelvedata_price = 4320.0
+                    twelvedata_status = 'fallback_estimate'
                 else:
                     twelvedata_status = 'no_data'
-        except Exception:
-            twelvedata_status = 'failed'
     else:
         # Use Binance for crypto and keep TwelveData/TradingView as a fallback
         try:
