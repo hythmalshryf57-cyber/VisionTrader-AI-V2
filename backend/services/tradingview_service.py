@@ -323,8 +323,59 @@ except Exception:
         """Resolve a symbol price using available providers. Prefer TwelveData, fallback to Yahoo Finance."""
         if not symbol:
             return None
+        # Special-case metals (gold/silver) and prefer a dedicated public endpoint when TwelveData missing
+        try:
+            sym = symbol.strip().upper()
+            if 'XAU' in sym or 'XAG' in sym:
+                # Try TwelveData first for metals
+                try:
+                    p = self.get_price_from_twelvedata(symbol)
+                    if p is not None:
+                        return p
+                except Exception:
+                    pass
 
-        # Try TwelveData first
+                # Fallback to public gold price API (best-effort)
+                try:
+                    # data-asg.goldprice.org returns JSON with price details for USD
+                    r = requests.get('https://data-asg.goldprice.org/dbXRates/USD', timeout=8)
+                    r.raise_for_status()
+                    data = r.json()
+                    items = data.get('items') or []
+                    if items and isinstance(items, list):
+                        first = items[0]
+                        for key in ('xauPrice', 'xauprice', 'price', 'price_usd'):
+                            if key in first and first[key] is not None:
+                                try:
+                                    return float(first[key])
+                                except Exception:
+                                    continue
+                    # Try other numeric extraction
+                    def _find_number(obj):
+                        if isinstance(obj, (int, float)):
+                            return float(obj)
+                        if isinstance(obj, dict):
+                            for v in obj.values():
+                                n = _find_number(v)
+                                if n is not None:
+                                    return n
+                        if isinstance(obj, list):
+                            for v in obj:
+                                n = _find_number(v)
+                                if n is not None:
+                                    return n
+                        return None
+
+                    fallback_num = _find_number(data)
+                    if fallback_num is not None:
+                        return float(fallback_num)
+                except Exception:
+                    pass
+
+        except Exception:
+            pass
+
+        # Try TwelveData first for non-metals
         try:
             p = self.get_price_from_twelvedata(symbol)
             if p is not None:
