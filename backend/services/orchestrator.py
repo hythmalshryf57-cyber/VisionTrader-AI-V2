@@ -303,6 +303,61 @@ class Orchestrator:
             "timestamp": int(time.time()),
         }
 
+    def generate_fallback(self, market_data: Dict[str, Any], agent_reports: List[Dict[str, Any]], max_agents: int = 21, max_strategies: int = 35) -> Dict[str, Any]:
+        """
+        Generate a non-AI fallback orchestration using only a subset of agent reports
+        and a limited set of discovered strategies (no external AI calls).
+        Returns a dict containing thesis, weights, final_recommendation, entry, stop, targets, etc.
+        """
+        try:
+            # Trim agents to the requested maximum (prefer first N reports)
+            trimmed_agents = list(agent_reports)[:max_agents] if isinstance(agent_reports, list) else []
+            # Try to discover strategy keys from the Voting Engine's loader (best-effort)
+            try:
+                from .voting_engine import strategy_loader
+                strategy_keys = strategy_loader.get_all_strategy_keys()
+            except Exception:
+                strategy_keys = []
+            selected_strategies = strategy_keys[:max_strategies]
+
+            # Use the thesis generator's fallback (no external model) which relies on agent signals
+            thesis = self.thesis_generator._fallback_thesis(trimmed_agents)
+            weights = self.weight_calculator.calculate(thesis)
+
+            # Run the deliberation loop to derive execution plan (entry/stop/targets)
+            deliberation_result = self.deliberation.run(thesis, weights, market_data, trimmed_agents)
+            execution = deliberation_result.get("execution", {})
+            final_signal = deliberation_result.get("analysis", {}).get("decision", (deliberation_result.get("analysis") or {}).get("decision"))
+
+            return {
+                "thesis": thesis,
+                "weights": weights,
+                "final_recommendation": final_signal or (trimmed_agents and trimmed_agents[0].get("signal")) or "neutral",
+                "targets": execution.get("targets", []),
+                "stop": execution.get("stop"),
+                "entry": execution.get("entry"),
+                "market_data": market_data,
+                "agent_reports": trimmed_agents,
+                "selected_strategies": selected_strategies,
+                "deliberation": deliberation_result,
+                "timestamp": int(time.time()),
+            }
+        except Exception:
+            logger.exception("Orchestrator.generate_fallback failed")
+            return {
+                "thesis": "",
+                "weights": self.weight_calculator.base_weights.copy(),
+                "final_recommendation": "neutral",
+                "targets": [],
+                "stop": None,
+                "entry": None,
+                "market_data": market_data,
+                "agent_reports": agent_reports,
+                "selected_strategies": [],
+                "deliberation": {},
+                "timestamp": int(time.time()),
+            }
+
 
 def example_usage():
     orchestrator = Orchestrator()

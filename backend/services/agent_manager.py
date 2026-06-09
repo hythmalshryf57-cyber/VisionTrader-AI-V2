@@ -877,12 +877,52 @@ class AgentManager:
         if isinstance(market_or_unified, dict):
             unified = market_or_unified
         else:
+            market = str(market_or_unified)
+            # Try to fetch a live price from available services; fallback to reasonable defaults
+            price = None
+            try:
+                # Try TradingView service if available
+                from .tradingview_service import TradingViewService
+                try:
+                    tv = TradingViewService()
+                    # method name varies; try common names
+                    for method in ("get_price", "get_latest_price", "latest_price"):
+                        if hasattr(tv, method):
+                            try:
+                                price = float(getattr(tv, method)(market))
+                                break
+                            except Exception:
+                                continue
+                except Exception:
+                    price = None
+            except Exception:
+                price = None
+
+            # Static fallback pricing for common symbols when no live price available
+            if price is None:
+                FALLBACK_PRICE = {
+                    "XAUUSD": 2651.0,
+                    "GOLD": 2651.0,
+                    "BTCUSD": 60000.0,
+                    "ETHUSD": 3500.0,
+                }
+                price = FALLBACK_PRICE.get(market.upper(), None)
+
+            # Build a minimal unified payload including order_book/recent_trades so orchestrator can plan
+            order_book = {}
+            recent_trades = []
+            chart_data = {}
+            if price is not None:
+                order_book = {"bids": [[price, 1]], "asks": [[round(price + 1, 2), 1]]}
+                recent_trades = [[price, 1]]
+                chart_data = {"closes": [round(price - 3, 2), round(price - 1, 2), round(price, 2)], "opens": []}
+
             unified = {
-                "market": str(market_or_unified),
-                "order_book": {},
-                "recent_trades": [],
-                "chart_data": {},
-                "quality_score": 0.0
+                "market": market,
+                "order_book": order_book,
+                "recent_trades": recent_trades,
+                "chart_data": chart_data,
+                "quality_score": 1.0 if price is not None else 0.0,
             }
         try:
             # Run agents and aggregate results
@@ -921,36 +961,119 @@ class AgentManager:
                 "price": price,
             }]
 
-            # Call Voting Engine for a full recommendation (best-effort)
+            # Detect if external AI providers likely failed for all agents (all zero-confidence neutrals)
+            provider_failure = False
             try:
-                from .voting_engine import voting_engine
-                voting_result = voting_engine.analyze(visual_ctx, market=unified.get("market"))
+                agents_obj = out.get("agents") if isinstance(out, dict) else None
+                if isinstance(agents_obj, dict) and len(agents_obj) > 0:
+                    provider_failure = all(int(a.get("confidence", 0) or 0) == 0 and str(a.get("signal", "")).lower() == "neutral" for a in agents_obj.values())
             except Exception:
-                logger.exception("Voting engine analyze failed")
-                voting_result = None
+                provider_failure = False
+
+            voting_result = None
+            # If providers failed, force a local orchestrator fallback (no external AI) and use its weights
+            if provider_failure:
+                try:
+                    from .orchestrator import Orchestrator
+                    orch = Orchestrator()
+                    # Build market_data similar to _send_to_orchestrator
+                    market_data = {
+                        "ensemble": out.get("ensemble"),
+                        "signals": out.get("signals"),
+                        "confidences": out.get("confidences"),
+                        "timestamp": out.get("timestamp"),
+                        "order_book": out.get("order_book") or unified.get("order_book"),
+                        "recent_trades": out.get("recent_trades") or unified.get("recent_trades"),
+                        "market": unified.get("market"),
+                        "quality_score": unified.get("quality_score"),
+                    }
+                    # Derive a best-effort price
+                    try:
+                        price = None
+                        ob = market_data.get("order_book") or {}
+                        if isinstance(ob, dict):
+                            bids = ob.get("bids", [])
+                            asks = ob.get("asks", [])
+                            if bids and asks:
+                                try:
+                                    best_bid = float(bids[0][0]) if isinstance(bids[0], (list, tuple)) else float(bids[0])
+                                    best_ask = float(asks[0][0]) if isinstance(asks[0], (list, tuple)) else float(asks[0])
+                                    price = (best_bid + best_ask) / 2.0
+                                except Exception:
+                                    price = None
+                        if price is None:
+                            recent = market_data.get("recent_trades") or []
+                            if recent and isinstance(recent, list) and len(recent) > 0:
+                                last = recent[-1]
+                                if isinstance(last, dict):
+                                    price = float(last.get("price") or last.get("p") or 0)
+                                elif isinstance(last, (list, tuple)) and len(last) > 0:
+                                    price = float(last[0])
+                        if price is not None:
+                            market_data["price"] = price
+                    except Exception:
+                        pass
+
+                    agent_reports = list(agents_obj.values()) if isinstance(agents_obj, dict) else out.get("reports", [])
+                    orch_fallback = orch.generate_fallback(market_data, agent_reports)
+                    orchestrator_result = orchestrator_result or orch_fallback
+                    # Call voting engine with orchestrator weights (best-effort)
+                    try:
+                        from .voting_engine import voting_engine
+                        voting_result = voting_engine.analyze(visual_ctx, market=unified.get("market"), orchestrator_weights=orch_fallback.get("weights"))
+                    except Exception:
+                        logger.exception("Voting engine analyze (with fallback weights) failed")
+                        voting_result = None
+                except Exception:
+                    logger.exception("Fallback orchestrator/voting execution failed")
+                    voting_result = None
+            else:
+                # Call Voting Engine for a full recommendation (best-effort)
+                try:
+                    from .voting_engine import voting_engine
+                    voting_result = voting_engine.analyze(visual_ctx, market=unified.get("market"))
+                except Exception:
+                    logger.exception("Voting engine analyze failed")
+                    voting_result = None
 
             # Collate final output fields: recommendation, confidence, entry, sl, tp1,tp2,tp3, rr
-            recommendation = None
+            raw_recommendation = None
             confidence = 0
             entry = sl = tp1 = tp2 = tp3 = None
 
+            # Prefer voting engine recommendation when available
             if isinstance(voting_result, dict):
-                recommendation = voting_result.get("recommendation") or voting_result.get("final_score")
-                confidence = int(voting_result.get("confidence", 0)) if voting_result.get("confidence") is not None else int(voting_result.get("final_score", 0))
+                raw_recommendation = voting_result.get("recommendation") or voting_result.get("signal") or voting_result.get("direction")
+                confidence = int(voting_result.get("confidence", 0)) if voting_result.get("confidence") is not None else int(voting_result.get("score", 0) or 0)
                 entry = voting_result.get("entry") or voting_result.get("entry_price")
                 sl = voting_result.get("stop_loss") or voting_result.get("stop")
-                targets = voting_result.get("targets") or voting_result.get("targets") or []
+                targets = voting_result.get("targets") or voting_result.get("tp") or []
                 if targets and isinstance(targets, list):
                     tp1 = targets[0] if len(targets) > 0 else None
                     tp2 = targets[1] if len(targets) > 1 else None
                     tp3 = targets[2] if len(targets) > 2 else None
 
-            # Fallback to orchestrator plan if voting engine didn't provide targets
-            if (not entry or not sl or not tp1) and orchestrator_result:
+            # Fallback to orchestrator plan if voting engine didn't provide targets or recommendation
+            if orchestrator_result:
                 try:
-                    if not recommendation:
-                        recommendation = orchestrator_result.get("final_recommendation")
-                    confidence = confidence or int(out.get("ensemble", {}).get("avg_confidence", 0) or out.get("ensemble", {}).get("confidence", 0) or 0)
+                    orch_rec = orchestrator_result.get("final_recommendation")
+                    orch_ens = (orchestrator_result.get("market_data") or {}).get("ensemble") if orchestrator_result else None
+                    # If voting didn't provide a clear recommendation, derive from orchestrator or orchestrator ensemble
+                    if not raw_recommendation:
+                        if orch_rec and str(orch_rec).strip().lower() in ("buy", "sell", "شراء", "بيع"):
+                            raw_recommendation = orch_rec
+                        else:
+                            # if orchestrator asks to 'confirm', prefer orchestrator's ensemble signal when available
+                            if orch_rec and str(orch_rec).strip().lower() in ("confirm", "approve", "confirmed"):
+                                raw_recommendation = (orch_ens or (out.get("ensemble") or {})).get("signal")
+                            else:
+                                raw_recommendation = (orch_ens or (out.get("ensemble") or {})).get("signal")
+
+                    # Prefer ensemble info produced by the orchestrator when present
+                    if orch_ens:
+                        confidence = confidence or int(orch_ens.get("avg_confidence", 0) or orch_ens.get("confidence", 0) or 0)
+                    else:
+                        confidence = confidence or int(out.get("ensemble", {}).get("avg_confidence", 0) or out.get("ensemble", {}).get("confidence", 0) or 0)
                     entry = entry or orchestrator_result.get("entry")
                     sl = sl or orchestrator_result.get("stop")
                     orch_targets = orchestrator_result.get("targets") or []
@@ -962,10 +1085,15 @@ class AgentManager:
                     pass
 
             # Final fallback to ensemble
-            if not recommendation:
-                ens = out.get("ensemble") or {}
-                recommendation = ens.get("signal", "neutral")
-                confidence = confidence or int(ens.get("avg_confidence", 0))
+            if not raw_recommendation:
+                orch_ens = (orchestrator_result.get("market_data") or {}).get("ensemble") if orchestrator_result else None
+                if orch_ens:
+                    raw_recommendation = orch_ens.get("signal", "neutral")
+                    confidence = confidence or int(orch_ens.get("avg_confidence", 0) or orch_ens.get("confidence", 0) or 0)
+                else:
+                    ens = out.get("ensemble") or {}
+                    raw_recommendation = ens.get("signal", "neutral")
+                    confidence = confidence or int(ens.get("avg_confidence", 0) or ens.get("confidence", 0) or 0)
 
             def _normalize_rec(r):
                 if not r:
@@ -977,7 +1105,7 @@ class AgentManager:
                     return "sell"
                 return "neutral"
 
-            final_rec = _normalize_rec(recommendation)
+            final_rec = _normalize_rec(raw_recommendation)
 
             def _fmt(n):
                 try:
@@ -993,18 +1121,23 @@ class AgentManager:
             tp2_f = _fmt(tp2)
             tp3_f = _fmt(tp3)
 
-            # compute risk-reward using first target if possible
+            # compute risk-reward using first target if possible (only for buy/sell)
             rr = ""
             try:
-                if entry is not None and sl is not None and tp1 is not None:
+                if entry is not None and sl is not None and tp1 is not None and final_rec in ("buy", "sell"):
                     e = float(entry)
                     s = float(sl)
                     t1 = float(tp1)
                     if final_rec == "buy":
-                        rr_val = (t1 - e) / max(1e-9, e - s)
+                        denom = abs(e - s)
+                        if denom > 0:
+                            rr_val = (t1 - e) / denom
+                            rr = f"{round(rr_val,2)}"
                     else:
-                        rr_val = (e - t1) / max(1e-9, s - e)
-                    rr = f"{round(rr_val,2)}"
+                        denom = abs(s - e)
+                        if denom > 0:
+                            rr_val = (e - t1) / denom
+                            rr = f"{round(rr_val,2)}"
             except Exception:
                 rr = ""
 

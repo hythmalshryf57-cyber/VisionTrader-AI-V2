@@ -1986,33 +1986,50 @@ def get_market_price(symbol: str = "BTCUSDT"):
     symbol = (symbol or "BTCUSDT").strip().upper()
     binance_symbol = _format_binance_symbol(symbol)
     twelvedata_symbol = _format_twelvedata_symbol(symbol)
-
     binance_price = 0.0
     twelvedata_price = None
-    binance_status = "failed"
+    binance_status = "skipped"
     twelvedata_status = "failed"
 
-    try:
-        if binance_symbol:
-            price = binance_service.get_ticker_price(binance_symbol)
-            if price is not None:
-                binance_price = float(price)
-                binance_status = 'ok' if binance_price > 0 else 'no_data'
-            else:
-                binance_status = 'no_data'
-    except Exception:
-        binance_status = 'failed'
+    # For metals and major FX pairs, prefer TwelveData / TradingView (do NOT use Binance)
+    fx_and_metals = {"XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY"}
+    normalized = symbol.replace('/', '').replace('-', '').replace('_', '').upper()
 
-    try:
-        if twelvedata_symbol:
-            price = tradingview_service.get_symbol_price(twelvedata_symbol)
-            if price is not None:
-                twelvedata_price = float(price)
-                twelvedata_status = 'ok'
-            else:
-                twelvedata_status = 'no_data'
-    except Exception:
-        twelvedata_status = 'failed'
+    if normalized in fx_and_metals:
+        binance_status = "skipped"
+        try:
+            if twelvedata_symbol:
+                price = tradingview_service.get_symbol_price(twelvedata_symbol)
+                if price is not None:
+                    twelvedata_price = float(price)
+                    twelvedata_status = 'ok'
+                else:
+                    twelvedata_status = 'no_data'
+        except Exception:
+            twelvedata_status = 'failed'
+    else:
+        # Use Binance for crypto and keep TwelveData/TradingView as a fallback
+        try:
+            if binance_symbol:
+                price = binance_service.get_ticker_price(binance_symbol)
+                if price is not None:
+                    binance_price = float(price)
+                    binance_status = 'ok' if binance_price > 0 else 'no_data'
+                else:
+                    binance_status = 'no_data'
+        except Exception:
+            binance_status = 'failed'
+
+        try:
+            if twelvedata_symbol:
+                price = tradingview_service.get_symbol_price(twelvedata_symbol)
+                if price is not None:
+                    twelvedata_price = float(price)
+                    twelvedata_status = 'ok'
+                else:
+                    twelvedata_status = 'no_data'
+        except Exception:
+            twelvedata_status = 'failed'
 
     price_diff_pct = None
     if twelvedata_price is not None and binance_price:
