@@ -857,6 +857,17 @@ class VotingEngine:
             }
 
         unified_data = self.data_adapter.normalize_input(visual_context, market)
+
+        # Ensure the voting engine uses the authoritative market price from main.get_market_price.
+        try:
+            from backend.main import get_market_price
+            market_price = get_market_price(market)
+            if market_price is not None:
+                unified_data["chart_data"]["current_price"] = float(market_price)
+                unified_data["market_price"] = float(market_price)
+        except Exception as e:
+            logger.exception("VotingEngine analyze failed to fetch market price from main: %s", e)
+
         if not unified_data["valid"]:
             return {
                 "recommendation": "بيانات غير كافية",
@@ -893,6 +904,7 @@ class VotingEngine:
                 "recommendation": "لا توجد فرصة واضحة حالياً",
                 "confidence": confidence,
                 "reason": "الثقة أقل من 60%",
+                "entry": unified_data["chart_data"].get("current_price"),
                 "market": market,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
@@ -956,6 +968,9 @@ class VotingEngine:
             result["stop_loss"] = cluster_results["geometric"]["stops"][0]
         if cluster_results["momentum"].get("timing"):
             result["timing_signals"] = cluster_results["momentum"]["timing"]
+
+        # ensure a price-based entry is available for market-price-only analysis
+        result["entry"] = result.get("entry") or unified_data["chart_data"].get("current_price")
 
         # تخصيص حسب وضع التداول
         result["trading_mode"] = trading_mode

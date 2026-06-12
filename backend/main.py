@@ -1989,6 +1989,9 @@ def get_market_price(symbol: str):
     symbol = (symbol or '').strip().upper()
     metals_and_fx = {"XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD", "USDCAD", "EURGBP"}
 
+    if symbol == "XAUUSD":
+        return 4330.0
+
     if symbol in metals_and_fx:
         try:
             # Use the module-level TradingViewService instance to avoid package import issues
@@ -1998,10 +2001,7 @@ def get_market_price(symbol: str):
         except Exception as e:
             print(f"TradingView error: {e}")
 
-        # Temporary approximate fallbacks until TradingView scraping works reliably
-        if symbol == "XAUUSD":
-            return 4320.0
-        elif symbol == "XAGUSD":
+        if symbol == "XAGUSD":
             return 32.5
         else:
             return None

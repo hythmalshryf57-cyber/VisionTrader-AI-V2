@@ -807,6 +807,9 @@ class DecisionModule:
         if direction == "انتظار" or not chart_data:
             return {"entry_low": None, "entry_high": None, "best_entry": None, "reason": "لا توجد منطقة دخول", "warnings": []}
 
+        if direction not in ("شراء", "بيع"):
+            return {"entry_low": None, "entry_high": None, "best_entry": chart_data.get("current_price"), "reason": "الاتجاه ليس شراء أو بيع واضح", "warnings": []}
+
         current_price = chart_data.get("current_price", 0.0)
         support_levels = chart_data.get("support_levels", [])
         resistance_levels = chart_data.get("resistance_levels", [])
