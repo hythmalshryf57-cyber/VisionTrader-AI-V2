@@ -661,14 +661,29 @@ class AcceptanceRejectionAnalyzer:
         تحليل القبول والرفض
         """
         acceptance = self._measure_acceptance_current(highs, lows, closes, volumes, fair_value)
-        rejection = self._detect_rejection_zones(highs, lows, closes, volumes)
+        rejection_zones = self._detect_rejection_zones(highs, lows, closes, volumes)
         price_discovery = self._analyze_price_discovery(highs, lows, closes, volumes)
-        
+
+        # compute a scalar rejection score from detected zones (0-1)
+        if rejection_zones:
+            try:
+                rejection_score = float(max(z.get('strength', 0) for z in rejection_zones))
+            except Exception:
+                rejection_score = min(1.0, float(len(rejection_zones)) * 0.1)
+        else:
+            rejection_score = 0.0
+
+        rejection_summary = {
+            'score': rejection_score,
+            'zones': rejection_zones,
+        }
+
         return {
             "acceptance": acceptance,
-            "rejection_zones": rejection,
+            "rejection_zones": rejection_zones,
+            "rejection": rejection_summary,
             "price_discovery": price_discovery,
-            "current_state": "acceptance" if acceptance['score'] > rejection['score'] else "rejection",
+            "current_state": "acceptance" if acceptance['score'] > rejection_score else "rejection",
         }
     
     def _measure_acceptance_current(self, highs: np.ndarray, lows: np.ndarray,
@@ -828,8 +843,17 @@ class AuctionMarketStrategy:
             return {"recommendation": "محايد", "confidence": 10,
                     "reason": "تحتاج 20 شمعة على الأقل"}
         
-        # 1. تحليل المزاد
-        auction_data = self.auction_analyzer.analyze(highs, lows, closes, volumes, opens)
+        # 1. تحليل المزاد (مع وقاية من الاستثناءات الداخلية)
+        try:
+            auction_data = self.auction_analyzer.analyze(highs, lows, closes, volumes, opens)
+        except Exception:
+            auction_data = {
+                'fair_value': float(closes[-1]) if len(closes) > 0 else 0.0,
+                'events': [],
+                'auction_health': 0.5,
+                'profile': None,
+                'current_phase': 'unknown',
+            }
         
         # 2. تحليل القبول والرفض
         fair_value = auction_data.get('fair_value', closes[-1])

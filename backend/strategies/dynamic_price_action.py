@@ -1234,8 +1234,8 @@ class AdvancedCandlestickAnalyzer:
         first_half = ranges[:7]
         second_half = ranges[7:]
         
-        first_trend = np.polyfit(range(7), first_half, 1)[0] if len(first_half) >= 2 else 0
-        second_trend = np.polyfit(range(7), second_half, 1)[0] if len(second_half) >= 2 else 0
+        first_trend = np.polyfit(range(len(first_half)), first_half, 1)[0] if len(first_half) >= 2 else 0
+        second_trend = np.polyfit(range(len(second_half)), second_half, 1)[0] if len(second_half) >= 2 else 0
         
         if first_trend > 0 and second_trend < 0 and abs(first_trend) > 0.01 and abs(second_trend) > 0.01:
             patterns.append(Pattern(

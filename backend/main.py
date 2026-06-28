@@ -1942,6 +1942,7 @@ def plan_trade(payload: dict, current_user: models.User = Depends(auth.get_curre
         account_balance=float(payload.get("account_balance", 100000.0)),
         base_risk_percent=float(payload.get("risk_percent", 2.0)),
         analysis_context=payload.get("analysis_context", {}),
+        market=payload.get("market") or payload.get("symbol"),
     )
 
     if warning:
@@ -1985,26 +1986,25 @@ def _format_twelvedata_symbol(symbol: str) -> str:
 
 @app.get("/api/market/price")
 def get_market_price(symbol: str):
-    # For metals and FX, use TradingView only (best-effort scraping; no API key required).
+    # For metals and FX, prefer TradingView scraping then Yahoo Finance fallback.
     symbol = (symbol or '').strip().upper()
     metals_and_fx = {"XAUUSD", "XAGUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD", "USDCAD", "EURGBP"}
 
-    if symbol == "XAUUSD":
-        return 4330.0
-
     if symbol in metals_and_fx:
         try:
-            # Use the module-level TradingViewService instance to avoid package import issues
             price = tradingview_service.get_realtime_price(symbol)
             if price and float(price) > 0:
                 return float(price)
         except Exception as e:
             print(f"TradingView error: {e}")
 
+        if symbol == "XAUUSD":
+            yahoo_price = _fetch_yahoo_price("GC=F")
+            return float(yahoo_price) if yahoo_price is not None else 4330.0
         if symbol == "XAGUSD":
-            return 32.5
-        else:
-            return None
+            yahoo_price = _fetch_yahoo_price("SI=F")
+            return float(yahoo_price) if yahoo_price is not None else 32.5
+        return None
 
     # For crypto, use Binance
     symbol_binance = symbol.replace("USD", "USDT")
@@ -2018,6 +2018,23 @@ def get_market_price(symbol: str):
         pass
 
     return None
+
+
+def _fetch_yahoo_price(symbol: str) -> Optional[float]:
+    try:
+        q = urllib.parse.quote(symbol, safe='')
+        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={q}"
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        result = data.get("quoteResponse", {}).get("result", [])
+        if not result:
+            return None
+        item = result[0]
+        price = item.get("regularMarketPrice") or item.get("bid") or item.get("ask") or item.get("lastPrice")
+        return float(price) if price is not None else None
+    except Exception:
+        return None
 
 
 @app.get("/api/price-alerts")
@@ -3403,4 +3420,4 @@ if __name__ == "__main__":
     else:
         print("Telegram bot not started because aiogram is unavailable or bot initialization failed.")
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

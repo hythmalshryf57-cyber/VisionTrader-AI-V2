@@ -250,6 +250,7 @@ class HybridModernStrategy:
             ('auction_market', self._auction_analysis),
         ]
         
+        import inspect
         for school_name, analyzer_func in school_analyzers:
             # 🟡 تعديل 6: محاولة استخدام استراتيجية حقيقية
             real_strategy = self._get_real_strategy(school_name)
@@ -273,9 +274,33 @@ class HybridModernStrategy:
                     reason = result.get('reason', '')[:80]
                 except Exception as e:
                     logger.debug(f"استراتيجية {school_name} فشلت: {e}")
-                    score, direction, conf, reason = analyzer_func(highs, lows, closes, volumes)
-            else:
-                score, direction, conf, reason = analyzer_func(highs, lows, closes, volumes)
+                    # fall through to local analyzer invocation
+                    real_strategy = None
+
+            if not real_strategy:
+                # Call analyzer_func flexibly based on its signature
+                try:
+                    sig = inspect.signature(analyzer_func)
+                    params = [p for p in sig.parameters.values() if p.name != 'self']
+                    if len(params) >= 4:
+                        score, direction, conf, reason = analyzer_func(highs, lows, closes, volumes)
+                    elif len(params) == 3:
+                        # try (highs,lows,closes) or (closes,volumes,opens)
+                        names = [p.name for p in params]
+                        if 'highs' in names and 'lows' in names and 'closes' in names:
+                            score, direction, conf, reason = analyzer_func(highs, lows, closes)
+                        else:
+                            score, direction, conf, reason = analyzer_func(closes, volumes, opens)
+                    elif len(params) == 2:
+                        score, direction, conf, reason = analyzer_func(closes, volumes)
+                    elif len(params) == 1:
+                        score, direction, conf, reason = analyzer_func(closes)
+                    else:
+                        # no params
+                        score, direction, conf, reason = analyzer_func()
+                except Exception as e:
+                    logger.debug(f"Analyzer {school_name} invocation failed: {e}")
+                    score, direction, conf, reason = 50, 'محايد', 30, f"{school_name}: analysis error"
             
             # 🟡 تعديل 4: الأداء التاريخي
             perf = self.performance_history.get(school_name, PerformanceRecord(school_name=school_name))
@@ -397,11 +422,11 @@ class HybridModernStrategy:
         
         return 50, 'محايد', 30, "OF: دلتا محايدة"
     
-    def _ma_analysis(self, closes, volumes=None):
-        """تحليل المتوسطات"""
+    def _ma_analysis(self, highs, lows, closes, volumes=None):
+        """تحليل المتوسطات (signature متوافقة مع باقي المحللات)"""
         if len(closes) < 20:
             return 50, 'محايد', 30, "MA: غير كاف"
-        
+
         ma5 = np.mean(closes[-5:])
         ma10 = np.mean(closes[-10:])
         ma20 = np.mean(closes[-20:])

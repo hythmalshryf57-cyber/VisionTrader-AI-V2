@@ -1076,8 +1076,8 @@ class AIService:
                     time.sleep(7 * 24 * 60 * 60)  # Retry in 1 week
 
         # Start threads
-        threading.Thread(target=_daily_tune, daemon=True).start()
-        threading.Thread(target=_weekly_cluster_tune, daemon=True).start()
+        # threading.Thread(target=_daily_tune, daemon=True).start()
+        # threading.Thread(target=_weekly_cluster_tune, daemon=True).start()
         threading.Thread(target=_monthly_review, daemon=True).start()
 
     def auto_tune_weights(self, lookback_days: int = 30, min_trades: int = 10) -> Dict[str, Any]:
@@ -2091,7 +2091,6 @@ class AIService:
                 "confidence_threshold": self.judge_performance["confidence_threshold"],
                 "message": f"تم تعلم الدرس من التصحيح: {correction[:100]}..."
             }
-
         except Exception as e:
             logger.exception(f"Failed to learn from feedback: {e}")
             return {"status": "error", "message": str(e)}
@@ -2100,3 +2099,9 @@ class AIService:
 
 
 ai_core_service = AIService()
+
+
+
+
+
+

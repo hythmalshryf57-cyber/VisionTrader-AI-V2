@@ -9,6 +9,8 @@ import random
 import time
 from datetime import datetime, timedelta, timezone
 
+from backend.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Try importing MetaTrader5 (Only works on Windows)
@@ -24,6 +26,7 @@ class MT5Service:
     def __init__(self):
         self.connected = False
         self.simulator_mode = not MT5_AVAILABLE
+        self.signal_mode = settings.MT5_SIGNAL_MODE
         self.account_info = {
             "balance": 10000.0,
             "equity": 10000.0,
@@ -143,6 +146,37 @@ class MT5Service:
                     "volume": random.randint(100, 1000)
                 })
             return history
+
+    def _get_contract_size(self, symbol: str) -> float:
+        """Return the MT5 contract size for the given symbol."""
+        symbol = str(symbol or "").upper().strip()
+        if self.simulator_mode or not MT5_AVAILABLE:
+            if "XAU" in symbol:
+                return 100.0
+            return 1.0
+
+        symbol_info = mt5.symbol_info(symbol)
+        if symbol_info is None:
+            if "XAU" in symbol:
+                return 100.0
+            logger.warning(f"MT5 symbol info not available for {symbol}. Falling back to contract size 1.")
+            return 1.0
+
+        contract_size = getattr(symbol_info, "trade_contract_size", None)
+        if not contract_size or contract_size <= 0:
+            if "XAU" in symbol:
+                return 100.0
+            return 1.0
+        return float(contract_size)
+
+    def normalize_volume(self, symbol: str, volume: float) -> float:
+        """Convert a position size expressed in contract units to MT5 lots."""
+        contract_size = self._get_contract_size(symbol)
+        final_volume = float(volume) / contract_size if contract_size else float(volume)
+        final_volume = round(final_volume, 2)
+        if 0 < final_volume < 0.01:
+            final_volume = 0.01
+        return final_volume
         if not self.connected:
             return []
 
@@ -172,6 +206,8 @@ class MT5Service:
 
     def place_order(self, symbol: str, order_type: str, volume: float, price: float = 0.0, sl: float = 0.0, tp: float = 0.0) -> dict:
         """Places Market, Limit, or Stop order"""
+        final_volume = self.normalize_volume(symbol, volume)
+
         if self.simulator_mode:
             self.ticket_counter += 1
             ticket = self.ticket_counter
@@ -184,7 +220,7 @@ class MT5Service:
                 "ticket": ticket,
                 "symbol": symbol,
                 "type": order_type,
-                "volume": volume,
+                "volume": final_volume,
                 "open_price": price,
                 "sl": sl,
                 "tp": tp,
@@ -192,8 +228,8 @@ class MT5Service:
                 "status": "OPEN",
                 "time": datetime.now(timezone.utc).isoformat()
             }
-            logger.info(f"[Simulator] Order placed: {ticket} {order_type} {symbol} Vol: {volume}")
-            return {"ticket": ticket, "status": "success", "open_price": price}
+            logger.info(f"[Simulator] Order placed: {ticket} {order_type} {symbol} Vol: {final_volume} (raw size {volume})")
+            return {"ticket": ticket, "status": "success", "open_price": price, "volume": final_volume}
 
         # MT5 Execution
         action_map = {
@@ -214,7 +250,7 @@ class MT5Service:
         request = {
             "action": mt5.TRADE_ACTION_DEAL if order_type in ["buy", "sell"] else mt5.TRADE_ACTION_PENDING,
             "symbol": symbol,
-            "volume": float(volume),
+            "volume": float(final_volume),
             "type": action,
             "sl": float(sl) if sl > 0 else 0.0,
             "tp": float(tp) if tp > 0 else 0.0,
@@ -230,6 +266,21 @@ class MT5Service:
         else:
             p_data = self.get_price(symbol)
             request["price"] = float(p_data.get('ask')) if order_type == 'buy' else float(p_data.get('bid'))
+
+        if self.signal_mode:
+            logger.info(f"[Signal Mode] Order request prepared: {request}")
+            return {
+                "status": "signal_only",
+                "mode": "signal",
+                "symbol": symbol,
+                "order_type": order_type,
+                "volume": float(final_volume),
+                "sl": float(sl),
+                "tp": float(tp),
+                "price": request["price"],
+                "request": request,
+                "message": "Signal mode active: order request logged but not sent to MT5."
+            }
 
         result = mt5.order_send(request)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
@@ -254,6 +305,10 @@ class MT5Service:
                 logger.info(f"[Simulator] Modified {ticket}: SL={sl}, TP={tp}")
                 return {"status": "success", "ticket": ticket, "status_detail": "simulated"}
             return {"error": "Ticket not found"}
+
+        if self.signal_mode:
+            logger.info(f"[Signal Mode] Modify request for ticket {ticket}: SL={sl}, TP={tp}")
+            return {"status": "signal_only", "ticket": ticket, "sl": sl, "tp": tp, "message": "Signal mode active: modify request not sent."}
 
         if not self.connected:
             return {"error": "Not connected"}
@@ -287,6 +342,11 @@ class MT5Service:
                 logger.info(f"[Simulator] Closed {ticket}. PnL: {pos['pnl']}")
                 return {"status": "success", "ticket": ticket, "pnl": pos['pnl']}
             return {"error": "Ticket not found"}
+
+        if self.signal_mode:
+            logger.info(f"[Signal Mode] Close request for ticket {ticket}. No MT5 action taken.")
+            return {"status": "signal_only", "ticket": ticket, "message": "Signal mode active: close request not sent."}
+
         if not self.connected:
             return {"error": "Not connected"}
 

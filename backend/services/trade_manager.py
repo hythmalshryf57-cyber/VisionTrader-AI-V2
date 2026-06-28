@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Dict, Any, List
 import threading
 import time
@@ -8,12 +9,16 @@ from .performance_tracker import PerformanceTracker
 from .binance_service import binance_service
 from .notification_service import notification_service
 from .journal_service import journal_service
+from .data_adapter import DataAdapter
 import models
+
+logger = logging.getLogger(__name__)
 
 
 class TradeManagerService:
     def __init__(self):
         self.risk_calculator = RiskCalculator()
+        self.data_adapter = DataAdapter()
         self.performance_tracker = PerformanceTracker()
         self.active_trades = {}  # {trade_id: trade_data}
         self.monitoring_thread = None
@@ -105,6 +110,174 @@ class TradeManagerService:
             "entry_zone_reason": "منطقة دخول مبنية على أقرب دعم/مقاومة، كتلة أوامر أو FVG." if any((support, resistance, order_block_low, order_block_high, fvg_low, fvg_high)) else "منطقة دخول ديناميكية حول السعر الحالي."
         }
 
+    def _extract_chart_data(self, analysis_context: dict) -> dict:
+        if not isinstance(analysis_context, dict):
+            return {}
+        return analysis_context.get('chart_data') or analysis_context.get('chartData') or {}
+
+    def _extract_order_book(self, analysis_context: dict) -> dict:
+        if not isinstance(analysis_context, dict):
+            return {}
+        return analysis_context.get('order_book') or analysis_context.get('orderBook') or {}
+
+    def _extract_market(self, analysis_context: dict) -> Optional[str]:
+        if not isinstance(analysis_context, dict):
+            return None
+        market = analysis_context.get('market') or analysis_context.get('symbol') or analysis_context.get('market_name')
+        if isinstance(market, str) and market.strip():
+            return market.strip()
+        chart_data = self._extract_chart_data(analysis_context)
+        market = chart_data.get('market') or chart_data.get('symbol')
+        return market.strip() if isinstance(market, str) and market.strip() else None
+
+    def _collect_liquidity_levels(self, analysis_context: dict) -> list:
+        levels = []
+        if not isinstance(analysis_context, dict):
+            return levels
+
+        def add_values(values):
+            if not isinstance(values, (list, tuple)):
+                return
+            for value in values:
+                try:
+                    levels.append(float(value))
+                except Exception:
+                    pass
+
+        add_values(analysis_context.get('liquidity_levels') or analysis_context.get('liquidityLevels'))
+        chart_data = self._extract_chart_data(analysis_context)
+        add_values(chart_data.get('liquidity_levels') or chart_data.get('liquidityLevels'))
+        add_values(chart_data.get('support_levels') or chart_data.get('supportLevels'))
+        add_values(chart_data.get('resistance_levels') or chart_data.get('resistanceLevels'))
+
+        order_book = self._extract_order_book(analysis_context)
+        if isinstance(order_book, dict):
+            for side in ('asks', 'bids'):
+                items = order_book.get(side)
+                if isinstance(items, (list, tuple)):
+                    for item in items[:5]:
+                        if isinstance(item, (list, tuple)) and len(item) >= 1:
+                            try:
+                                levels.append(float(item[0]))
+                            except Exception:
+                                continue
+                        elif isinstance(item, dict) and 'price' in item:
+                            try:
+                                levels.append(float(item['price']))
+                            except Exception:
+                                continue
+        return sorted(set(levels))
+
+    def _build_price_history_from_chart_data(self, chart_data: dict) -> list:
+        prices = []
+        if not isinstance(chart_data, dict):
+            return prices
+
+        closes = chart_data.get('closes') or chart_data.get('close') or []
+        highs = chart_data.get('highs') or chart_data.get('high') or []
+        lows = chart_data.get('lows') or chart_data.get('low') or []
+        opens = chart_data.get('opens') or chart_data.get('open') or []
+
+        if isinstance(closes, (list, tuple)) and closes:
+            try:
+                if all(isinstance(x, (int, float)) for x in closes) and isinstance(highs, (list, tuple)) and isinstance(lows, (list, tuple)) and isinstance(opens, (list, tuple)) and len(opens) == len(highs) == len(lows) == len(closes):
+                    for o, h, l, c in zip(opens, highs, lows, closes):
+                        prices.append({
+                            'open': float(o),
+                            'high': float(h),
+                            'low': float(l),
+                            'close': float(c)
+                        })
+                else:
+                    for c in closes:
+                        prices.append({
+                            'open': float(c),
+                            'high': float(c),
+                            'low': float(c),
+                            'close': float(c)
+                        })
+            except Exception:
+                prices = []
+        return prices[-50:]
+
+    def _build_price_history(self, analysis_context: dict, market: Optional[str]) -> dict:
+        chart_data = self._extract_chart_data(analysis_context)
+        price_history = self._build_price_history_from_chart_data(chart_data)
+        liquidity_levels = self._collect_liquidity_levels(analysis_context)
+        avg_range = None
+
+        if price_history:
+            ranges = [abs(c['high'] - c['low']) for c in price_history if c['high'] is not None and c['low'] is not None]
+            if ranges:
+                recent = ranges[-14:]
+                avg_range = sum(recent) / len(recent)
+
+        if not price_history and market:
+            try:
+                visual_context = []
+                if chart_data:
+                    visual_context.append({'chart_data': chart_data})
+                order_book = self._extract_order_book(analysis_context)
+                if order_book:
+                    visual_context.append({'order_book': order_book})
+                normalized = self.data_adapter.normalize_input(visual_context, market)
+                fallback_chart = normalized.get('chart_data') or {}
+                if fallback_chart:
+                    price_history = self._build_price_history_from_chart_data(fallback_chart)
+                    if price_history and not liquidity_levels:
+                        liquidity_levels = self._collect_liquidity_levels({'chart_data': fallback_chart, 'order_book': order_book})
+                    if price_history and avg_range is None:
+                        ranges = [abs(c['high'] - c['low']) for c in price_history if c['high'] is not None and c['low'] is not None]
+                        if ranges:
+                            recent = ranges[-14:]
+                            avg_range = sum(recent) / len(recent)
+                    self.last_market_data_source = normalized.get('data_adapter_debug', {}).get('data_source_used')
+            except Exception as exc:
+                logger.exception('Failed to fetch fallback chart history for market %s: %s', market, exc)
+
+        return {
+            'price_history': price_history,
+            'liquidity_levels': liquidity_levels,
+            'avg_range': avg_range,
+        }
+
+    def _fallback_tp_sl(self, entry_price: float, recommendation: str, stop_loss: Optional[float], take_profit: Optional[float]) -> dict:
+        protective_distance = max(abs(entry_price * 0.002), 0.5)
+        if recommendation == 'شراء':
+            fallback_sl = stop_loss if stop_loss is not None and stop_loss > 0 else round(entry_price - protective_distance, 6)
+            fallback_tp = take_profit if take_profit is not None and take_profit > 0 else round(entry_price + protective_distance * 1.8, 6)
+        else:
+            fallback_sl = stop_loss if stop_loss is not None and stop_loss > 0 else round(entry_price + protective_distance, 6)
+            fallback_tp = take_profit if take_profit is not None and take_profit > 0 else round(entry_price - protective_distance * 1.8, 6)
+        return {
+            'stop_loss': fallback_sl,
+            'take_profit': fallback_tp,
+            'volatility_estimate': round(protective_distance, 6),
+            'note': 'Fallback dynamic TP/SL used بسبب فشل الحصول على بيانات هيكلية أو سيولة.',
+        }
+
+    def _safe_estimate_tp_sl(
+        self,
+        entry_price: float,
+        recommendation: str,
+        avg_range: Optional[float],
+        price_history: Optional[list],
+        liquidity_levels: Optional[list],
+        stop_loss: Optional[float],
+        take_profit: Optional[float],
+    ) -> dict:
+        try:
+            return self.risk_calculator.estimate_tp_sl(
+                entry_price=entry_price,
+                recommendation=recommendation,
+                avg_range=avg_range,
+                price_history=price_history,
+                liquidity_levels=liquidity_levels,
+            )
+        except Exception as exc:
+            logger.exception('estimate_tp_sl failed: %s', exc)
+            return self._fallback_tp_sl(entry_price, recommendation, stop_loss, take_profit)
+
     def plan_trade(
         self,
         user_id: int,
@@ -116,8 +289,41 @@ class TradeManagerService:
         account_balance: Optional[float] = None,
         base_risk_percent: Optional[float] = None,
         analysis_context: Optional[dict] = None,
+        market: Optional[str] = None,
     ) -> Dict[str, Any]:
         analysis_context = analysis_context or {}
+        market = market or self._extract_market(analysis_context)
+        market_data = self._build_price_history(analysis_context, market)
+        price_history = market_data.get('price_history')
+        liquidity_levels = market_data.get('liquidity_levels')
+        avg_range = market_data.get('avg_range')
+
+        # Estimate dynamic TP/SL based on real chart history and liquidity structure.
+        tp_sl_estimates = self._safe_estimate_tp_sl(
+            entry_price=current_price if current_price is not None else 0.0,
+            recommendation=self._normalize_direction(recommendation),
+            avg_range=avg_range,
+            price_history=price_history,
+            liquidity_levels=liquidity_levels,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+        )
+        if stop_loss is None or stop_loss == 0:
+            stop_loss = tp_sl_estimates.get('stop_loss')
+        if take_profit is None or take_profit == 0:
+            take_profit = tp_sl_estimates.get('take_profit')
+
+        tp_sl_note = tp_sl_estimates.get('note')
+        if tp_sl_note:
+            plan_tp_sl_info = {
+                'estimated_stop_loss': tp_sl_estimates.get('stop_loss'),
+                'estimated_take_profit': tp_sl_estimates.get('take_profit'),
+                'estimated_volatility': tp_sl_estimates.get('volatility_estimate'),
+                'tp_sl_note': tp_sl_note,
+            }
+        else:
+            plan_tp_sl_info = {}
+
         # الحصول على البيانات من user preferences
         from database import SessionLocal
         db = SessionLocal()
@@ -227,6 +433,7 @@ class TradeManagerService:
         plan["entry_price"] = round(current_price, 6)
         plan["take_profit"] = round(take_profit, 6) if take_profit is not None else None
         plan["stop_loss"] = round(stop_loss, 6)
+        plan.update(plan_tp_sl_info)
         zone_data = self._build_entry_zone(direction, current_price, stop_loss, take_profit, analysis_context)
         plan.update(zone_data)
         return plan

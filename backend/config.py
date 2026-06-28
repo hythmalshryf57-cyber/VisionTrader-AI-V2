@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     MT5_LOGIN: int = int(os.getenv("MT5_LOGIN", "0"))
     MT5_PASSWORD: str = os.getenv("MT5_PASSWORD", "")
     MT5_SERVER: str = os.getenv("MT5_SERVER", "")
+    MT5_SIGNAL_MODE: bool = os.getenv("MT5_SIGNAL_MODE", "true").strip().lower() in ("1", "true", "yes", "y")
 
 def _is_insecure_value(value: str) -> bool:
     if not value:

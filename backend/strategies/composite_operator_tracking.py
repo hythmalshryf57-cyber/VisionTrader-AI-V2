@@ -103,7 +103,7 @@ class CompositeOperatorStrategy:
         position = self._estimate_operator_position(highs, lows, closes, volumes)
         
         # 2. اكتشاف المصائد
-        traps = self._detect_operator_traps(highs, lows, closes, volumes)
+        traps = self._detect_operator_traps(highs, lows, closes, volumes, opens)
         
         # 3. اكتشاف مناطق التجميع والتوزيع
         zones = self._detect_accumulation_distribution(highs, lows, closes, volumes)
@@ -193,7 +193,8 @@ class CompositeOperatorStrategy:
         )
     
     def _detect_operator_traps(self, highs: np.ndarray, lows: np.ndarray,
-                                closes: np.ndarray, volumes: np.ndarray) -> List[OperatorTrap]:
+                                closes: np.ndarray, volumes: np.ndarray,
+                                opens: np.ndarray) -> List[OperatorTrap]:
         """
         اكتشاف مصائد المشغل.
         """

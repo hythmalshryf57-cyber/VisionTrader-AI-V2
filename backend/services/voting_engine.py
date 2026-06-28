@@ -10,7 +10,8 @@ from .internal_brain import InternalBrain
 from .deepseek_r1_service import DeepSeekR1Service
 from .calendar_service import CalendarService
 from .data_adapter import DataAdapter
-from .ai_core import ai_core_service
+# ai_core_service imported lazily inside analyze to avoid heavy import-time side effects
+ai_core_service = None
 import models
 
 logger = logging.getLogger(__name__)
@@ -722,7 +723,7 @@ class InternalBrainJudge:
         if len(unique_votes) == 2:
             buy_score = sum(confidences[i] for i, d in enumerate(directions) if d == 'شراء')
             sell_score = sum(confidences[i] for i, d in enumerate(directions) if d == 'بيع')
-            if abs(buy_score - sell_score) < 15:
+            if abs(buy_score - sell_score) < 10:
                 return {
                     'approved': False,
                     'veto': True,
@@ -763,9 +764,23 @@ class DecisionMatrix:
 
         # حساب النتيجة المرجحة
         # normalize scores to -1..1 range before weighting
-        power_score = (self._direction_to_score(cluster_results['power']['direction']) * cluster_results['power']['confidence'] / 100.0) / 100.0
-        geometric_score = (self._direction_to_score(cluster_results['geometric']['direction']) * cluster_results['geometric']['confidence'] / 100.0) / 100.0
-        momentum_score = (self._direction_to_score(cluster_results['momentum']['direction']) * cluster_results['momentum']['confidence'] / 100.0) / 100.0
+        def _cluster_score(cluster_name: str) -> float:
+            c = cluster_results.get(cluster_name, {})
+            direction = c.get('direction')
+            conf = c.get('confidence', 0) or 0
+            scores = c.get('scores', {}) or {}
+
+            if direction in ("شراء", "buy", "بيع", "sell"):
+                return (self._direction_to_score(direction) * conf / 100.0) / 100.0
+            # if neutral, use fractional buy/sell internal scores to compute net effect
+            buy_frac = float(scores.get('buy', 0))
+            sell_frac = float(scores.get('sell', 0))
+            # net fractional direction scaled by cluster confidence
+            return (buy_frac - sell_frac) * (conf / 100.0)
+
+        power_score = _cluster_score('power')
+        geometric_score = _cluster_score('geometric')
+        momentum_score = _cluster_score('momentum')
 
         final_score = (power_score * power_weight) + (geometric_score * geometric_weight) + (momentum_score * momentum_weight)
 
@@ -843,6 +858,24 @@ class VotingEngine:
             finally:
                 db.close()
 
+        # initialize a minimal debug report so early returns attach it
+        debug_report = {
+            "discovered_count": None,
+            "discovered_keys": [],
+            "per_cluster": {},
+            "total_executed": 0,
+            "total_failed": 0,
+            "excluded_strategies": []
+        }
+
+        # try to get discovered strategy keys cheaply
+        try:
+            discovered = strategy_loader.get_all_strategy_keys()
+            debug_report["discovered_count"] = len(discovered)
+            debug_report["discovered_keys"] = discovered
+        except Exception:
+            pass
+
         env_check = self.environment_filter.check_environment(market)
         # handle suspend immediately; proceed_warn allows continuing but with issues flagged
         if env_check.get('recommendation') == 'suspend':
@@ -853,22 +886,24 @@ class VotingEngine:
                 "issues": env_check.get('issues', []),
                 "environment_filter": env_check,
                 "market": market,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "debug_report": debug_report
             }
 
         unified_data = self.data_adapter.normalize_input(visual_context, market)
 
-        # Ensure the voting engine uses the authoritative market price from main.get_market_price.
-        try:
-            from backend.main import get_market_price
-            market_price = get_market_price(market)
-            if market_price is not None:
+        # Ensure the voting engine uses the resolved price from the data adapter.
+        market_price = unified_data.get("chart_data", {}).get("current_price") or unified_data.get("market_price")
+        if market_price is not None:
+            try:
                 unified_data["chart_data"]["current_price"] = float(market_price)
                 unified_data["market_price"] = float(market_price)
-        except Exception as e:
-            logger.exception("VotingEngine analyze failed to fetch market price from main: %s", e)
+            except Exception:
+                pass
 
         if not unified_data["valid"]:
+            debug_report.setdefault('data_adapter_issues', unified_data.get('issues', []))
+            debug_report.setdefault('data_quality', unified_data.get('quality_score', 0))
             return {
                 "recommendation": "بيانات غير كافية",
                 "confidence": 0,
@@ -876,10 +911,88 @@ class VotingEngine:
                 "issues": unified_data.get("issues", []),
                 "data_quality": unified_data.get("quality_score", 0),
                 "market": market,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "debug_report": debug_report
             }
 
         strategy_weights = self.internal_brain.get_strategy_weights(user_id=user_id)
+        # --- Diagnostic collection: enumerate and execute strategies to produce a debug report ---
+        diagnostic = {
+            "discovered_count": 0,
+            "discovered_keys": [],
+            "per_cluster": {},
+            "total_executed": 0,
+            "total_failed": 0,
+            "excluded_strategies": []
+        }
+        try:
+            # total discovered strategy keys
+            discovered = strategy_loader.get_all_strategy_keys()
+            diagnostic["discovered_count"] = len(discovered)
+            diagnostic["discovered_keys"] = discovered
+
+            for cluster_name in ("power", "geometric", "momentum"):
+                cluster_obj = getattr(self.cluster_voting, f"{cluster_name}_cluster")
+                # refresh to ensure latest strategies
+                try:
+                    cluster_obj._refresh_strategies()
+                except Exception:
+                    pass
+
+                cluster_info = {
+                    "cluster": cluster_name,
+                    "total": len(cluster_obj.strategies),
+                    "executed": 0,
+                    "failed": 0,
+                    "buy": 0,
+                    "sell": 0,
+                    "hold": 0,
+                    "details": []
+                }
+
+                for strategy in list(cluster_obj.strategies):
+                    sname = strategy.__class__.__name__
+                    # applicability check
+                    try:
+                        applicable = cluster_obj._is_strategy_applicable(strategy, market)
+                    except Exception as e:
+                        applicable = True
+                    if not applicable:
+                        diagnostic["excluded_strategies"].append({"name": sname, "reason": "market_mismatch"})
+                        cluster_info["hold"] += 1
+                        cluster_info["details"].append({"name": sname, "vote": "excluded", "reason": "market_mismatch"})
+                        continue
+
+                    # execute strategy
+                    try:
+                        entry = cluster_obj._analyze_strategy(strategy, unified_data["chart_data"], strategy_weights)
+                        cluster_info["executed"] += 1
+                        diagnostic["total_executed"] += 1
+                        vote = entry.get("vote")
+                        conf = entry.get("confidence", 0)
+                        if vote in ("شراء", "buy"):
+                            cluster_info["buy"] += 1
+                        elif vote in ("بيع", "sell"):
+                            cluster_info["sell"] += 1
+                        else:
+                            cluster_info["hold"] += 1
+
+                        # consider failed if confidence == 0 and vote suggests insufficient
+                        if conf == 0 or vote == 'بيانات غير كافية' or entry.get('reason', '').lower().startswith('فشل'):
+                            cluster_info["failed"] += 1
+                            diagnostic["total_failed"] += 1
+
+                        cluster_info["details"].append({"name": sname, "vote": vote, "confidence": conf, "reason": entry.get("reason", "")})
+                    except Exception as e:
+                        cluster_info["failed"] += 1
+                        diagnostic["total_failed"] += 1
+                        cluster_info["details"].append({"name": sname, "vote": "error", "confidence": 0, "reason": str(e)})
+
+                diagnostic["per_cluster"][cluster_name] = cluster_info
+        except Exception as e:
+            diagnostic["error"] = str(e)
+        # attach diagnostic to locals for later inclusion in result
+        debug_report = diagnostic
         cluster_results = self.cluster_voting.vote_clusters(
             unified_data["chart_data"], market, strategy_weights, orchestrator_weights=orchestrator_weights
         )
@@ -888,14 +1001,30 @@ class VotingEngine:
         final_decision = self.decision_matrix.calculate_final_score(cluster_results, judge_result)
 
         # استخدام الذكاء الاصطناعي للتحليل النهائي
-        ai_analysis = ai_core_service.analyze(
-            chart_data=unified_data["chart_data"],
-            cluster_results=cluster_results,
-            judge_result=judge_result,
-            market=market,
-            user_id=user_id,
-            strategy_weights=strategy_weights
-        )
+        # Import ai_core lazily to avoid heavy import-time dependencies; fall back to DecisionMatrix result
+        try:
+            if ai_core_service is not None:
+                ai = ai_core_service
+                ai_analysis = ai.analyze(
+                    chart_data=unified_data["chart_data"],
+                    cluster_results=cluster_results,
+                    judge_result=judge_result,
+                    market=market,
+                    user_id=user_id,
+                    strategy_weights=strategy_weights
+                )
+            else:
+                raise ImportError("ai_core_service not available; using fallback")
+        except Exception:
+            # Fallback: derive ai_analysis from decision matrix (deterministic)
+            ai_analysis = {
+                "recommendation": final_decision.get("recommendation", final_decision.get("strength", "انتظار")),
+                "confidence": final_decision.get("confidence", final_decision.get("final_score", 50)),
+                "reason": "Fallback AI: ai_core unavailable or failed",
+                "explanation": "",
+                "strength": final_decision.get("strength", "محايد"),
+                "final_score": final_decision.get("final_score", 0)
+            }
 
         # فحص الشروط للتوصية عالية الدقة
         confidence = ai_analysis["confidence"]
@@ -906,7 +1035,8 @@ class VotingEngine:
                 "reason": "الثقة أقل من 60%",
                 "entry": unified_data["chart_data"].get("current_price"),
                 "market": market,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "debug_report": debug_report
             }
 
         # عد الاستراتيجيات المتفقة كنسبة مئوية بدلاً من حد ثابت
@@ -925,7 +1055,8 @@ class VotingEngine:
                 "confidence": confidence,
                 "reason": "لا توجد استراتيجيات صالحة للتقييم",
                 "market": market,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "debug_report": debug_report
             }
 
         agreeing_ratio = agreeing_count / total_count
@@ -936,7 +1067,8 @@ class VotingEngine:
                 "confidence": confidence,
                 "reason": f"نسبة الاتفاق منخفضة: {agreeing_ratio:.2f}",
                 "market": market,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "debug_report": debug_report
             }
 
         # News proximity filter removed: do not block analysis due to upcoming high-impact events.
@@ -961,6 +1093,12 @@ class VotingEngine:
             "market": market,
             "timestamp": datetime.now().isoformat()
         }
+
+        # attach debug report from earlier diagnostics
+        try:
+            result["debug_report"] = debug_report
+        except Exception:
+            result["debug_report"] = {"error": "debug not available"}
 
         if cluster_results["geometric"].get("targets"):
             result["targets"] = cluster_results["geometric"]["targets"]

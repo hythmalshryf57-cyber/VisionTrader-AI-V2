@@ -17,9 +17,18 @@ import models
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
-storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
+try:
+    _token = settings.TELEGRAM_BOT_TOKEN
+    if not _token or _token in ("", "your-telegram-bot-token"):
+        raise ValueError("TELEGRAM_BOT_TOKEN is not set")
+    bot = Bot(token=_token)
+    storage = MemoryStorage()
+    dp = Dispatcher(bot, storage=storage)
+except Exception as _e:
+    logging.warning(f"Telegram bot disabled at import: {_e}")
+    bot = None
+    storage = None
+    dp = None
 
 class PaymentStates(StatesGroup):
     waiting_for_payment_proof = State()

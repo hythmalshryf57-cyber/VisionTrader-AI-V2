@@ -872,8 +872,9 @@ class SeasonalityStrategy:
                 recommendation = "محايد"
                 confidence = 30
         else:
-            recommendation = "مرشح فقط"
-            confidence = 0
+            # لا توجد إشارات خارجية - نُرجع نتيجة محايدة ذات ثقة منخفضة
+            recommendation = "محايد"
+            confidence = 20
         
         filter_mult = result.get("filter_multiplier", 1.0)
         

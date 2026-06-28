@@ -360,10 +360,11 @@ class DynamicPhaseAnalyzer:
                             vol_trend = self._analyze_volume_trend(range_volumes)
                             
                             # تحديد النوع
-                            position = (closes[j-1] - min(lows[max(0,range_start-50):range_start])) / \
-                                      max(highs[max(0,range_start-50):range_start] - 
-                                          lows[max(0,range_start-50):range_start], 0.0001) \
-                                      if range_start >= 50 else 0.5
+                            hs_slice = highs[max(0, range_start-50):range_start]
+                            ls_slice = lows[max(0, range_start-50):range_start]
+                            denom_val = float(np.max(hs_slice - ls_slice)) if len(hs_slice) > 0 else 0.0
+                            denom = max(denom_val, 0.0001)
+                            position = (closes[j-1] - float(np.min(ls_slice))) / denom if range_start >= 50 else 0.5
                             
                             if position < 0.4:
                                 range_type = 'accumulation'

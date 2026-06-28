@@ -121,7 +121,7 @@ class DynamicCandleAnalyzer:
             return candles
         
         # حساب العتبات الديناميكية
-        self._calculate_dynamic_thresholds(highs, lows, closes, volumes)
+        self._calculate_dynamic_thresholds(opens, highs, lows, closes, volumes)
         
         for i in range(len(closes)):
             candle = self._analyze_single_candle(
@@ -131,7 +131,7 @@ class DynamicCandleAnalyzer:
         
         return candles
     
-    def _calculate_dynamic_thresholds(self, highs: np.ndarray, lows: np.ndarray,
+    def _calculate_dynamic_thresholds(self, opens: np.ndarray, highs: np.ndarray, lows: np.ndarray,
                                        closes: np.ndarray, volumes: np.ndarray):
         """
         حساب العتبات الديناميكية من آخر 50 شمعة.
@@ -139,7 +139,7 @@ class DynamicCandleAnalyzer:
         recent = min(50, len(closes))
         ranges = highs[-recent:] - lows[-recent:]
         avg_range = np.mean(ranges)
-        avg_body = np.mean(np.abs(closes[-recent:] - opens[-recent:]))
+        avg_body = np.mean(np.abs(closes[-recent:] - opens[-recent:])) if len(opens) >= recent else np.mean(np.abs(closes[-recent:]))
         
         if avg_range > 0:
             # الجسم صغير: أقل من 25% من متوسط المدى

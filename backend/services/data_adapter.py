@@ -1,6 +1,8 @@
 import logging
 import math
 import re
+import requests
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from statistics import mean
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -117,12 +119,22 @@ class DataAdapter:
         # Attempt to resolve a current market price to help downstream voting logic.
         market_price = None
         price_source = None
+        data_adapter_debug = {
+            'data_source_used': None,
+            'candles_received': 0,
+            'candles_after_processing': 0,
+            'fetch_status': 'not_attempted',
+            'fetch_errors': [],
+            'symbol_requested': None,
+            'timeframe_requested': '15m',
+            'range_requested': '5d'
+        }
+        s = str(market or '').strip().upper()
+        data_adapter_debug['symbol_requested'] = s
         try:
             # Import services locally to avoid circular imports at module import time
             from .tradingview_service import tradingview_service
             from .binance_service import binance_service
-
-            s = str(market or '').strip().upper()
             # format a TradingView/TwelveData-style symbol
             tv_symbol = s.replace('_', '/').replace('-', '/').replace(':', '/')
             if tv_symbol.endswith('USDT'):
@@ -133,11 +145,13 @@ class DataAdapter:
                 tv_symbol = tv_symbol[:-3] + '/USD'
 
             try:
-                tvp = tradingview_service.get_symbol_price(tv_symbol)
+                tvp = tradingview_service.get_realtime_price(tv_symbol)
                 if tvp is not None:
                     market_price = float(tvp)
                     price_source = 'tradingview'
-            except Exception:
+                    data_adapter_debug['data_source_used'] = 'tradingview_price'
+            except Exception as exc:
+                data_adapter_debug['fetch_errors'].append(f'tradingview_price:{exc}')
                 market_price = None
 
             # If tradingview/twelvedata unavailable, try Binance for crypto-like symbols
@@ -150,42 +164,41 @@ class DataAdapter:
                     if bp is not None:
                         market_price = float(bp)
                         price_source = 'binance'
-                except Exception:
-                    pass
+                        data_adapter_debug['data_source_used'] = 'binance_price'
+                except Exception as exc:
+                    data_adapter_debug['fetch_errors'].append(f'binance_price:{exc}')
 
-        except Exception:
+        except Exception as exc:
+            data_adapter_debug['fetch_errors'].append(f'data_adapter_init:{exc}')
             market_price = None
 
-        # Try the main app price endpoint as the authoritative source when available.
-        try:
-            from backend import main as backend_main
-            mp = backend_main.get_market_price(str(market or '').upper())
-            if mp is not None:
-                market_price = float(mp)
-                price_source = 'main'
-        except Exception:
-            pass
-
-        # Strong final fallback for gold to avoid 'insufficient data' due to missing price
-        try:
-            if market_price is None and 'XAU' in (str(market or '').upper()):
-                market_price = 4330.0
-                price_source = 'fallback_estimate'
-        except Exception:
-            pass
-
+        # Do not use synthetic OHLCV data; rely on actual history only.
         chart_data['current_price'] = market_price
         chart_data['price_source'] = price_source
 
-        if not chart_data['closes'] and market_price is not None and 'XAU' in (str(market or '').upper()):
-            chart_data['opens'] = [market_price * 0.998, market_price * 0.998]
-            chart_data['highs'] = [market_price, market_price]
-            chart_data['lows'] = [market_price * 0.998, market_price * 0.998]
-            chart_data['closes'] = [market_price * 0.998, market_price]
-            chart_data['volumes'] = [0.0, 0.0]
-            chart_data['timestamps'] = [datetime.now(timezone.utc).isoformat(), datetime.now(timezone.utc).isoformat()]
-            chart_data['source_types'].append('market_price')
-            chart_data['trend'] = 'محايد'
+        if len(chart_data['closes']) < 50:
+            history = self._fetch_yahoo_history(market, interval=data_adapter_debug['timeframe_requested'], range_str=data_adapter_debug['range_requested'])
+            if history is None:
+                data_adapter_debug['fetch_status'] = 'failed'
+                data_adapter_debug['fetch_errors'].append('yahoo_history:none_returned')
+            else:
+                candles = history.get('candles') or []
+                data_adapter_debug['candles_received'] = len(candles)
+                if len(candles) >= 50:
+                    self._merge_candles(chart_data, candles)
+                    data_adapter_debug['fetch_status'] = 'success'
+                    data_adapter_debug['data_source_used'] = 'yahoo_history'
+                    if 'yahoo_history' not in chart_data['source_types']:
+                        chart_data['source_types'].append('yahoo_history')
+                    if chart_data['closes']:
+                        chart_data['current_price'] = float(chart_data['closes'][-1])
+                        chart_data['price_source'] = 'yahoo_history'
+                else:
+                    data_adapter_debug['fetch_status'] = 'insufficient_candles'
+                    data_adapter_debug['fetch_errors'].append(f'yahoo_history_too_few:{len(candles)}')
+
+        data_adapter_debug['candles_after_processing'] = len(chart_data['closes'])
+        chart_data['data_adapter_debug'] = data_adapter_debug
 
         self._infer_missing_series(chart_data)
         self._populate_timestamp_series(chart_data)
@@ -426,3 +439,85 @@ class DataAdapter:
             except ValueError:
                 continue
         return values
+
+    def _format_yahoo_symbol(self, market: str) -> Optional[str]:
+        if not market:
+            return None
+        sym = str(market).strip().upper()
+        mapping = {
+            'EURUSD': 'EURUSD=X',
+            'GBPUSD': 'GBPUSD=X',
+            'USDJPY': 'USDJPY=X',
+            'USDCHF': 'USDCHF=X',
+            'AUDUSD': 'AUDUSD=X',
+            'NZDUSD': 'NZDUSD=X',
+            'USDCAD': 'USDCAD=X',
+            'EURGBP': 'EURGBP=X',
+            'XAUUSD': 'GC=F',
+            'XAGUSD': 'SI=F',
+        }
+        if sym in mapping:
+            return mapping[sym]
+        if sym.endswith('USD'):
+            return f'{sym}=X'
+        return sym
+
+    def _fetch_yahoo_history(self, market: str, interval: str = '15m', range_str: str = '5d') -> Optional[Dict[str, Any]]:
+        symbol = self._format_yahoo_symbol(market)
+        if not symbol:
+            return None
+
+        url = f'https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}?interval={interval}&range={range_str}'
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Connection': 'keep-alive',
+                'Referer': 'https://finance.yahoo.com/'
+            }
+            response = requests.get(url, headers=headers, timeout=20)
+            response.raise_for_status()
+            payload = response.json()
+            chart = payload.get('chart', {})
+            results = chart.get('result') or []
+            if not results:
+                return None
+            first = results[0]
+            timestamps = first.get('timestamp') or []
+            quote = (first.get('indicators', {}).get('quote') or [])
+            if not quote or not timestamps:
+                return None
+            quote_data = quote[0]
+            opens = quote_data.get('open') or []
+            highs = quote_data.get('high') or []
+            lows = quote_data.get('low') or []
+            closes = quote_data.get('close') or []
+            volumes = quote_data.get('volume') or []
+            bars = []
+            for idx, ts in enumerate(timestamps):
+                if idx >= len(opens) or idx >= len(highs) or idx >= len(lows) or idx >= len(closes):
+                    continue
+                o = opens[idx]
+                h = highs[idx]
+                l = lows[idx]
+                c = closes[idx]
+                v = volumes[idx] if idx < len(volumes) else 0.0
+                if o is None or h is None or l is None or c is None:
+                    continue
+                try:
+                    bars.append({
+                        'timestamp': datetime.fromtimestamp(int(ts), timezone.utc).isoformat(),
+                        'open': float(o),
+                        'high': float(h),
+                        'low': float(l),
+                        'close': float(c),
+                        'volume': float(v or 0.0)
+                    })
+                except Exception:
+                    continue
+            if len(bars) < 3:
+                return None
+            return {'candles': bars}
+        except Exception:
+            return None

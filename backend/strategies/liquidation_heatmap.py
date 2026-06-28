@@ -456,8 +456,31 @@ class LiquidationHeatmapStrategy:
         
         current_price = closes[-1]
         
-        # بناء Heatmap
-        heatmap = self.heatmap_builder.analyze(highs, lows, closes, volumes, symbol)
+        # بناء Heatmap مع وقاية: إذا فشل البناء نستخدم خريطة تقديرية بسيطة
+        try:
+            heatmap = self.heatmap_builder.analyze(highs, lows, closes, volumes, symbol)
+        except Exception:
+            # محاولة بناء مستويات تقديرية ثم تحويلها إلى هيكل Heatmap بسيط
+            try:
+                levels = self.heatmap_builder._build_estimated_levels(highs, lows, closes, volumes, current_price, 5.0)
+            except Exception:
+                levels = []
+
+            heatmap = LiquidationHeatmap(
+                levels=levels,
+                max_pain_long=0.0,
+                max_pain_short=0.0,
+                long_squeeze_zone=(0.0, 0.0),
+                short_squeeze_zone=(0.0, 0.0),
+                total_estimated_longs=0.0,
+                total_estimated_shorts=0.0,
+                imbalance_ratio=1.0,
+                data_source='estimated',
+                funding_rate=0.0,
+                funding_pressure='neutral',
+                open_interest=0.0,
+                oi_change_24h=0.0,
+            )
         
         # كشف مناطق الخطر
         danger_zones = self._detect_danger_zones(heatmap, current_price)
@@ -466,7 +489,7 @@ class LiquidationHeatmapStrategy:
         cascade = self._detect_cascade_risk(closes, volumes)
         
         # قرار
-        decision = self._make_decision(heatmap, danger_zones, cascade, current_price)
+        decision = self._make_decision(heatmap, danger_zones, cascade, current_price, closes)
         
         return {**decision, "heatmap": heatmap, "danger_zones": danger_zones, "cascade": cascade}
     
@@ -520,7 +543,7 @@ class LiquidationHeatmapStrategy:
     
     def _make_decision(self, heatmap: LiquidationHeatmap,
                        danger_zones: List[Dict], cascade: Dict,
-                       current_price: float) -> Dict:
+                       current_price: float, closes: np.ndarray) -> Dict:
         """اتخاذ القرار"""
         buy_signals = []
         sell_signals = []
@@ -539,9 +562,9 @@ class LiquidationHeatmapStrategy:
                 warnings.append("Funding Rate سالب - خطر Long Squeeze")
         
         # ---- من Open Interest ----
-        if heatmap.oi_change_24h > 5.0 and closes[-1] > closes[-5] if len(closes) >= 5 else False:
+        if heatmap.oi_change_24h > 5.0 and (len(closes) >= 5 and closes[-1] > closes[-5]):
             buy_signals.append((f"OI + سعر + ({heatmap.oi_change_24h:.0f}%) - استمرار صاعد", 0.5))
-        elif heatmap.oi_change_24h > 5.0 and closes[-1] < closes[-5] if len(closes) >= 5 else False:
+        elif heatmap.oi_change_24h > 5.0 and (len(closes) >= 5 and closes[-1] < closes[-5]):
             sell_signals.append((f"OI + سعر - ({heatmap.oi_change_24h:.0f}%) - توزيع", 0.5))
         
         # ---- من اختلال التوازن ----
