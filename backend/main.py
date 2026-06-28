@@ -3216,7 +3216,7 @@ async def conversational_agent(
             # This handles screenshots, agent_manager, voting_engine, and gemini
             analysis_data = await asyncio.wait_for(
                 full_multi_tf_analysis(pair, trade_type, user_id_to_pass, api_key),
-                timeout=60
+                timeout=240
             )
             analysis_result = analysis_data.get("final_analysis", "")
         except Exception as e:

@@ -40,22 +40,18 @@ async def capture_screenshots_parallel(
         logger.error("tv_screenshot not available")
         return {tf: None for tf in timeframes}
 
-    tasks = {
-        tf: asyncio.wait_for(
-            capture_tradingview_chart(symbol, tf),
-            timeout=35
-        )
-        for tf in timeframes
-    }
-
     results = {}
-    gathered = await asyncio.gather(*tasks.values(), return_exceptions=True)
-    for tf, result in zip(tasks.keys(), gathered):
-        if isinstance(result, Exception):
-            logger.warning(f"Screenshot failed for {symbol} {tf}: {result}")
+    for tf in timeframes:
+        try:
+            logger.info(f"Capturing {symbol} {tf} sequentially...")
+            res = await asyncio.wait_for(
+                capture_tradingview_chart(symbol, tf),
+                timeout=65
+            )
+            results[tf] = res
+        except Exception as e:
+            logger.warning(f"Screenshot failed for {symbol} {tf}: {e}")
             results[tf] = None
-        else:
-            results[tf] = result
 
     success_count = sum(1 for v in results.values() if v)
     logger.info(f"Captured {success_count}/{len(timeframes)} screenshots for {symbol}")
@@ -290,6 +286,7 @@ async def _run_gemini_final_analysis(
     for tf in timeframes:
         img_bytes = screenshots.get(tf)
         if img_bytes:
+            import base64
             b64 = base64.b64encode(img_bytes).decode("utf-8")
             parts.append({
                 "text": f"\n\n--- شارت {symbol} على الإطار {tf} ---"
@@ -303,9 +300,30 @@ async def _run_gemini_final_analysis(
         parts.append({"text": "\n\n⚠️ ملاحظة: لم تُلتقط الشاشات تلقائياً. حلل بناءً على نتائج الوكلاء فقط."})
 
     import httpx
-    for model_name in ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    import os
+
+    note_gemini = (
+        f"\n\n---\n"
+        f"\u00f0\u009f\u0093\u00b8 **\u062a\u0645 \u062a\u062d\u0644\u064a\u0644 {screenshots_added}/{len(timeframes)} \u0634\u0627\u0634\u0627\u062a**"
+        f" \u0645\u0646 TradingView \u0639\u0628\u0631 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a\n"
+        f"\u00f0\u009f\u00a4\u0096 **\u0627\u0644\u0648\u0643\u0644\u0627\u0621 \u0627\u0644\u0645\u064f\u0641\u0639\u0651\u064e\u0644\u0629:** "
+        f"\u0646\u0638\u0627\u0645 \u0627\u0644\u062a\u0635\u0648\u064a\u062a + \u0645\u062f\u064a\u0631 \u0627\u0644\u0648\u0643\u0644\u0627\u0621 + Gemini Vision"
+    )
+    note_openrouter = (
+        f"\n\n---\n"
+        f"\u00f0\u009f\u0093\u00b8 **\u062a\u0645 \u062a\u062d\u0644\u064a\u0644 {screenshots_added}/{len(timeframes)} \u0634\u0627\u0634\u0627\u062a**"
+        f" \u0645\u0646 TradingView\n"
+        f"\u00f0\u009f\u00a4\u0096 **\u0627\u0644\u0648\u0643\u0644\u0627\u0621 \u0627\u0644\u0645\u064f\u0641\u0639\u0651\u064e\u0644\u0629:** "
+        f"\u0646\u0638\u0627\u0645 \u0627\u0644\u062a\u0635\u0648\u064a\u062a + \u0645\u062f\u064a\u0631 \u0627\u0644\u0648\u0643\u0644\u0627\u0621 + AI Vision (OpenRouter)"
+    )
+
+    # --- 1. Try Gemini (primary, supports vision/images) ---
+    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model_name}:generateContent?key={api_key}"
+            )
             payload = {
                 "contents": [{"role": "user", "parts": parts}],
                 "generationConfig": {
@@ -315,21 +333,75 @@ async def _run_gemini_final_analysis(
             }
             async with httpx.AsyncClient(timeout=45) as client:
                 resp = await client.post(url, json=payload)
+                if resp.status_code == 429:
+                    logger.warning(f"Gemini {model_name}: quota exceeded (429), trying next")
+                    continue
                 resp.raise_for_status()
-                text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                note = f"\n\n---\n📸 **تم تحليل {screenshots_added}/{len(timeframes)} شاشات** من TradingView عبر الذكاء الاصطناعي\n🤖 **الوكلاء المُفعّلة:** نظام التصويت + مدير الوكلاء + Gemini Vision"
-                return text + note
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    content_parts = candidates[0].get("content", {}).get("parts", [])
+                    if content_parts:
+                        extracted = content_parts[0].get("text", "").strip()
+                        if extracted:
+                            logger.info(f"Gemini {model_name} succeeded")
+                            return extracted + note_gemini
+                logger.warning(f"Gemini {model_name}: empty response")
         except Exception as e:
             logger.warning(f"Gemini {model_name} failed: {e}")
             continue
 
-    # DeepSeek Fallback
+    # --- 2. Try OpenRouter (supports many models, text-only) ---
+    openrouter_key = ""
     try:
-        from backend.config import settings
-        deepseek_key = getattr(settings, "DEEPSEEK_API_KEY", "")
+        from config import settings as _cfg_or
+        openrouter_key = getattr(_cfg_or, "OPENROUTER_API_KEY", "")
     except ImportError:
-        deepseek_key = ""
-        
+        openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
+
+    if openrouter_key:
+        for or_model in [
+            "anthropic/claude-3-haiku",
+            "openai/gpt-4o-mini",
+            "meta-llama/llama-3.3-70b-instruct",
+            "google/gemini-2.0-flash-001",
+        ]:
+            try:
+                url = "https://openrouter.ai/api/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://visiontrader.ai",
+                    "X-Title": "VisionTrader AI",
+                }
+                payload = {
+                    "model": or_model,
+                    "messages": [{"role": "user", "content": prompt_text}],
+                    "temperature": 0.4,
+                    "max_tokens": 2500,
+                }
+                async with httpx.AsyncClient(timeout=45) as client:
+                    resp = await client.post(url, json=payload, headers=headers)
+                    if resp.status_code in (402, 403, 404):
+                        logger.warning(f"OpenRouter {or_model}: unavailable ({resp.status_code})")
+                        continue
+                    resp.raise_for_status()
+                    text = resp.json()["choices"][0]["message"]["content"].strip()
+                    if text:
+                        logger.info(f"OpenRouter {or_model} succeeded")
+                        return text + note_openrouter
+            except Exception as e:
+                logger.warning(f"OpenRouter {or_model} failed: {e}")
+                continue
+
+    # --- 3. Try DeepSeek (tertiary, text-only) ---
+    deepseek_key = ""
+    try:
+        from config import settings as _cfg_ds
+        deepseek_key = getattr(_cfg_ds, "DEEPSEEK_API_KEY", "")
+    except ImportError:
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY", "")
+
     if deepseek_key:
         try:
             url = "https://api.deepseek.com/v1/chat/completions"
@@ -337,24 +409,24 @@ async def _run_gemini_final_analysis(
                 "Authorization": f"Bearer {deepseek_key}",
                 "Content-Type": "application/json"
             }
-            messages = [{"role": "user", "content": prompt_text}]
             payload = {
                 "model": "deepseek-chat",
-                "messages": messages,
+                "messages": [{"role": "user", "content": prompt_text}],
                 "temperature": 0.4,
                 "max_tokens": 2500
             }
             async with httpx.AsyncClient(timeout=45) as client:
                 resp = await client.post(url, json=payload, headers=headers)
-                resp.raise_for_status()
-                text = resp.json()["choices"][0]["message"]["content"].strip()
-                note = f"\n\n---\n🤖 **التحليل عبر DeepSeek (نموذج احتياطي)** - تم التحليل النصي فقط لعدم دعم الصور."
-                return text + note
+                if resp.status_code not in (402, 403):
+                    resp.raise_for_status()
+                    text = resp.json()["choices"][0]["message"]["content"].strip()
+                    if text:
+                        logger.info("DeepSeek succeeded")
+                        return text + note_openrouter
         except Exception as e:
-            logger.warning(f"DeepSeek fallback failed in multi_tf_analyzer: {e}")
+            logger.warning(f"DeepSeek fallback failed: {e}")
 
     return _fallback_analysis_text(symbol, trade_type, signals_summary, tf_results, timeframes)
-
 
 def _fallback_analysis_text(
     symbol: str,

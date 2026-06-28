@@ -49,7 +49,7 @@ async def capture_tradingview_chart(
     symbol: str,
     timeframe: str = "H1",
     headless: bool = True,
-    timeout_ms: int = 25000,
+    timeout_ms: int = 45000,
 ) -> Optional[bytes]:
     """
     Opens TradingView in a browser, waits for the chart to load, and returns a PNG screenshot as bytes.
@@ -76,39 +76,58 @@ async def capture_tradingview_chart(
                     "--disable-dev-shm-usage",
                     "--disable-gpu",
                     "--window-size=1440,900",
+                    "--disable-blink-features=AutomationControlled",
                 ]
             )
             context = await browser.new_context(
                 viewport={"width": 1440, "height": 900},
-                locale="ar-SA",
+                locale="en-US",
+                # Real browser user-agent to avoid bot detection
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                java_script_enabled=True,
             )
             page = await context.new_page()
 
-            # Block ads and unnecessary resources to speed up loading
-            await page.route("**/*.{png,jpg,gif,woff,woff2}", lambda route: route.abort())
+            # Only block trackers/analytics — DO NOT block images (chart needs them)
             await page.route("**/ads/**", lambda route: route.abort())
             await page.route("**/analytics/**", lambda route: route.abort())
+            await page.route("**/gtm/**", lambda route: route.abort())
+            await page.route("**/doubleclick.net/**", lambda route: route.abort())
 
             await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
 
-            # Wait for the chart canvas to appear
-            try:
-                await page.wait_for_selector("canvas", timeout=15000)
-                # Give the chart extra time to render price data
-                await asyncio.sleep(4)
-            except Exception:
-                await asyncio.sleep(5)
-
-            # Close any popups (cookie banners, login prompts)
+            # Close any popups (cookie banners, login prompts) early
             for selector in [
-                "[data-name='header-toolbar-symbol-search'] button",
+                "button[id*='cookie']",
+                "button[data-role='accept-all']",
                 ".js-dialog-close",
                 "[aria-label='Close']",
                 ".tv-dialog__close",
+                "button.close-B02UUUN3",
+                "[data-dialog-name='gopro'] button",
             ]:
                 try:
                     btn = page.locator(selector).first
-                    if await btn.is_visible(timeout=1000):
+                    if await btn.is_visible(timeout=800):
+                        await btn.click()
+                        await asyncio.sleep(0.3)
+                except Exception:
+                    pass
+
+            # Wait for the chart canvas to appear
+            try:
+                await page.wait_for_selector("canvas", timeout=18000)
+                # Give the chart extra time to render price data and candles
+                await asyncio.sleep(5)
+            except Exception:
+                # Canvas not found — still try to take screenshot
+                await asyncio.sleep(6)
+
+            # Dismiss any late-appearing popups
+            for selector in [".js-dialog-close", "[aria-label='Close']", ".tv-dialog__close"]:
+                try:
+                    btn = page.locator(selector).first
+                    if await btn.is_visible(timeout=500):
                         await btn.click()
                 except Exception:
                     pass
