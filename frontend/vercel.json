@@ -1,9 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "**/*",
-      "use": "@vercel/static"
-    }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://alphavision-backend.onrender.com/api/:path*" }
   ]
 }
