@@ -301,59 +301,86 @@ class SocialDataCollector:
     
     def _init_social_service(self):
         """
-        تجنب الحلقة الاستدعائية بين الاستراتيجية وخدمة المشاعر الاجتماعية.
-        يتم تعطيل الاستيراد الحقيقي هنا لتجنب استدعاء متكرر.
+        حل مشكلة الحلقة الاستدعائية:
+        بدلاً من استيراد SocialSentimentService (الذي يسبب الحلقة)،
+        نستخدم محلل أخبار مستقل يجلب مباشرة من Google News RSS.
         """
-        self.social_service = None
-        logger.warning("⚠️ تم تعطيل SocialSentimentService لتجنب حلقة الاستيراد. سيتم استخدام تحليل محاكاة افتراضي.")
+        self.social_service = None  # لا نستخدم الخدمة الخارجية
+        # الآن سنجلب البيانات مباشرة في fetch_social_data
     
     def fetch_social_data(self, symbol: str = "BTCUSD", force_refresh: bool = False) -> List[SocialPost]:
         """
-        🔴 تعديل 1: جلب البيانات الحقيقية من المصادر
-        
-        إذا social_service متاح: يستخدمه
-        إذا غير متاح: يحذر ويستخدم بيانات فارغة
+        جلب البيانات الحقيقية مباشرة من Google News RSS
+        بدون أي استيراد خارجي لتجنب الحلقة الاستدعائية.
         """
         # استخدام الكاش إذا كانت البيانات حديثة
         if not force_refresh and self.last_fetch_time and \
            datetime.now() - self.last_fetch_time < self.cache_duration:
             return self.cached_posts
-        
+
         all_posts = []
-        
-        if self.social_service:
-            # ✅ استخدام البيانات الحقيقية
-            try:
-                # جلب من Twitter
-                twitter_posts = self._fetch_twitter_posts(symbol)
-                all_posts.extend(twitter_posts)
-                
-                # جلب من Google News
-                news_posts = self._fetch_google_news_posts(symbol)
-                all_posts.extend(news_posts)
-                
-                # جلب من Reddit
-                reddit_posts = self._fetch_reddit_posts(symbol)
-                all_posts.extend(reddit_posts)
-                
-                logger.info(f"✅ تم جلب {len(all_posts)} منشور اجتماعي حقيقي")
-                
-            except Exception as e:
-                logger.error(f"❌ خطأ في جلب البيانات الاجتماعية: {e}")
-        else:
-            logger.warning("⚠️ لا توجد خدمة اجتماعية. تحليل المشاعر غير متاح.")
-        
+
+        try:
+            # تحويل رمز السوق إلى كلمة بحث مناسبة
+            symbol_map = {
+                'BTCUSD': 'Bitcoin BTC',
+                'ETHUSD': 'Ethereum ETH',
+                'XAUUSD': 'Gold XAU price',
+                'EURUSD': 'EUR USD forex',
+                'GBPUSD': 'GBP USD forex',
+                'USDJPY': 'USD JPY forex',
+                'US30':   'Dow Jones stock market',
+                'NAS100': 'NASDAQ stock market',
+                'OIL':    'crude oil price',
+            }
+            query = symbol_map.get(symbol.upper(), symbol)
+            encoded_query = re.sub(r'\s+', '+', query)
+            rss_url = f"https://news.google.com/rss/search?q={encoded_query}+forex+trading&hl=en&gl=US&ceid=US:en"
+
+            import urllib.request
+            import xml.etree.ElementTree as ET
+            req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                raw_xml = resp.read()
+
+            root = ET.fromstring(raw_xml)
+            items = root.findall('.//item')
+
+            for item in items[:20]:  # أخذ أحدث 20 خبر
+                title = item.findtext('title') or ''
+                link  = item.findtext('link') or ''
+                pub   = item.findtext('pubDate') or ''
+                source_el = item.find('source')
+                source_name = source_el.text if source_el is not None else 'google_news'
+
+                all_posts.append(SocialPost(
+                    source='google_news',
+                    text=title,
+                    sentiment_score=0.0,
+                    followers_count=0,
+                    timestamp=datetime.now(),
+                    url=link,
+                    author=source_name,
+                    engagement=0,
+                ))
+
+            logger.info(f"✅ تم جلب {len(all_posts)} خبر حقيقي من Google News لـ {symbol}")
+
+        except Exception as e:
+            logger.warning(f"⚠️ تعذر جلب أخبار Google News لـ {symbol}: {e}. سيتم استخدام قائمة فارغة.")
+
         # تحليل كل منشور
         analyzed_posts = []
         for post in all_posts:
             analyzed = self.text_analyzer.analyze_post(post)
             analyzed_posts.append(analyzed)
-        
+
         # تحديث الكاش
         self.cached_posts = analyzed_posts
         self.last_fetch_time = datetime.now()
-        
+
         return analyzed_posts
+
     
     def _fetch_twitter_posts(self, symbol: str) -> List[SocialPost]:
         """جلب تغريدات من Twitter"""

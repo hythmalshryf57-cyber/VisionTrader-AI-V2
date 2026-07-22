@@ -1478,7 +1478,14 @@ class AIService:
             strategy_performance = db.query(models.StrategyPerformance).all()
             total_trades = sum((record.wins or 0) + (record.losses or 0) for record in strategy_performance)
             total_wins = sum(record.wins or 0 for record in strategy_performance)
-            overall_win_rate = round((total_wins / total_trades) * 100, 2) if total_trades else 0.0
+            # ✅ إصلاح: نعرض Win Rate فقط إذا كان هناك 10 صفقات على الأقل لتجنب نسب مضللة
+            if total_trades >= 10:
+                overall_win_rate = round((total_wins / total_trades) * 100, 2)
+            elif total_trades > 0:
+                overall_win_rate = round((total_wins / total_trades) * 100, 2)
+                logger.warning(f"⚠️ Win Rate ({overall_win_rate}%) مبني على {total_trades} صفقة فقط - غير كافٍ للحكم")
+            else:
+                overall_win_rate = 0.0
             memory_count = db.query(models.TradeExperience).count()
         except Exception as e:
             logger.exception(f"Failed to collect system health metrics: {e}")

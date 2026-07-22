@@ -251,16 +251,28 @@ class MetricsCalculator:
             try:
                 d1 = datetime.fromisoformat(trades[0].entry_date)
                 d2 = datetime.fromisoformat(trades[-1].exit_date)
-                years = max((d2 - d1).days / 365.25, 1/365.25)
+                actual_days = max((d2 - d1).days, 1)
+                years = actual_days / 365.25
             except Exception:
-                years = len(trades) / 252.0
+                actual_days = len(trades)
+                years = actual_days / 365.25
 
             final_equity = equity[-1]
-            if initial_capital > 0 and final_equity > 0:
-                m.annualized_return = (final_equity / initial_capital) ** (1 / years) - 1
+            if initial_capital > 0 and final_equity > 0 and years > 0:
+                # حساب CAGR الحقيقي مع الحد الأدنى سنة واحدة لمنع التضخيم
+                # إذا الفترة أقل من سنة، نقدّر العائد السنوي بشكل واقعي (لا نضربه بالقوة)
+                if years >= 1.0:
+                    m.annualized_return = (final_equity / initial_capital) ** (1 / years) - 1
+                else:
+                    # للفترات القصيرة: عائد الفترة × (365 / عدد الأيام الفعلية) - واقعي وليس أسياً
+                    period_return = (final_equity - initial_capital) / initial_capital
+                    m.annualized_return = period_return * (365.25 / actual_days)
+                # تحديد سقف واقعي: لا يتجاوز 500% سنوياً
+                m.annualized_return = min(m.annualized_return, 5.0)
                 m.cagr = m.annualized_return
         else:
             years = 1.0
+
 
         # ─── Sharpe Ratio ────────────────────────────────────────────
         if len(pnls_pct) >= 2:
