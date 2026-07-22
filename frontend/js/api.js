@@ -1,8 +1,7 @@
 // API helper with auth support
 const api = {
   // Use Render backend URL or local for testing
-  // لتغيير الرابط: يمكنك تعيين api_base_url في localStorage أو استخدام الرابط الافتراضي
-  baseUrl: localStorage.getItem('api_base_url') || window.API_BASE_URL || window.API_URL || ((window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'https://visiontrader.onrender.com'),
+  baseUrl: localStorage.getItem('api_base_url') || window.API_BASE_URL || window.API_URL || ((window.location.origin && window.location.origin !== 'null') ? window.location.origin : 'https://alphavision-backend.onrender.com'),
   async request(method, path, data = null, auth = true) {
     const url = path.startsWith('http') ? path : this.baseUrl + (path.startsWith('/') ? '' : '/') + path;
     const headers = {};
