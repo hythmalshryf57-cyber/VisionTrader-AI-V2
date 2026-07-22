@@ -80,7 +80,7 @@ from fastapi.staticfiles import StaticFiles
 # Optional Telegram bot import
 try:
     from services.telegram_payment_bot import bot, dp
-    TELEGRAM_BOT_AVAILABLE = True
+    TELEGRAM_BOT_AVAILABLE = (bot is not None)
 except Exception as e:
     print(f"Telegram bot not available: {e}")
     TELEGRAM_BOT_AVAILABLE = False
@@ -720,15 +720,18 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
     orchestrator_weights = None
     try:
         unified_data = voting_engine.data_adapter.normalize_input(visual_context, market)
-        agent_payload = agent_manager.run(unified_data)
+        agent_payload = await asyncio.wait_for(
+            asyncio.to_thread(agent_manager.run, unified_data),
+            timeout=8
+        )
         orchestrator_weights = agent_payload.get("orchestrator", {}).get("weights")
     except Exception:
-        logger.exception("AgentManager pre-analysis failed")
+        logger.warning("AgentManager pre-analysis skipped (timeout or error)")
 
     try:
         result = await asyncio.wait_for(
             asyncio.to_thread(voting_engine.analyze, visual_context, market, current_user.id, orchestrator_weights=orchestrator_weights),
-            timeout=12
+            timeout=45
         )
 
         # If AI reported insufficient data, fall back to strategy-only voting (no external AI)
@@ -835,6 +838,53 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
             }
 
     try:
+        from dataclasses import asdict, is_dataclass
+        import numpy as _np
+        import enum as _enum
+        import math as _math
+
+        def _clean_data(obj):
+            # float NaN/Inf → None
+            if isinstance(obj, float):
+                if _math.isnan(obj) or _math.isinf(obj):
+                    return None
+                return obj
+            # Enum instance → value
+            if isinstance(obj, _enum.Enum):
+                return obj.value
+            # Enum class/metaclass → name string
+            if isinstance(obj, type) and issubclass(obj, _enum.Enum):
+                return obj.__name__
+            # Skip other types/classes
+            if isinstance(obj, type):
+                return str(obj)
+            if is_dataclass(obj):
+                return _clean_data(asdict(obj))
+            elif isinstance(obj, dict):
+                return {k: _clean_data(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [_clean_data(v) for v in obj]
+            elif isinstance(obj, tuple):
+                return tuple(_clean_data(v) for v in obj)
+            elif isinstance(obj, _np.generic):
+                v = obj.item()
+                if isinstance(v, float) and (_math.isnan(v) or _math.isinf(v)):
+                    return None
+                return v
+            elif isinstance(obj, _np.ndarray):
+                return _clean_data(obj.tolist())
+            elif hasattr(obj, '__dict__') and callable(getattr(obj, '__dict__', None)) is False:
+                try:
+                    return {k: _clean_data(v) for k, v in obj.__dict__.items()}
+                except Exception:
+                    return str(obj)
+            return obj
+
+        result = _clean_data(result)
+    except Exception as _ce:
+        logger.warning("_clean_data failed: %s", _ce)
+
+    try:
         analysis = models.Analysis(
             user_id=current_user.id,
             market=market,
@@ -857,7 +907,107 @@ async def process_analysis(payload: dict, db: Session = Depends(get_db), current
         logger.exception(f"Failed to save analysis result for market {market}: {e}")
 
     cache_service.cache_analysis(market, payload_hash, result)
-    return result
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content=json.loads(json.dumps(result, ensure_ascii=False, default=str)))
+
+@app.post("/api/analysis/auto")
+async def process_analysis_auto(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user), request: Request = None):
+    """
+    Endpoint for automatic analysis without uploading a chart.
+    Expects payload: {"market": "XAUUSD", "trade_type": "يومي"}
+    """
+    protection = trade_protection_service.check_protection(current_user.id)
+    if protection.get("analysis_locked"):
+        raise HTTPException(status_code=403, detail=protection.get("analysis_message") or "تحليل مغلق مؤقتاً.")
+
+    if current_user.daily_analyses_count >= FREE_ANALYSIS_LIMIT:
+        raise HTTPException(status_code=403, detail="لقد تجاوزت الحد المجاني من التحليلات.")
+
+    market = payload.get("market", "XAUUSD").upper()
+    trade_type = payload.get("trade_type", "يومي")
+    account_balance = payload.get("account_balance", 1000)
+    risk_percent = payload.get("risk_percent", 1.0)
+    api_key = getattr(settings, "GEMINI_API_KEY", "")
+
+    from services.multi_tf_analyzer import full_multi_tf_analysis
+
+    try:
+        # Pass api_key directly. Timeout kept generous because Playwright capture +
+        # voting + Gemini Vision can legitimately take ~60s for 3 timeframes.
+        analysis_data = await asyncio.wait_for(
+            full_multi_tf_analysis(market, trade_type, current_user.id, api_key, account_balance, risk_percent),
+            timeout=240
+        )
+
+        signals_summary = analysis_data.get("signals_summary", {}) or {}
+        final_analysis_md = analysis_data.get("final_analysis", "") or ""
+        tf_results_raw = analysis_data.get("tf_results", {}) or {}
+
+        # Build a lightweight per-timeframe summary so the frontend can render
+        # one card per frame without shipping the heavy voting_engine dicts.
+        tf_results = []
+        for tf in analysis_data.get("timeframes_analyzed", []) or []:
+            entry = tf_results_raw.get(tf, {}) or {}
+            tf_results.append({
+                "tf": tf,
+                "recommendation": entry.get("recommendation") or "تعليق",
+                "confidence": entry.get("confidence", 0),
+                "reason": entry.get("reason") or entry.get("explanation") or "",
+                "has_screenshot": bool(entry.get("has_screenshot", False)),
+            })
+
+        # Enrich the response with the rich multi-timeframe data while keeping the
+        # legacy flat fields (recommendation/confidence/reason/...) intact for any
+        # existing consumer (e.g. the in-process chat-agent call path, history page).
+        result = {
+            # legacy flat fields (back-compat)
+            "recommendation": signals_summary.get("overall_signal", "تعليق"),
+            "confidence": signals_summary.get("avg_confidence", 0),
+            "reason": final_analysis_md,
+            "market": market,
+            "trade_type": trade_type,
+            "multi_tf": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            # rich multi-timeframe fields (consumed by auto-analysis.html)
+            "final_analysis": final_analysis_md,
+            "timeframes": analysis_data.get("timeframes_analyzed", []) or [],
+            "screenshots_captured": analysis_data.get("screenshots_captured", []) or [],
+            "signals_summary": signals_summary,
+            "tf_results": tf_results,
+        }
+
+        # Update daily analyses count
+        current_user.daily_analyses_count += 1
+
+        # Save to DB (result_json keeps the enriched shape so history.html works)
+        analysis = models.Analysis(
+            user_id=current_user.id,
+            market=market,
+            image_path=None,
+            description=f"Auto Analysis for {market} ({trade_type})",
+            result_json=json.dumps(result, ensure_ascii=False, default=str)
+        )
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+        result['analysis_id'] = analysis.id
+
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=json.loads(json.dumps(result, ensure_ascii=False, default=str)))
+
+    except asyncio.TimeoutError:
+        logger.error("Auto multi-tf analysis timed out for %s/%s", market, trade_type)
+        raise HTTPException(
+            status_code=504,
+            detail="انتهت مهلة التحليل. تعذّر التقاط الشارتات في الوقت المحدد. حاول مرة أخرى."
+        )
+    except Exception as e:
+        logger.exception("Auto multi-tf analysis failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"فشل التحليل التلقائي: {e}"
+        )
+
 
 @app.get("/api/analysis/latest")
 def get_latest_analysis(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -1858,12 +2008,37 @@ def compare_markets(payload: dict):
     return result
 
 
+@app.get("/api/market/heatmap")
+async def market_heatmap(current_user: models.User = Depends(auth.get_current_user)):
+    """جلب بيانات خريطة الحرارة للسوق المباشرة"""
+    from services.heatmap_service import generate_heatmap_data
+    try:
+        heatmap_data = await generate_heatmap_data()
+        return {"success": True, "data": heatmap_data}
+    except Exception as e:
+        logger.error(f"Error generating heatmap: {e}")
+        return {"success": False, "data": []}
+
 @app.on_event("startup")
 async def startup_event():
     """أحداث بدء الخادم"""
     # بدء مراقبة الصفقات الحية
     trade_manager_service.start_live_monitoring()
     print("✅ تم بدء مراقبة الصفقات الحية")
+    
+    # بدء نظام قناص التليجرام
+    from services.scheduler import start_scheduler
+    start_scheduler()
+    print("✅ تم بدء مجدول قناص التليجرام")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    from services.scheduler import shutdown_scheduler
+    shutdown_scheduler()
+    
+    from bot.telegram_bot import telegram_notifier
+    await telegram_notifier.close()
+    print("⛔ تم إيقاف مجدول قناص التليجرام وإغلاق البوت")
 
 @app.get("/api/calendar/events")
 def calendar_events(hours: int = 24, current_user: models.User = Depends(auth.get_current_user)):
@@ -3411,9 +3586,9 @@ if __name__ == "__main__":
 
     import uvicorn
     # Start Telegram bot in background if available
-    if TELEGRAM_BOT_AVAILABLE and dp is not None:
+    if TELEGRAM_BOT_AVAILABLE and dp is not None and bot is not None:
         def run_bot():
-            asyncio.run(dp.start_polling())
+            asyncio.run(dp.start_polling(bot))
 
         bot_thread = threading.Thread(target=run_bot, daemon=True)
         bot_thread.start()

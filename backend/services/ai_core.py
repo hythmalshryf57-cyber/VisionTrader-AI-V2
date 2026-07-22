@@ -1078,7 +1078,8 @@ class AIService:
         # Start threads
         # threading.Thread(target=_daily_tune, daemon=True).start()
         # threading.Thread(target=_weekly_cluster_tune, daemon=True).start()
-        threading.Thread(target=_monthly_review, daemon=True).start()
+        # threading.Thread(target=_monthly_review, daemon=True).start()
+        pass
 
     def auto_tune_weights(self, lookback_days: int = 30, min_trades: int = 10) -> Dict[str, Any]:
         """Adjust strategy weights based on recent performance with intelligent rules."""

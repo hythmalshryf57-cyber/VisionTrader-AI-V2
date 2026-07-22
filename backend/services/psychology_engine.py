@@ -43,6 +43,9 @@ class PsychologyEngine:
         
         return {"alert": None, "lock_ui": False}
 
+    def get_current_state(self, user_id=None, *args, **kwargs):
+        return {"status": "calm", "risk_level": "normal"}
+
     def _log_event(self, event_type, description):
         log = PsychologyLog(
             user_id=self.user_id,

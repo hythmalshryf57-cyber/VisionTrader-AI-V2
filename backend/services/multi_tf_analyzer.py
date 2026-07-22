@@ -118,6 +118,8 @@ async def full_multi_tf_analysis(
     trade_type: str = "يومي",
     user_id: Optional[int] = None,
     api_key: Optional[str] = None,
+    account_balance: float = 1000.0,
+    risk_percent: float = 1.0,
 ) -> Dict[str, Any]:
     """
     التحليل الشامل المتكامل:
@@ -163,7 +165,7 @@ async def full_multi_tf_analysis(
 
     # الخطوة 4: تحليل Gemini Vision الشامل
     gemini_result = await _run_gemini_final_analysis(
-        symbol, trade_type, timeframes, screenshots, tf_results, signals_summary, api_key
+        symbol, trade_type, timeframes, screenshots, tf_results, signals_summary, api_key, account_balance, risk_percent
     )
 
     return {
@@ -236,9 +238,11 @@ async def _run_gemini_final_analysis(
     trade_type: str,
     timeframes: List[str],
     screenshots: Dict[str, Optional[bytes]],
-    tf_results: Dict,
-    signals_summary: Dict,
+    tf_results: Dict[str, Any],
+    signals_summary: Dict[str, Any],
     api_key: Optional[str],
+    account_balance: float = 1000.0,
+    risk_percent: float = 1.0,
 ) -> str:
     """يُشغّل Gemini Vision على كل الشاشات مع سياق نتائج voting_engine."""
 
@@ -251,34 +255,39 @@ async def _run_gemini_final_analysis(
         for d in signals_summary.get("details", [])
     ])
 
-    prompt_text = f"""أنت كبير محللي التداول في VisionTrader AI. معك الآن تحليل متكامل من نظام الوكلاء الاصطناعيين.
+    prompt_text = f"""أنت كبير محللي التداول ومدير مخاطر (Risk Manager) في VisionTrader AI. معك الآن تحليل متكامل.
 
 **الزوج:** {symbol}
 **نوع التداول:** {trade_type}
 **الأطر الزمنية المحللة:** {', '.join(timeframes)}
 
-**نتائج نظام التصويت (voting_engine) لكل إطار:**
+**معلومات مدير المخاطر:**
+- رصيد الحساب: ${account_balance}
+- نسبة المخاطرة للصفقة: {risk_percent}%
+
+**نتائج نظام التصويت لكل إطار:**
 {tf_context}
+**الإشارة الإجمالية:** {signals_summary.get('overall_signal', 'محايد')} | متوسط الثقة: {signals_summary.get('avg_confidence', 0)}%
 
-**الإشارة الإجمالية:** {signals_summary.get('overall_signal', 'محايد')} | متوسط الثقة: {signals_summary.get('avg_confidence', 0)}% | التوافق: {signals_summary.get('alignment', 'محايد')}
+**مهمتك:** بناءً على الصور الحية والنتائج أعلاه، قدم:
 
-**مهمتك:** بناءً على الصور الحية من TradingView والنتائج أعلاه، قدم:
-
-1. 📈 **الاتجاه العام** (صعودي/هابط/عرضي) مع التفسير
+1. 📈 **الاتجاه العام** مع التفسير
 2. 🔍 **قراءة كل إطار زمني** بإيجاز
 3. ⚡ **فرصة الصفقة** (إذا وجدت):
    - نوع الصفقة: شراء/بيع
    - **نقطة الدخول:** سعر محدد
-   - **وقف الخسارة (SL):** سعر محدد + السبب
-   - **الهدف الأول (TP1):** 
-   - **الهدف الثاني (TP2):**
-   - **الهدف الثالث (TP3):**
-   - **نسبة المخاطرة/العائد (R:R):**
-4. ⚠️ **تحذيرات أو ملاحظات** مهمة
-5. ⏱️ **أفضل توقيت للدخول**
+   - **وقف الخسارة (SL):** سعر محدد (احسب الفارق بالنقاط Pips)
+   - **الهدف (TP1, TP2, TP3)**
+   - **نسبة المخاطرة/العائد (R:R)**
+4. 🛡️ **مدير المخاطر الآلي (AI Risk Manager):**
+   إذا كانت هناك صفقة، قم بحساب **حجم العقد (Lot Size)** بناءً على رصيد {account_balance}$ ونسبة مخاطرة {risk_percent}% ومسافة الـ SL.
+   - وضّح القيمة النقدية المعرضة للمخاطرة (Risk Amount).
+   - أعطِ توصية بحجم اللوت الدقيق (مثال: 0.05 لوت).
+5. ⚠️ **تحذيرات أو ملاحظات** مهمة
+6. ⏱️ **أفضل توقيت للدخول**
 
 إذا لم تكن هناك فرصة واضحة، قل ذلك صراحةً مع السبب.
-أسلوبك: احترافي، حاسم، بالأرقام الفعلية."""
+أسلوبك: احترافي، حاسم، دقيق جداً في الرياضيات المالي."""
 
     # بناء الأجزاء مع الصور
     parts = [{"text": prompt_text}]

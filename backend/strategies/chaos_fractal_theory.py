@@ -546,11 +546,35 @@ class ChaosFractalStrategy:
         # 3. القرار
         decision = self._make_decision(fractal_data, chaos_metrics, closes)
         
-        return {
+        from dataclasses import asdict, is_dataclass
+        import numpy as _np
+        
+        def _clean_data(obj):
+            if is_dataclass(obj) and not isinstance(obj, type):
+                return _clean_data(asdict(obj))
+            elif isinstance(obj, dict):
+                return {k: _clean_data(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [_clean_data(v) for v in obj]
+            elif isinstance(obj, tuple):
+                return tuple(_clean_data(v) for v in obj)
+            elif isinstance(obj, _np.generic):
+                return obj.item()
+            elif isinstance(obj, _np.ndarray):
+                return _clean_data(obj.tolist())
+            elif hasattr(obj, '__dict__') and not isinstance(obj, type):
+                try:
+                    return {k: _clean_data(v) for k, v in obj.__dict__.items()}
+                except Exception:
+                    return str(obj)
+            return obj
+
+        raw_result = {
             **decision,
             "fractal_data": fractal_data,
             "chaos_metrics": chaos_metrics,
         }
+        return _clean_data(raw_result)
     
     def _make_decision(self, fractal_data: Dict, chaos: ChaosMetrics,
                        closes: np.ndarray) -> Dict:

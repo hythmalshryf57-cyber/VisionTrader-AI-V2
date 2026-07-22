@@ -5,6 +5,7 @@ import inspect
 import logging
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta, timezone
 from .internal_brain import InternalBrain
 from .deepseek_r1_service import DeepSeekR1Service
@@ -358,28 +359,34 @@ class StrategyClusterBase:
 
     def _invoke_strategy(self, strategy, chart_data: Dict[str, Any]) -> Dict[str, Any]:
         try:
+            t0 = time.time()
             signature = inspect.signature(strategy.analyze)
             parameters = list(signature.parameters.values())
-            if len(parameters) == 1:
-                return strategy.analyze(chart_data)
-
+            
             kwargs = {}
-            for parameter in parameters:
-                name = parameter.name
-                if name in chart_data:
-                    kwargs[name] = chart_data[name]
-
-            if kwargs:
-                return strategy.analyze(**kwargs)
-
-            if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters):
-                return strategy.analyze(**chart_data)
-
             positional = []
-            for key in ('opens', 'highs', 'lows', 'closes', 'volumes', 'timestamps'):
-                if key in chart_data:
-                    positional.append(chart_data[key])
-            return strategy.analyze(*positional)
+            if len(parameters) == 1:
+                res = strategy.analyze(chart_data)
+            else:
+                for parameter in parameters:
+                    name = parameter.name
+                    if name in chart_data:
+                        kwargs[name] = chart_data[name]
+
+                if kwargs:
+                    res = strategy.analyze(**kwargs)
+                elif any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters):
+                    res = strategy.analyze(**chart_data)
+                else:
+                    for key in ('opens', 'highs', 'lows', 'closes', 'volumes', 'timestamps'):
+                        if key in chart_data:
+                            positional.append(chart_data[key])
+                    res = strategy.analyze(*positional)
+            
+            elapsed = time.time() - t0
+            if elapsed > 1.0:
+                print(f"[WARN] Strategy {strategy.__class__.__name__} took {elapsed:.2f}s", flush=True)
+            return res
         except Exception as e:
             logger.exception(f"Strategy invocation failed for {strategy.__class__.__name__}: {e}")
             raise
@@ -469,15 +476,22 @@ class PowerCluster(StrategyClusterBase):
         total_weight = 0.0
         details = []
 
-        for strategy in self.strategies:
-            # تطبيق فلتر نوع السوق (crypto vs forex)
-            if not self._is_strategy_applicable(strategy, market):
-                continue
-            entry = self._analyze_strategy(strategy, chart_data, strategy_weights)
-            vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
-            votes[vote] += entry['weight']
-            total_weight += entry['weight']
-            details.append(entry)
+        applicable = [s for s in self.strategies if self._is_strategy_applicable(s, market)]
+
+        def run_one(strategy):
+            return self._analyze_strategy(strategy, chart_data, strategy_weights)
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(run_one, s): s for s in applicable}
+            for future in as_completed(futures, timeout=30):
+                try:
+                    entry = future.result(timeout=5)
+                    vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
+                    votes[vote] += entry['weight']
+                    total_weight += entry['weight']
+                    details.append(entry)
+                except Exception:
+                    pass
 
         if total_weight == 0:
             return {"direction": "محايد", "confidence": 0, "details": details, "scores": {"buy": 0.0, "sell": 0.0, "neutral": 1.0}}
@@ -486,7 +500,6 @@ class PowerCluster(StrategyClusterBase):
         sell_score = votes["بيع"] / total_weight
         neutral_score = votes["محايد"] / total_weight
 
-        # عتبة إعلان اتجاه العنقود: 60%
         max_score = max(buy_score, sell_score, neutral_score)
         if max_score < 0.6:
             direction = "محايد"
@@ -508,6 +521,7 @@ class PowerCluster(StrategyClusterBase):
             "details": details,
             "scores": {"buy": round(buy_score, 3), "sell": round(sell_score, 3), "neutral": round(neutral_score, 3)}
         }
+
 
 class GeometricCluster(StrategyClusterBase):
     """عنقود الهندسة - وزن 30% - تحديد الأهداف والوقف بدقة"""
@@ -533,21 +547,28 @@ class GeometricCluster(StrategyClusterBase):
         targets: List[Any] = []
         stops: List[Any] = []
 
-        for strategy in self.strategies:
-            if not self._is_strategy_applicable(strategy, market):
-                continue
-            entry = self._analyze_strategy(strategy, chart_data, strategy_weights)
-            vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
-            votes[vote] += entry['weight']
-            total_weight += entry['weight']
-            details.append(entry)
+        applicable = [s for s in self.strategies if self._is_strategy_applicable(s, market)]
 
-            if isinstance(entry.get('raw_result'), dict):
-                raw_result = entry['raw_result']
-                if 'targets' in raw_result and isinstance(raw_result['targets'], list):
-                    targets.extend(raw_result['targets'])
-                if 'stop_loss' in raw_result:
-                    stops.append(raw_result['stop_loss'])
+        def run_one(strategy):
+            return self._analyze_strategy(strategy, chart_data, strategy_weights)
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(run_one, s): s for s in applicable}
+            for future in as_completed(futures, timeout=30):
+                try:
+                    entry = future.result(timeout=5)
+                    vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
+                    votes[vote] += entry['weight']
+                    total_weight += entry['weight']
+                    details.append(entry)
+                    if isinstance(entry.get('raw_result'), dict):
+                        raw_result = entry['raw_result']
+                        if 'targets' in raw_result and isinstance(raw_result['targets'], list):
+                            targets.extend(raw_result['targets'])
+                        if 'stop_loss' in raw_result:
+                            stops.append(raw_result['stop_loss'])
+                except Exception:
+                    pass
 
         if total_weight == 0:
             return {"direction": "محايد", "confidence": 0, "details": details, "targets": [], "stops": [], "scores": {"buy": 0.0, "sell": 0.0, "neutral": 1.0}}
@@ -603,17 +624,24 @@ class MomentumCluster(StrategyClusterBase):
         details = []
         timing_signals: List[Any] = []
 
-        for strategy in self.strategies:
-            if not self._is_strategy_applicable(strategy, market):
-                continue
-            entry = self._analyze_strategy(strategy, chart_data, strategy_weights)
-            vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
-            votes[vote] += entry['weight']
-            total_weight += entry['weight']
-            details.append(entry)
+        applicable = [s for s in self.strategies if self._is_strategy_applicable(s, market)]
 
-            if isinstance(entry.get('raw_result'), dict) and 'timing' in entry['raw_result']:
-                timing_signals.append(entry['raw_result']['timing'])
+        def run_one(strategy):
+            return self._analyze_strategy(strategy, chart_data, strategy_weights)
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(run_one, s): s for s in applicable}
+            for future in as_completed(futures, timeout=30):
+                try:
+                    entry = future.result(timeout=5)
+                    vote = entry['vote'] if entry['vote'] in ("شراء", "بيع", "محايد") else "محايد"
+                    votes[vote] += entry['weight']
+                    total_weight += entry['weight']
+                    details.append(entry)
+                    if isinstance(entry.get('raw_result'), dict) and 'timing' in entry['raw_result']:
+                        timing_signals.append(entry['raw_result']['timing'])
+                except Exception:
+                    pass
 
         if total_weight == 0:
             return {"direction": "محايد", "confidence": 0, "details": details, "timing": [], "scores": {"buy": 0.0, "sell": 0.0, "neutral": 1.0}}
@@ -1033,6 +1061,12 @@ class VotingEngine:
                 "recommendation": "لا توجد فرصة واضحة حالياً",
                 "confidence": confidence,
                 "reason": "الثقة أقل من 60%",
+                "cluster_breakdown": {
+                    "power": cluster_results["power"],
+                    "geometric": cluster_results["geometric"],
+                    "momentum": cluster_results["momentum"]
+                },
+                "judge_result": judge_result,
                 "entry": unified_data["chart_data"].get("current_price"),
                 "market": market,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -1125,6 +1159,25 @@ class VotingEngine:
             result["target_type"] = "wide"
             result["stop_type"] = "wide"
 
-        return result
+        from dataclasses import asdict, is_dataclass
+        import numpy as np
 
+        def _clean_data(obj):
+            if is_dataclass(obj) and not isinstance(obj, type):
+                return _clean_data(asdict(obj))
+            elif isinstance(obj, dict):
+                return {k: _clean_data(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [_clean_data(v) for v in obj]
+            elif isinstance(obj, tuple):
+                return tuple(_clean_data(v) for v in obj)
+            elif isinstance(obj, np.generic):
+                return obj.item()
+            elif isinstance(obj, np.ndarray):
+                return _clean_data(obj.tolist())
+            elif hasattr(obj, '__dict__') and not isinstance(obj, type):
+                return {k: _clean_data(v) for k, v in obj.__dict__.items()}
+            return obj
+
+        return _clean_data(result)
 voting_engine = VotingEngine()

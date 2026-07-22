@@ -107,6 +107,22 @@
                     </div>
                 </div>
 
+                <!-- Risk Management Settings -->
+                <div class="settings-section card">
+                    <h2><i class="fas fa-shield-alt"></i> مدير المخاطر الآلي (AI Risk Manager)</h2>
+                    <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
+                        دع الذكاء الاصطناعي يحسب لك حجم العقد (Lot Size) بدقة بناءً على رصيدك.
+                    </p>
+                    <div class="settings-row">
+                        <span>رصيد الحساب ($)</span>
+                        <input class="cosmic-input" type="number" id="accountBalanceInput" placeholder="1000" style="width: 150px; text-align: left;">
+                    </div>
+                    <div class="settings-row">
+                        <span>نسبة المخاطرة للصفقة (%)</span>
+                        <input class="cosmic-input" type="number" id="riskPercentInput" placeholder="1" step="0.1" min="0.1" max="10" style="width: 150px; text-align: left;">
+                    </div>
+                </div>
+
                 <!-- Favorite Strategies -->
                 <div class="settings-section card">
                     <h2><i class="fas fa-star"></i> استراتيجيات مفضلة</h2>
@@ -188,6 +204,23 @@
                 if (demoToggle) demoToggle.checked = prefs.demo_mode === true;
             } catch (err) {
                 console.error('Failed to load user preferences', err);
+            }
+
+            // Load Risk Manager settings
+            const accountBalanceInput = document.getElementById('accountBalanceInput');
+            if (accountBalanceInput) {
+                accountBalanceInput.value = localStorage.getItem('account_balance') || '1000';
+                accountBalanceInput.addEventListener('change', (e) => {
+                    localStorage.setItem('account_balance', e.target.value);
+                });
+            }
+
+            const riskPercentInput = document.getElementById('riskPercentInput');
+            if (riskPercentInput) {
+                riskPercentInput.value = localStorage.getItem('risk_percent') || '1';
+                riskPercentInput.addEventListener('change', (e) => {
+                    localStorage.setItem('risk_percent', e.target.value);
+                });
             }
         });
 

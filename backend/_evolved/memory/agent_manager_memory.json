@@ -79,6 +79,62 @@
       "success": true,
       "context": "EURUSD",
       "timestamp": "2026-06-08T09:03:38.125842+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "ICT",
+      "value": 0.85,
+      "success": true,
+      "context": "EURUSD",
+      "timestamp": "2026-07-22T19:22:54.334432+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-07-22T19:26:17.927399+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-07-22T19:26:18.045917+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-07-22T19:26:18.178295+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-07-22T19:26:18.300364+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "TestAgent",
+      "value": 0.9,
+      "success": true,
+      "context": "",
+      "timestamp": "2026-07-22T19:26:18.465836+00:00"
+    },
+    {
+      "type": "agent_accuracy",
+      "key": "ICT",
+      "value": 0.85,
+      "success": true,
+      "context": "EURUSD",
+      "timestamp": "2026-07-22T20:00:01.121203+00:00"
     }
   ]
 }

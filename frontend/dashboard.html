@@ -40,6 +40,7 @@
             <div class="brand"><div class="brand-icon">🤖</div><span>VisionTrader AI</span></div>
             <nav class="nav">
                 <a href="dashboard.html" class="active"><i class="fas fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+                <a href="auto-analysis.html"><i class="fas fa-bolt"></i> <span>تحليل تلقائي</span></a>
                 <a href="upload.html"><i class="fas fa-robot"></i> <span>الوكيل الذكي</span></a>
                 <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
                 <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
@@ -100,6 +101,18 @@
                 <div class="card shimmer-card" style="padding:20px; text-align:center; position:relative;">
                     <span style="color:var(--text-dim); font-size:0.9rem;">Gold (XAU/USD)</span>
                     <h2 style="margin: 10px 0 0; font-family:'Orbitron',sans-serif; color:#fff; font-weight:700; transition: color 0.3s;" id="price-XAU/USD">--.--</h2>
+                </div>
+            </div>
+
+            <!-- Live Market Heatmap -->
+            <div class="memory-card" style="margin-bottom: 30px; background: rgba(11, 20, 38, 0.6); border: 1px solid rgba(0, 189, 255, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3><i class="fas fa-map" style="color: var(--accent-blue);"></i> خريطة الحرارة للسوق (Live Market Heatmap)</h3>
+                    <span style="font-size: 0.8rem; color: #00ff88; background: rgba(0,255,136,0.1); padding: 4px 8px; border-radius: 8px;">مباشر • Real-Time</span>
+                </div>
+                <p style="color: #aaa; margin-top: 5px; font-size: 0.9rem;">نظرة سريعة على سيولة واتجاه الأسواق الرئيسية في الوقت الفعلي.</p>
+                <div id="heatmapGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <div style="color: #888;">جاري تحميل خريطة السوق... <i class="fas fa-spinner fa-spin"></i></div>
                 </div>
             </div>
 
@@ -319,7 +332,78 @@
             }
         }
 
-        async function loadDashboard() {
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUserData();
+            loadDashboardData();
+            loadHeatmapData();
+        });
+
+        async function loadHeatmapData() {
+            try {
+                const res = await fetch(`${API_BASE}/api/market/heatmap`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                if (!res.ok) throw new Error('Network response was not ok');
+                const json = await res.json();
+                
+                const grid = document.getElementById('heatmapGrid');
+                if (!json.success || !json.data || json.data.length === 0) {
+                    grid.innerHTML = '<div style="color: #ff4d4d;">تعذر تحميل بيانات السوق الحية.</div>';
+                    return;
+                }
+                
+                grid.innerHTML = '';
+                json.data.forEach(item => {
+                    const colorMap = {
+                        'green': 'rgba(0, 255, 136, 0.2)',
+                        'lightgreen': 'rgba(0, 255, 136, 0.1)',
+                        'red': 'rgba(255, 77, 77, 0.2)',
+                        'lightcoral': 'rgba(255, 77, 77, 0.1)',
+                        'gray': 'rgba(255, 255, 255, 0.05)'
+                    };
+                    const borderMap = {
+                        'green': '#00ff88',
+                        'lightgreen': 'rgba(0, 255, 136, 0.5)',
+                        'red': '#ff4d4d',
+                        'lightcoral': 'rgba(255, 77, 77, 0.5)',
+                        'gray': '#666'
+                    };
+                    
+                    const div = document.createElement('div');
+                    div.style.background = colorMap[item.color] || colorMap['gray'];
+                    div.style.border = `1px solid ${borderMap[item.color] || borderMap['gray']}`;
+                    div.style.borderRadius = '12px';
+                    div.style.padding = '15px';
+                    div.style.textAlign = 'center';
+                    div.style.cursor = 'pointer';
+                    div.style.transition = 'transform 0.2s';
+                    div.onmouseover = () => div.style.transform = 'translateY(-3px)';
+                    div.onmouseout = () => div.style.transform = 'translateY(0)';
+                    // Click to go to Auto Analysis for this pair
+                    div.onclick = () => {
+                        localStorage.setItem('selected_pair', item.symbol);
+                        window.location.href = 'upload.html';
+                    };
+                    
+                    const sign = item.change_24h > 0 ? '+' : '';
+                    const changeColor = item.change_24h >= 0 ? '#00ff88' : '#ff4d4d';
+                    
+                    div.innerHTML = `
+                        <div style="font-weight: 800; font-size: 1.1rem; color: #fff;">${item.symbol}</div>
+                        <div style="margin-top: 8px; font-size: 1.2rem; color: #fff;">${item.price}</div>
+                        <div style="margin-top: 5px; font-size: 0.9rem; color: ${changeColor}; font-weight: bold;">${sign}${item.change_24h}%</div>
+                        <div style="margin-top: 10px; font-size: 0.8rem; color: #ccc;">RSI: ${item.rsi}</div>
+                        <div style="margin-top: 5px; font-size: 0.85rem; font-weight: bold; color: ${borderMap[item.color]};">${item.status}</div>
+                    `;
+                    grid.appendChild(div);
+                });
+            } catch (err) {
+                console.error('Error loading heatmap:', err);
+                document.getElementById('heatmapGrid').innerHTML = '<div style="color: #ff4d4d;">خطأ في الاتصال بالخادم.</div>';
+            }
+        }
+
+        async function loadUserData() {
             try {
                 const stats = await api.getComparisonStats();
                 if (stats) {

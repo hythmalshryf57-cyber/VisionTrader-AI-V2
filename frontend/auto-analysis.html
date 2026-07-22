@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>التحليل التلقائي - VisionTrader AI</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/upload-theme.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Markdown renderer (same lib used by upload.html chat agent) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* ===== Page layout ===== */
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 18px 60px; }
+        .page-title { font-family: 'Orbitron', 'Cairo', sans-serif; font-weight: 900; font-size: 1.8rem; margin: 6px 0 4px;
+            background: linear-gradient(135deg, #fff, #4facfe, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .page-sub { color: #8aa0b5; margin-bottom: 26px; font-size: 0.95rem; }
+
+        .aa-glass { background: rgba(6, 20, 38, 0.72); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 22px; padding: 28px; margin-bottom: 22px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+
+        /* ===== Form ===== */
+        .form-label { display:block; color:#cfe6ff; font-weight:700; margin-bottom:10px; font-size:0.95rem; }
+        .form-hint { color:#7d93a8; font-size:0.8rem; margin-top:6px; }
+
+        select.aa-select { width:100%; padding:14px 16px; border-radius:14px; font-family:'Cairo',sans-serif; font-size:1rem;
+            background: rgba(2,6,13,0.6); color:#eaf4ff; border:1px solid rgba(79,172,254,0.3); outline:none; transition: all .2s; }
+        select.aa-select:focus { border-color:#22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.18); }
+
+        .trade-types { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-top:6px; }
+        .trade-card { position:relative; cursor:pointer; padding:18px 14px; border-radius:16px; text-align:center;
+            background: rgba(2,6,13,0.5); border:2px solid rgba(255,255,255,0.08); transition: all .2s; }
+        .trade-card input { position:absolute; opacity:0; pointer-events:none; }
+        .trade-card:hover { border-color: rgba(34,211,238,0.5); transform: translateY(-2px); }
+        .trade-card .tt-icon { font-size:1.8rem; margin-bottom:6px; }
+        .trade-card .tt-name { font-weight:800; font-size:1.05rem; color:#eaf4ff; }
+        .trade-card .tt-tfs { font-size:0.78rem; color:#8aa0b5; margin-top:6px; letter-spacing:.5px; }
+        .trade-card.selected { border-color:#22d3ee; background: linear-gradient(135deg, rgba(34,211,238,0.12), rgba(139,92,246,0.12));
+            box-shadow: 0 0 0 3px rgba(34,211,238,0.18), 0 8px 22px rgba(34,211,238,0.15); }
+        .trade-card.selected .tt-name { color:#22d3ee; }
+
+        .cta-btn { width:100%; margin-top:22px; padding:16px; border:none; border-radius:16px; cursor:pointer; font-family:'Cairo',sans-serif;
+            font-weight:800; font-size:1.1rem; color:#04121f;
+            background: linear-gradient(135deg, #22d3ee, #4facfe 55%, #8b5cf6);
+            box-shadow: 0 8px 24px rgba(79,172,254,0.35); transition: transform .15s, box-shadow .2s, opacity .2s; }
+        .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(79,172,254,0.45); }
+        .cta-btn:active { transform: translateY(0); }
+        .cta-btn:disabled { opacity:0.55; cursor:not-allowed; transform:none; box-shadow:none; }
+
+        /* ===== Loading ===== */
+        .loading-wrap { text-align:center; padding:34px 16px; }
+        .spinner { width:64px; height:64px; margin:0 auto 18px; border-radius:50%;
+            border:4px solid rgba(34,211,238,0.18); border-top-color:#22d3ee; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-status { color:#cfe6ff; font-size:1.05rem; font-weight:700; margin-bottom:6px; }
+        .loading-timer { color:#7d93a8; font-size:0.9rem; font-variant-numeric: tabular-nums; }
+        .loading-note { color:#6d8398; font-size:0.82rem; margin-top:14px; }
+        .loading-steps { display:flex; gap:8px; justify-content:center; margin-top:18px; flex-wrap:wrap; }
+        .step-pill { font-size:0.72rem; padding:5px 10px; border-radius:20px; background:rgba(255,255,255,0.04);
+            border:1px solid rgba(255,255,255,0.08); color:#8aa0b5; }
+
+        /* ===== Result ===== */
+        .main-signal { text-align:center; margin-bottom:26px; }
+        .signal-badge { font-size:2.8rem; font-weight:900; font-family:'Orbitron','Cairo',sans-serif; margin:4px 0;
+            background: linear-gradient(135deg, #fff, #4facfe, #8b5cf6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .signal-badge.golden-glow { text-shadow: 0 0 22px rgba(255,215,0,0.55); animation: pulse-glow 2s infinite; }
+        @keyframes pulse-glow { 0%,100% { opacity:1; } 50% { opacity:0.8; } }
+        .confidence-line { font-size:1.1rem; margin-top:8px; }
+        .market-label { color:#8aa0b5; font-size:0.9rem; }
+
+        /* Confluence banner */
+        .confluence-banner { display:flex; align-items:center; gap:14px; padding:16px 20px; border-radius:16px; margin:0 0 24px;
+            border:1px solid; }
+        .confluence-banner.align-agree { background: rgba(0,255,136,0.07); border-color: rgba(0,255,136,0.4); }
+        .confluence-banner.align-partial { background: rgba(255,140,0,0.07); border-color: rgba(255,140,0,0.4); }
+        .confluence-banner.align-conflict { background: rgba(255,77,77,0.07); border-color: rgba(255,77,77,0.4); }
+        .cb-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+        .align-agree .cb-dot { background:#00ff88; box-shadow:0 0 12px #00ff88; }
+        .align-partial .cb-dot { background:#ff8c00; box-shadow:0 0 12px #ff8c00; }
+        .align-conflict .cb-dot { background:#ff4d4d; box-shadow:0 0 12px #ff4d4d; }
+        .cb-text { color:#eaf4ff; }
+        .cb-text strong { display:block; font-size:1.05rem; margin-bottom:2px; }
+        .cb-text small { color:#9fb3c8; }
+
+        /* TF cards */
+        .tf-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom:24px; }
+        .tf-card { background: rgba(2,6,13,0.5); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px; text-align:center; }
+        .tf-name { font-family:'Orbitron','Cairo',sans-serif; font-weight:700; color:#22d3ee; font-size:1.1rem; letter-spacing:1px; }
+        .tf-signal { font-size:1.4rem; font-weight:800; margin:8px 0 4px; }
+        .tf-signal.sig-buy { color:#00ff88; }
+        .tf-signal.sig-sell { color:#ff4d4d; }
+        .tf-signal.sig-neutral { color:#8aa0b5; }
+        .tf-conf { color:#9fb3c8; font-size:0.85rem; }
+        .tf-reason { color:#7d93a8; font-size:0.78rem; margin-top:8px; line-height:1.5; min-height:1.2em; }
+        .tf-shot { display:inline-block; margin-top:6px; font-size:0.7rem; padding:2px 8px; border-radius:10px; }
+        .tf-shot.ok { background: rgba(0,255,136,0.1); color:#00ff88; }
+        .tf-shot.no { background: rgba(255,77,77,0.1); color:#ff4d4d; }
+
+        /* Markdown analysis */
+        .analysis-md { background: rgba(2,6,13,0.4); border:1px solid rgba(34,211,238,0.18); border-radius:16px; padding:24px; line-height:1.85; color:#dcecff; font-size:0.95rem; }
+        .analysis-md h1,.analysis-md h2,.analysis-md h3 { color:#22d3ee; margin:18px 0 8px; font-family:'Cairo',sans-serif; }
+        .analysis-md h1 { font-size:1.3rem; } .analysis-md h2 { font-size:1.15rem; } .analysis-md h3 { font-size:1.02rem; }
+        .analysis-md strong { color:#ffd700; }
+        .analysis-md ul,.analysis-md ol { padding-right:22px; margin:8px 0; }
+        .analysis-md li { margin:4px 0; }
+        .analysis-md p { margin:8px 0; }
+        .analysis-md code { background: rgba(255,255,255,0.08); padding:1px 6px; border-radius:6px; font-size:0.85em; }
+
+        .result-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
+        .result-actions .btn { flex:1; min-width:150px; }
+
+        /* Error */
+        .error-box { background: rgba(255,77,77,0.08); border:1px solid rgba(255,77,77,0.4); border-radius:16px; padding:20px; text-align:center; color:#ffb4b4; }
+        .error-box .err-icon { font-size:2rem; margin-bottom:8px; }
+        .error-box .err-msg { color:#ffd9d9; font-weight:700; margin-bottom:14px; }
+
+        .hidden { display:none !important; }
+
+        @media (max-width: 760px) {
+            .trade-types { grid-template-columns: 1fr; }
+            .tf-grid { grid-template-columns: 1fr; }
+            .page-title { font-size:1.5rem; }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<header class="topbar-mobile">
+    <div class="brand-mobile">🤖 VisionTrader</div>
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="القائمة"><i class="fas fa-bars"></i></button>
+</header>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand"><div class="brand-icon">🤖</div><span>VisionTrader AI</span></div>
+        <nav class="nav">
+            <a href="dashboard.html"><i class="fas fa-chart-pie"></i> <span>لوحة التحكم</span></a>
+            <a href="auto-analysis.html" class="active"><i class="fas fa-bolt"></i> <span>تحليل تلقائي</span></a>
+            <a href="upload.html"><i class="fas fa-robot"></i> <span>الوكيل الذكي</span></a>
+            <a href="tv-chart.html"><i class="fas fa-chart-area"></i> <span>الشارت التفاعلي</span></a>
+            <a href="price-alerts.html"><i class="fas fa-bell"></i> <span>تنبيهات الأسعار</span></a>
+            <a href="history.html"><i class="fas fa-history"></i> <span>سجل التحليلات</span></a>
+            <a href="journal.html"><i class="fas fa-book-open"></i> <span>دفتر التداول</span></a>
+            <a href="daily-report.html"><i class="fas fa-file-pdf"></i> <span>التقرير اليومي</span></a>
+            <a href="settings.html"><i class="fas fa-cog"></i> <span>الإعدادات</span></a>
+        </nav>
+        <div style="padding:12px 10px;">
+            <button class="btn btn-danger" style="width:100%;" onclick="localStorage.removeItem('token');window.location.href='login.html';"><i class="fas fa-sign-out-alt"></i> خروج</button>
+        </div>
+    </aside>
+
+    <main class="main-content fade-in">
+        <div class="page-wrap">
+            <h1 class="page-title">⚡ التحليل التلقائي</h1>
+            <p class="page-sub">اختر الزوج ونوع الصفقة، والمنصة تتكفل بالباقي: التقاط 3 فريمات زمنية مخفية من TradingView وتحليلها عبر محرك التصويت ثم Gemini Vision لكتابة الخلاصة الاحترافية.</p>
+
+            <!-- ===== FORM ===== -->
+            <section id="formSection" class="aa-glass">
+                <div style="margin-bottom:22px;">
+                    <label class="form-label" for="pairSelect"><i class="fas fa-coins"></i> اختر الزوج</label>
+                    <select id="pairSelect" class="aa-select">
+                        <option value="XAUUSD">🥇 XAUUSD — الذهب</option>
+                        <option value="XAGUSD">🥈 XAGUSD — الفضة</option>
+                        <option value="EURUSD">💶 EURUSD — اليورو/دولار</option>
+                        <option value="GBPUSD">💷 GBPUSD — الجنيه/دولار</option>
+                        <option value="USDJPY">💴 USDJPY — دولار/ين</option>
+                        <option value="USDCHF">🇨🇭 USDCHF — دولار/فرنك</option>
+                        <option value="AUDUSD">🇦🇺 AUDUSD — الدولار الأسترالي</option>
+                        <option value="USDCAD">🇨🇦 USDCAD — الدولار الكندي</option>
+                        <option value="GBPJPY">🌐 GBPJPY — الجنيه/ين</option>
+                        <option value="EURJPY">🌐 EURJPY — اليورو/ين</option>
+                        <option value="BTCUSDT">₿ BTCUSDT — بيتكوين</option>
+                        <option value="ETHUSDT">Ξ ETHUSDT — إيثيريوم</option>
+                        <option value="USOIL">🛢️ USOIL — النفط</option>
+                        <option value="NAS100">📈 NAS100 — ناسداك</option>
+                        <option value="US30">🏛️ US30 — داو جونز</option>
+                    </select>
+                </div>
+
+                <div>
+                    <span class="form-label"><i class="fas fa-stopwatch"></i> نوع الصفقة (الفريمات المحللة)</span>
+                    <div class="trade-types" id="tradeTypes">
+                        <label class="trade-card" data-type="scalping">
+                            <input type="radio" name="tradeType" value="سكالبينج">
+                            <div class="tt-icon">⚡</div>
+                            <div class="tt-name">سكالبينج</div>
+                            <div class="tt-tfs">H1 · M15 · M5</div>
+                        </label>
+                        <label class="trade-card selected" data-type="day">
+                            <input type="radio" name="tradeType" value="يومي" checked>
+                            <div class="tt-icon">📅</div>
+                            <div class="tt-name">يومي</div>
+                            <div class="tt-tfs">H4 · H1 · M15</div>
+                        </label>
+                        <label class="trade-card" data-type="swing">
+                            <input type="radio" name="tradeType" value="سوينج">
+                            <div class="tt-icon">🌊</div>
+                            <div class="tt-name">سوينج</div>
+                            <div class="tt-tfs">D1 · H4 · H1</div>
+                        </label>
+                    </div>
+                    <p class="form-hint">السكالبينج للصفقات السريعة، اليومي للصفقات داخل اليوم، السوينج للصفقات متعددة الأيام.</p>
+                </div>
+
+                <button id="ctaBtn" class="cta-btn" onclick="runAnalysis()">
+                    <i class="fas fa-magnifying-glass-chart"></i> ابحث عن صفقة الآن
+                </button>
+            </section>
+
+            <!-- ===== LOADING ===== -->
+            <section id="loadingSection" class="aa-glass hidden">
+                <div class="loading-wrap">
+                    <div class="spinner"></div>
+                    <div class="loading-status" id="loadingStatus">جاري فتح المتصفح المخفي…</div>
+                    <div class="loading-timer" id="loadingTimer">00:00</div>
+                    <div class="loading-steps" id="loadingSteps">
+                        <span class="step-pill">🌐 فتح Playwright</span>
+                        <span class="step-pill">📸 التقاط الشارتات</span>
+                        <span class="step-pill">🧠 محرك التصويت</span>
+                        <span class="step-pill">✍️ Gemini Vision</span>
+                    </div>
+                    <p class="loading-note">قد تستغرق العملية حتى ~45–60 ثانية. لا تُغلق الصفحة.</p>
+                </div>
+            </section>
+
+            <!-- ===== ERROR ===== -->
+            <section id="errorSection" class="aa-glass hidden">
+                <div class="error-box">
+                    <div class="err-icon">⚠️</div>
+                    <div class="err-msg" id="errorMsg">حدث خطأ غير متوقع.</div>
+                    <button class="btn btn-primary" onclick="resetToForm()"><i class="fas fa-redo"></i> المحاولة مرة أخرى</button>
+                </div>
+            </section>
+
+            <!-- ===== RESULT ===== -->
+            <section id="resultSection" class="aa-glass hidden">
+                <div class="main-signal">
+                    <div class="market-label">التوصية لزوج <span id="marketName">—</span> · <span id="tradeTypeLabel">—</span></div>
+                    <div class="signal-badge tech-title" id="signalBadge">—</div>
+                    <div class="confidence-line">ثقة النظام: <span style="color:#00ff88; font-weight:800;" id="confidenceScore">0%</span></div>
+                </div>
+
+                <div id="confluenceBanner" class="confluence-banner hidden">
+                    <div class="cb-dot"></div>
+                    <div class="cb-text">
+                        <strong id="confluenceTitle">—</strong>
+                        <small id="confluenceDetail"></small>
+                    </div>
+                </div>
+
+                <div class="tf-grid" id="tfGrid"></div>
+
+                <div>
+                    <h3 style="color:#22d3ee; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-file-lines"></i> التحليل الاحترافي الكامل
+                    </h3>
+                    <div class="analysis-md" id="analysisMd">—</div>
+                </div>
+
+                <div class="result-actions">
+                    <button class="btn btn-primary" onclick="resetToForm()"><i class="fas fa-rotate"></i> تحليل جديد</button>
+                    <button class="btn btn-secondary" onclick="window.print()"><i class="fas fa-file-pdf"></i> حفظ PDF</button>
+                    <button class="btn btn-secondary" onclick="shareResult()"><i class="fas fa-share-alt"></i> مشاركة</button>
+                    <button class="btn btn-ghost" onclick="window.location.href='history.html'"><i class="fas fa-clock-rotate-left"></i> السجل</button>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/theme.js"></script>
+<script>
+    /* ===== Auth guard (same pattern as other pages) ===== */
+    (function guardAuth() {
+        const token = localStorage.getItem('token');
+        if (!token) { window.location.href = 'login.html'; return; }
+    })();
+
+    /* ===== Trade-type card selection ===== */
+    document.querySelectorAll('.trade-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.trade-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            card.querySelector('input').checked = true;
+        });
+    });
+
+    /* ===== State ===== */
+    let timerInterval = null;
+    let statusInterval = null;
+    let currentResult = null;
+
+    const statusMessages = [
+        'جاري فتح المتصفح المخفي…',
+        '📸 التقاط فريمات TradingView…',
+        '🧠 تشغيل محرك التصويت لكل فريم…',
+        '✍️ Gemini Vision يكتب الخلاصة…',
+        '🔧 تجميع القرار النهائي…'
+    ];
+
+    /* ===== Main runner ===== */
+    async function runAnalysis() {
+        const market = document.getElementById('pairSelect').value;
+        const tradeTypeInput = document.querySelector('input[name="tradeType"]:checked');
+        const tradeType = tradeTypeInput ? tradeTypeInput.value : 'يومي';
+
+        // show loading, hide others
+        showOnly('loadingSection');
+        document.getElementById('ctaBtn').disabled = true;
+        startTimer();
+        startStatusCycle();
+
+        try {
+            const data = await api.autoAnalysis(market, tradeType);
+            stopTimer();
+            stopStatusCycle();
+            currentResult = data;
+            renderResult(data, market, tradeType);
+            showOnly('resultSection');
+        } catch (err) {
+            stopTimer();
+            stopStatusCycle();
+            showError(err);
+            showOnly('errorSection');
+        } finally {
+            document.getElementById('ctaBtn').disabled = false;
+        }
+    }
+
+    /* ===== Render result ===== */
+    function renderResult(data, market, tradeType) {
+        // Market + type
+        document.getElementById('marketName').innerText = market || (data.market || '—');
+        document.getElementById('tradeTypeLabel').innerText = tradeType || (data.trade_type || '—');
+
+        // Signal badge
+        const rec = (data.recommendation || '').toString();
+        const badge = document.getElementById('signalBadge');
+        let label = 'انتظار';
+        if (rec.indexOf('شراء') >= 0) label = 'شراء قوي';
+        else if (rec.indexOf('بيع') >= 0) label = 'بيع قوي';
+        badge.innerText = label;
+        const conf = Number(data.confidence || 0);
+        const confEl = document.getElementById('confidenceScore');
+        confEl.innerText = (Number.isFinite(conf) ? conf : 0) + '%';
+        const golden = conf >= 90;
+        badge.classList.toggle('golden-glow', golden);
+        confEl.classList.toggle('golden-glow', golden);
+
+        // Confluence banner
+        renderConfluence(data.signals_summary);
+
+        // TF cards
+        renderTfCards(data.tf_results, data.timeframes);
+
+        // Markdown analysis (final_analysis is the full Gemini markdown; reason is the legacy alias)
+        const mdText = data.final_analysis || data.reason || 'لا يوجد تحليل متاح.';
+        try {
+            document.getElementById('analysisMd').innerHTML = marked.parse(mdText);
+        } catch (e) {
+            document.getElementById('analysisMd').innerText = mdText;
+        }
+    }
+
+    function renderConfluence(ss) {
+        const banner = document.getElementById('confluenceBanner');
+        if (!ss) { banner.classList.add('hidden'); return; }
+        banner.classList.remove('hidden');
+        const alignment = ss.alignment || '';
+        let cls = 'align-partial', title = alignment || '—', detail = '';
+        if (alignment === 'متوافق') { cls = 'align-agree'; title = '🟢 توافق قوي بين الأطر الزمنية'; }
+        else if (alignment === 'جزئي') { cls = 'align-partial'; title = '🟡 توافق جزئي بين الأطر الزمنية'; }
+        else if (alignment === 'متعارض') { cls = 'align-conflict'; title = '🔴 تعارض بين الأطر الزمنية'; }
+        banner.className = 'confluence-banner ' + cls;
+        document.getElementById('confluenceTitle').innerText = title;
+        const buy = Number(ss.buy_score || 0).toFixed(1);
+        const sell = Number(ss.sell_score || 0).toFixed(1);
+        document.getElementById('confluenceDetail').innerText = `قوة الشراء: ${buy} · قوة البيع: ${sell}`;
+    }
+
+    function renderTfCards(tfResults, timeframes) {
+        const grid = document.getElementById('tfGrid');
+        grid.innerHTML = '';
+        const list = (tfResults && tfResults.length) ? tfResults
+            : (timeframes || []).map(tf => ({ tf, recommendation: '—', confidence: 0, reason: '', has_screenshot: false }));
+        if (!list.length) {
+            grid.innerHTML = '<p style="color:#8aa0b5; grid-column:1/-1; text-align:center;">لا توجد بيانات فريمات.</p>';
+            return;
+        }
+        list.forEach(item => {
+            const rec = (item.recommendation || '—').toString();
+            let sigCls = 'sig-neutral';
+            if (rec.indexOf('شراء') >= 0) sigCls = 'sig-buy';
+            else if (rec.indexOf('بيع') >= 0) sigCls = 'sig-sell';
+            const conf = Number(item.confidence || 0);
+            const shot = item.has_screenshot
+                ? '<span class="tf-shot ok"><i class="fas fa-camera"></i> شارت</span>'
+                : '<span class="tf-shot no"><i class="fas fa-camera-slash"></i> لا يوجد</span>';
+            const reason = item.reason ? escapeHtml(String(item.reason)).slice(0, 160) : '';
+            const card = document.createElement('div');
+            card.className = 'tf-card';
+            card.innerHTML = `
+                <div class="tf-name">${escapeHtml(item.tf || '—')}</div>
+                <div class="tf-signal ${sigCls}">${escapeHtml(rec)}</div>
+                <div class="tf-conf">الثقة: ${Number.isFinite(conf) ? conf : 0}%</div>
+                ${shot}
+                ${reason ? `<div class="tf-reason">${reason}${item.reason && String(item.reason).length > 160 ? '…' : ''}</div>` : ''}
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    /* ===== Loading UX ===== */
+    function startTimer() {
+        const el = document.getElementById('loadingTimer');
+        let sec = 0;
+        el.innerText = '00:00';
+        timerInterval = setInterval(() => {
+            sec++;
+            const m = String(Math.floor(sec / 60)).padStart(2, '0');
+            const s = String(sec % 60).padStart(2, '0');
+            el.innerText = `${m}:${s}`;
+        }, 1000);
+    }
+    function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+
+    function startStatusCycle() {
+        const el = document.getElementById('loadingStatus');
+        let i = 0;
+        el.innerText = statusMessages[0];
+        statusInterval = setInterval(() => {
+            i = (i + 1) % statusMessages.length;
+            el.innerText = statusMessages[i];
+        }, 7000);
+    }
+    function stopStatusCycle() { if (statusInterval) { clearInterval(statusInterval); statusInterval = null; } }
+
+    /* ===== Error ===== */
+    function showError(err) {
+        const msg = (err && err.message) ? err.message : 'حدث خطأ غير متوقع أثناء التحليل.';
+        document.getElementById('errorMsg').innerText = msg;
+    }
+
+    /* ===== Helpers ===== */
+    function showOnly(sectionId) {
+        ['formSection', 'loadingSection', 'errorSection', 'resultSection'].forEach(id => {
+            document.getElementById(id).classList.toggle('hidden', id !== sectionId);
+        });
+        // keep form visible above loading/result for context? No — clean swap.
+        document.getElementById('formSection').classList.toggle('hidden', sectionId !== 'formSection');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetToForm() {
+        stopTimer(); stopStatusCycle();
+        currentResult = null;
+        showOnly('formSection');
+    }
+
+    async function shareResult() {
+        const text = currentResult
+            ? `تحليل ${currentResult.market} (${currentResult.trade_type}): ${currentResult.recommendation} بثقة ${currentResult.confidence}%`
+            : 'تحليل السوق من VisionTrader AI';
+        if (navigator.share) {
+            try { await navigator.share({ title: 'VisionTrader AI', text }); } catch (e) { /* user cancelled */ }
+        } else {
+            try { await navigator.clipboard.writeText(text); alert('تم نسخ الملخص.'); } catch (e) { /* ignore */ }
+        }
+    }
+</script>
+</body>
+</html>

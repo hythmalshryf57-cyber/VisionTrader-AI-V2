@@ -1,0 +1,21 @@
+{
+  "data_adapter": {
+    "candles": 341,
+    "opens": 341,
+    "highs": 341,
+    "lows": 341,
+    "volumes": 341,
+    "timestamps": 341,
+    "data_adapter_debug": {
+      "data_source_used": "yahoo_history",
+      "candles_received": 341,
+      "candles_after_processing": 341,
+      "fetch_status": "success",
+      "fetch_errors": [],
+      "symbol_requested": "XAUUSD",
+      "timeframe_requested": "15m",
+      "range_requested": "5d"
+    }
+  },
+  "clusters": []
+}

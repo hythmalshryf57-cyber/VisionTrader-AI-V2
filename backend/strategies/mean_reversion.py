@@ -297,7 +297,10 @@ class MeanReversionAnalyzer:
         
         # الانحدار
         if len(x_clean) >= 2:
-            phi = np.polyfit(x_clean, y_clean, 1)[0]
+            try:
+                phi = np.polyfit(x_clean, y_clean, 1)[0]
+            except Exception:
+                phi = 0.5
         else:
             phi = 0.5
         

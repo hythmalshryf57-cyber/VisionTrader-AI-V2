@@ -80,6 +80,18 @@ class BinanceService:
         result = self._request("/fapi/v1/allForceOrders", {"symbol": symbol, "limit": limit})
         return result if isinstance(result, list) else []
 
+    def get_liquidations(self, symbol: str, limit: int = 100) -> List[dict]:
+        return self.get_force_orders(symbol, limit=limit)
+
+    def get_funding_rate(self, symbol: str) -> Optional[float]:
+        result = self._request("/fapi/v1/premiumIndex", {"symbol": symbol})
+        if isinstance(result, dict) and "lastFundingRate" in result:
+            try:
+                return float(result["lastFundingRate"])
+            except ValueError:
+                return None
+        return None
+
     def calculate_cumulative_delta(self, klines: List[list]) -> float:
         total_delta = 0.0
         for candle in klines:

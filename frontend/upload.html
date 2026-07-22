@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>VisionTrader AI — الوكيل الذكي</title>
+    <title>VisionTrader AI — التحليل الذكي</title>
     <meta name="description" content="وكيل تداول ذكي يحلل الشارتات تلقائياً ويعطي توصيات احترافية">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -377,6 +377,225 @@
             .starters-grid { grid-template-columns: 1fr; }
             .bubble { max-width: 95%; }
         }
+
+        /* ═══ MODE TABS ═══ */
+        .mode-tabs {
+            display: flex; gap: 8px;
+            padding: 20px 32px 0;
+            max-width: 900px; width: 100%; margin: 0 auto;
+        }
+        .mode-tab {
+            flex: 1; padding: 12px 16px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(255,255,255,0.07);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-dim); cursor: pointer;
+            font-family: 'Cairo', sans-serif; font-size: 0.9rem; font-weight: 600;
+            transition: all 0.25s ease;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .mode-tab:hover { border-color: rgba(0,200,255,0.25); color: var(--text); }
+        .mode-tab.active {
+            background: linear-gradient(135deg, rgba(0,200,255,0.15), rgba(139,92,246,0.12));
+            border-color: rgba(0,200,255,0.4);
+            color: var(--accent);
+            box-shadow: 0 0 20px rgba(0,200,255,0.08);
+        }
+        .mode-tab.auto-tab.active {
+            background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(249,115,22,0.1));
+            border-color: rgba(139,92,246,0.45);
+            color: #c4b5fd;
+        }
+
+        /* ═══ AUTO ANALYSIS PANEL ═══ */
+        .auto-panel {
+            display: none;
+            flex: 1;
+            padding: 20px 32px;
+            max-width: 900px; width: 100%; margin: 0 auto;
+            flex-direction: column; gap: 20px;
+        }
+        .auto-panel.visible { display: flex; }
+
+        .auto-hero {
+            background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(0,200,255,0.08));
+            border: 1px solid rgba(139,92,246,0.25);
+            border-radius: 20px; padding: 24px;
+            text-align: center;
+        }
+        .auto-hero-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .auto-hero h2 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+        .auto-hero p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+        .auto-form { display: flex; flex-direction: column; gap: 16px; }
+        .auto-field { display: flex; flex-direction: column; gap: 8px; }
+        .auto-label {
+            font-size: 0.85rem; font-weight: 700; color: var(--text-dim);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .auto-label i { color: var(--accent); }
+
+        .pair-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+        .pair-btn {
+            padding: 10px 8px; border-radius: 12px;
+            border: 1.5px solid rgba(255,255,255,0.07);
+            background: rgba(255,255,255,0.04);
+            color: var(--text); cursor: pointer;
+            font-family: 'Cairo', sans-serif; font-size: 0.82rem; font-weight: 600;
+            transition: all 0.2s ease; text-align: center;
+        }
+        .pair-btn:hover { border-color: rgba(0,200,255,0.3); transform: translateY(-1px); }
+        .pair-btn.selected {
+            background: rgba(0,200,255,0.12);
+            border-color: rgba(0,200,255,0.5);
+            color: var(--accent);
+            box-shadow: 0 0 12px rgba(0,200,255,0.12);
+        }
+        .pair-input-row {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .pair-custom-input {
+            flex: 1; padding: 10px 14px; border-radius: 12px;
+            border: 1.5px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: var(--text); font-family: 'Cairo', sans-serif; font-size: 0.9rem;
+            outline: none; text-transform: uppercase;
+        }
+        .pair-custom-input:focus { border-color: rgba(0,200,255,0.4); }
+        .pair-custom-input::placeholder { color: var(--text-dim); text-transform: none; }
+
+        .type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .type-card {
+            padding: 16px 10px; border-radius: 16px;
+            border: 1.5px solid rgba(255,255,255,0.07);
+            background: rgba(255,255,255,0.03);
+            color: var(--text); cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.25s ease; text-align: center;
+        }
+        .type-card .type-icon { font-size: 1.6rem; margin-bottom: 6px; }
+        .type-card .type-name { font-size: 0.9rem; font-weight: 700; }
+        .type-card .type-tfs { font-size: 0.74rem; color: var(--text-dim); margin-top: 3px; }
+        .type-card:hover { border-color: rgba(139,92,246,0.35); transform: translateY(-2px); }
+        .type-card.selected {
+            background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(0,200,255,0.1));
+            border-color: rgba(139,92,246,0.5);
+            box-shadow: 0 0 18px rgba(139,92,246,0.12);
+        }
+        .type-card.selected .type-name { color: #c4b5fd; }
+
+        .auto-submit-btn {
+            width: 100%; padding: 16px;
+            border-radius: 16px; border: none;
+            background: linear-gradient(135deg, #8b5cf6, #00c8ff);
+            color: #fff; font-family: 'Cairo', sans-serif;
+            font-size: 1rem; font-weight: 700; cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 24px rgba(139,92,246,0.35);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .auto-submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(139,92,246,0.45); }
+        .auto-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Loading spinner for auto */
+        .auto-loading {
+            display: none; flex-direction: column; align-items: center;
+            gap: 16px; padding: 32px; text-align: center;
+        }
+        .auto-loading.visible { display: flex; }
+        .orbit-loader {
+            width: 60px; height: 60px; position: relative;
+        }
+        .orbit-loader::before, .orbit-loader::after {
+            content: ''; position: absolute; border-radius: 50%;
+        }
+        .orbit-loader::before {
+            width: 60px; height: 60px; border: 3px solid transparent;
+            border-top-color: var(--accent); border-right-color: var(--accent2);
+            animation: orbit-spin 1s linear infinite;
+        }
+        .orbit-loader::after {
+            width: 40px; height: 40px; top: 10px; left: 10px;
+            border: 2px solid transparent; border-bottom-color: #22d3ee;
+            animation: orbit-spin 0.65s linear infinite reverse;
+        }
+        @keyframes orbit-spin { to { transform: rotate(360deg); } }
+        .auto-loading-steps { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 320px; }
+        .auto-loading-step {
+            font-size: 0.82rem; padding: 8px 14px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-dim); text-align: right;
+            transition: all 0.4s;
+        }
+        .auto-loading-step.done { color: var(--success); border-color: rgba(16,185,129,0.2); background: rgba(16,185,129,0.05); }
+        .auto-loading-step.active { color: var(--accent); border-color: rgba(0,200,255,0.2); background: rgba(0,200,255,0.04); animation: step-pulse 1.5s infinite; }
+
+        /* Auto result card */
+        .auto-result {
+            display: none;
+            flex-direction: column; gap: 16px;
+        }
+        .auto-result.visible { display: flex; }
+        .result-header {
+            background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(0,200,255,0.08));
+            border: 1px solid rgba(16,185,129,0.25);
+            border-radius: 18px; padding: 20px;
+            display: flex; align-items: center; gap: 16px;
+        }
+        .result-header.sell {
+            background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(139,92,246,0.08));
+            border-color: rgba(239,68,68,0.25);
+        }
+        .result-header.neutral {
+            background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(139,92,246,0.08));
+            border-color: rgba(251,191,36,0.25);
+        }
+        .result-signal { font-size: 2.2rem; }
+        .result-info h3 { font-size: 1.1rem; font-weight: 700; color: #fff; }
+        .result-info p { color: var(--text-dim); font-size: 0.85rem; margin-top: 2px; }
+        .result-conf {
+            margin-right: auto; text-align: center;
+            background: rgba(0,0,0,0.3); border-radius: 12px; padding: 10px 16px;
+        }
+        .result-conf .conf-num { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+        .result-conf .conf-label { font-size: 0.72rem; color: var(--text-dim); }
+        .result-analysis {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 18px; padding: 22px;
+            line-height: 1.85; font-size: 0.93rem;
+        }
+        .result-analysis h1,.result-analysis h2,.result-analysis h3 { color: var(--accent); margin: 12px 0 6px; }
+        .result-analysis strong { color: var(--gold); }
+        .result-analysis ul,.result-analysis ol { padding-right: 20px; margin: 6px 0; }
+        .result-analysis li { margin: 4px 0; }
+        .result-actions {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .result-action-btn {
+            flex: 1; min-width: 120px; padding: 12px;
+            border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: var(--text); font-family: 'Cairo', sans-serif;
+            font-size: 0.88rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .result-action-btn:hover { background: rgba(0,200,255,0.08); border-color: rgba(0,200,255,0.25); color: var(--accent); }
+        .result-action-btn.primary { background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(0,200,255,0.1)); border-color: rgba(16,185,129,0.3); color: var(--success); }
+        .result-tf-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tf-badge {
+            padding: 6px 14px; border-radius: 50px; font-size: 0.78rem; font-weight: 700;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .tf-badge.buy { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+        .tf-badge.sell { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #f87171; }
+        .tf-badge.neutral { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); color: #fbbf24; }
+
+        @media (max-width: 640px) {
+            .type-grid { grid-template-columns: 1fr; }
+            .mode-tabs { padding: 16px 16px 0; }
+            .auto-panel { padding: 16px 16px; }
+        }
     </style>
 </head>
 <body>
@@ -404,6 +623,7 @@
         </div>
         <nav class="sidebar-nav">
             <a href="dashboard.html" class="nav-link"><i class="fas fa-chart-pie"></i> لوحة التحكم</a>
+            <a href="auto-analysis.html" class="nav-link"><i class="fas fa-bolt"></i> تحليل تلقائي</a>
             <a href="upload.html" class="nav-link active"><i class="fas fa-robot"></i> الوكيل الذكي</a>
             <a href="tv-chart.html" class="nav-link"><i class="fas fa-chart-area"></i> الشارت التفاعلي</a>
             <a href="price-alerts.html" class="nav-link"><i class="fas fa-bell"></i> تنبيهات الأسعار</a>
@@ -424,17 +644,27 @@
     <main class="main">
         <div class="page-header">
             <div>
-                <div class="page-title">🤖 الوكيل الذكي</div>
-                <div class="page-subtitle">يسألك خطوة بخطوة ثم يحلل الشارت تلقائياً</div>
+                <div class="page-title">📡 التحليل الذكي</div>
+                <div class="page-subtitle">محادثة أو تحليل تلقائي بدون رفع الشارت — يجلب البيانات من TradingView</div>
             </div>
             <div class="header-badge">
                 <div class="dot"></div>
-                Gemini Vision + TradingView
+                Gemini Vision + TradingView Live
             </div>
         </div>
 
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tabChat" onclick="switchMode('chat')">
+                <i class="fas fa-robot"></i> الوكيل الذكي
+            </button>
+            <button class="mode-tab auto-tab" id="tabAuto" onclick="switchMode('auto')">
+                <i class="fas fa-satellite-dish"></i> تحليل تلقائي
+            </button>
+        </div>
+
         <!-- Chat messages -->
-        <div class="chat-container">
+        <div class="chat-container" id="chatPanel">
             <div class="messages-area" id="messagesArea"></div>
             <div id="typingIndicator" style="display:none">
                 <div class="bubble-wrap">
@@ -448,6 +678,108 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- AUTO ANALYSIS PANEL -->
+        <div class="auto-panel" id="autoPanel">
+
+            <!-- Hero -->
+            <div class="auto-hero">
+                <div class="auto-hero-icon">🛰️</div>
+                <h2>تحليل تلقائي بالكامل بدون رفع صور</h2>
+                <p>اختر الزوج ونوع التداول — المنصة ستفتح TradingView تلقائياً وتحلل كل الفريمات وتعطيك صفقة احترافية</p>
+            </div>
+
+            <!-- Form -->
+            <div class="auto-form" id="autoForm">
+
+                <!-- Pair Selection -->
+                <div class="auto-field">
+                    <div class="auto-label"><i class="fas fa-coins"></i> اختر الزوج أو السوق</div>
+                    <div class="pair-grid" id="pairGrid">
+                        <button class="pair-btn selected" data-pair="XAUUSD" onclick="selectPair('XAUUSD', this)">🥇 XAUUSD</button>
+                        <button class="pair-btn" data-pair="EURUSD" onclick="selectPair('EURUSD', this)">💶 EURUSD</button>
+                        <button class="pair-btn" data-pair="GBPUSD" onclick="selectPair('GBPUSD', this)">💷 GBPUSD</button>
+                        <button class="pair-btn" data-pair="BTCUSDT" onclick="selectPair('BTCUSDT', this)">₿ BTCUSDT</button>
+                        <button class="pair-btn" data-pair="ETHUSDT" onclick="selectPair('ETHUSDT', this)">⟠ ETHUSDT</button>
+                        <button class="pair-btn" data-pair="NAS100" onclick="selectPair('NAS100', this)">📈 NAS100</button>
+                        <button class="pair-btn" data-pair="USDJPY" onclick="selectPair('USDJPY', this)">💴 USDJPY</button>
+                        <button class="pair-btn" data-pair="USOIL" onclick="selectPair('USOIL', this)">🛢️ USOIL</button>
+                    </div>
+                    <div class="pair-input-row">
+                        <input type="text" id="customPairInput" class="pair-custom-input"
+                            placeholder="أو اكتب رمز آخر... مثلاً: GBPJPY"
+                            oninput="onCustomPairInput(this)" />
+                    </div>
+                </div>
+
+                <!-- Trade Type -->
+                <div class="auto-field">
+                    <div class="auto-label"><i class="fas fa-sliders-h"></i> نوع الصفقة</div>
+                    <div class="type-grid">
+                        <div class="type-card" onclick="selectType('سكالبينج', this)">
+                            <div class="type-icon">⚡</div>
+                            <div class="type-name">سكالبينج</div>
+                            <div class="type-tfs">H1 · M15 · M5</div>
+                        </div>
+                        <div class="type-card selected" onclick="selectType('يومي', this)">
+                            <div class="type-icon">📅</div>
+                            <div class="type-name">يومي</div>
+                            <div class="type-tfs">H4 · H1 · M15</div>
+                        </div>
+                        <div class="type-card" onclick="selectType('سوينج', this)">
+                            <div class="type-icon">🌊</div>
+                            <div class="type-name">سوينج</div>
+                            <div class="type-tfs">D1 · H4 · H1</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="auto-submit-btn" id="autoSubmitBtn" onclick="runAutoAnalysis()">
+                    <i class="fas fa-satellite-dish"></i> ابحث عن صفقة الآن
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div class="auto-loading" id="autoLoading">
+                <div class="orbit-loader"></div>
+                <div>
+                    <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:4px">جارٍ التحليل الشامل...</div>
+                    <div style="font-size:0.85rem;color:var(--text-dim)">قد يستغرق حتى دقيقتين</div>
+                </div>
+                <div class="auto-loading-steps" id="autoLoadingSteps">
+                    <div class="auto-loading-step active" id="lstep1">🌐 فتح TradingView وجلب الشارتات...</div>
+                    <div class="auto-loading-step" id="lstep2">🤖 تشغيل الوكلاء الذكيين...</div>
+                    <div class="auto-loading-step" id="lstep3">🧠 تحليل كل الفريمات الزمنية...</div>
+                    <div class="auto-loading-step" id="lstep4">⚡ اتخاذ القرار النهائي...</div>
+                </div>
+            </div>
+
+            <!-- Result State -->
+            <div class="auto-result" id="autoResult">
+                <div class="result-header" id="autoResultHeader">
+                    <div class="result-signal" id="autoResultSignal">📊</div>
+                    <div class="result-info">
+                        <h3 id="autoResultTitle">تحليل مكتمل</h3>
+                        <p id="autoResultSub">تحليل متعدد الأطر الزمنية</p>
+                    </div>
+                    <div class="result-conf">
+                        <div class="conf-num" id="autoResultConf">-</div>
+                        <div class="conf-label">الثقة</div>
+                    </div>
+                </div>
+
+                <div id="autoResultTFRow" class="result-tf-row"></div>
+
+                <div class="result-analysis" id="autoResultAnalysis"></div>
+
+                <div class="result-actions">
+                    <button class="result-action-btn primary" onclick="runAutoAnalysis()"><i class="fas fa-redo"></i> تحليل جديد</button>
+                    <button class="result-action-btn" onclick="copyAutoResult()"><i class="far fa-copy"></i> نسخ التوصية</button>
+                    <button class="result-action-btn" onclick="switchMode('chat')"><i class="fas fa-robot"></i> اسأل الوكيل</button>
+                </div>
+            </div>
+
         </div>
 
         <!-- Quick starters (shown only when chat is empty) -->
@@ -468,16 +800,16 @@
                     <div class="starter-title">تحليل اليورو</div>
                     <div class="starter-desc">EURUSD — أكثر الأزواج سيولة</div>
                 </div>
-                <div class="starter-card" onclick="sendQuick('حلل البيتكوين')">
-                    <div class="starter-icon">₿</div>
-                    <div class="starter-title">تحليل البيتكوين</div>
-                    <div class="starter-desc">BTCUSDT — ملك العملات الرقمية</div>
+                <div class="starter-card" onclick="switchMode('auto')" style="border-color:rgba(139,92,246,0.3);">
+                    <div class="starter-icon">🛰️</div>
+                    <div class="starter-title">تحليل تلقائي</div>
+                    <div class="starter-desc">بدون رفع شارت — المنصة تجلب كل شيء تلقائياً</div>
                 </div>
             </div>
         </div>
 
-        <!-- Input area -->
-        <div class="input-zone">
+        <!-- Input area (chat only) -->
+        <div class="input-zone" id="chatInputZone">
             <!-- Image preview -->
             <div class="img-preview-wrap" id="imgPreviewWrap">
                 <img id="imgPreviewThumb" src="" alt="صورة الشارت">
@@ -507,7 +839,7 @@
 
 <script>
 // ══════════════════════════════════════════════════════
-//  VisionTrader AI — Smart Conversational Agent
+//  VisionTrader AI — Smart Conversational + Auto Agent
 // ══════════════════════════════════════════════════════
 const messagesArea = document.getElementById('messagesArea');
 const msgInput     = document.getElementById('msgInput');
@@ -523,6 +855,12 @@ const API_BASE = '';
 let attachedImage = null;
 let isProcessing = false;
 let conversationStarted = false;
+let currentMode = 'chat'; // 'chat' | 'auto'
+
+// Auto analysis state
+let selectedPair = 'XAUUSD';
+let selectedTradeType = 'يومي';
+let lastAutoResultText = '';
 
 // Current conversation step tracking
 let convState = {
@@ -531,6 +869,184 @@ let convState = {
     timeframe: null,
     trade_type: null
 };
+
+// ── Mode Switcher ─────────────────────────────────────
+function switchMode(mode) {
+    currentMode = mode;
+    const chatPanel = document.getElementById('chatPanel');
+    const autoPanel = document.getElementById('autoPanel');
+    const chatInput = document.getElementById('chatInputZone');
+    const tabChat   = document.getElementById('tabChat');
+    const tabAuto   = document.getElementById('tabAuto');
+    const qstarters = document.getElementById('quickStarters');
+
+    if (mode === 'auto') {
+        chatPanel.style.display  = 'none';
+        chatInput.style.display  = 'none';
+        qstarters.style.display  = 'none';
+        autoPanel.classList.add('visible');
+        tabChat.classList.remove('active');
+        tabAuto.classList.add('active');
+    } else {
+        chatPanel.style.display  = '';
+        chatInput.style.display  = '';
+        autoPanel.classList.remove('visible');
+        tabChat.classList.add('active');
+        tabAuto.classList.remove('active');
+        if (!conversationStarted) qstarters.style.display = 'block';
+    }
+}
+
+// ── Pair & Type Selectors ─────────────────────────────
+function selectPair(pair, btn) {
+    selectedPair = pair;
+    document.getElementById('customPairInput').value = '';
+    document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+}
+
+function onCustomPairInput(input) {
+    const val = input.value.trim().toUpperCase();
+    document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('selected'));
+    if (val) selectedPair = val;
+}
+
+function selectType(type, card) {
+    selectedTradeType = type;
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+}
+
+// ── Auto Loading Steps Animation ──────────────────────
+let loadingStepTimer = null;
+function startLoadingSteps() {
+    const steps = ['lstep1','lstep2','lstep3','lstep4'];
+    let idx = 0;
+    steps.forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'auto-loading-step';
+    });
+    document.getElementById(steps[0]).className = 'auto-loading-step active';
+
+    loadingStepTimer = setInterval(() => {
+        document.getElementById(steps[idx]).className = 'auto-loading-step done';
+        idx++;
+        if (idx < steps.length) {
+            document.getElementById(steps[idx]).className = 'auto-loading-step active';
+        } else {
+            clearInterval(loadingStepTimer);
+        }
+    }, 18000);
+}
+
+function stopLoadingSteps() {
+    if (loadingStepTimer) clearInterval(loadingStepTimer);
+    ['lstep1','lstep2','lstep3','lstep4'].forEach(id => {
+        document.getElementById(id).className = 'auto-loading-step done';
+    });
+}
+
+// ── Run Auto Analysis ─────────────────────────────────
+async function runAutoAnalysis() {
+    const token = getToken();
+    if (!token) { window.location.href = 'login.html'; return; }
+
+    const customPair = document.getElementById('customPairInput').value.trim().toUpperCase();
+    const pair = customPair || selectedPair;
+    if (!pair) { alert('الرجاء اختيار زوج التداول'); return; }
+
+    // Show loading
+    document.getElementById('autoForm').style.display    = 'none';
+    document.getElementById('autoResult').classList.remove('visible');
+    document.getElementById('autoLoading').classList.add('visible');
+    document.getElementById('autoSubmitBtn') && (document.getElementById('autoSubmitBtn').disabled = true);
+    startLoadingSteps();
+
+    try {
+        const accountBalance = localStorage.getItem('account_balance') || 1000;
+        const riskPercent = localStorage.getItem('risk_percent') || 1;
+
+        const payload = { 
+            market: pair, 
+            trade_type: selectedTradeType,
+            account_balance: parseFloat(accountBalance),
+            risk_percent: parseFloat(riskPercent)
+        };
+
+        const res = await fetch(`${API_BASE}/api/analysis/auto`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.status === 401) { localStorage.removeItem('token'); window.location.href = 'login.html'; return; }
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'خطأ ' + res.status);
+        }
+
+        const data = await res.json();
+        stopLoadingSteps();
+        showAutoResult(data, pair, selectedTradeType);
+
+    } catch(e) {
+        stopLoadingSteps();
+        document.getElementById('autoLoading').classList.remove('visible');
+        document.getElementById('autoForm').style.display = 'flex';
+        document.getElementById('autoForm').style.flexDirection = 'column';
+        document.getElementById('autoSubmitBtn') && (document.getElementById('autoSubmitBtn').disabled = false);
+        alert('تعذّر إجراء التحليل: ' + e.message);
+    }
+}
+
+function showAutoResult(data, pair, tradeType) {
+    document.getElementById('autoLoading').classList.remove('visible');
+
+    const rec  = data.recommendation || 'محايد';
+    const conf = data.confidence || 0;
+    const text = data.reason || '';
+    lastAutoResultText = text;
+
+    // Signal icon and header class
+    let signalIcon = '📊', headerClass = 'neutral', titleText = 'لا توجد فرصة واضحة';
+    if (rec.includes('شراء') || rec === 'Buy') {
+        signalIcon = '📈'; headerClass = ''; titleText = `فرصة شراء — ${pair}`;
+    } else if (rec.includes('بيع') || rec === 'Sell') {
+        signalIcon = '📉'; headerClass = 'sell'; titleText = `فرصة بيع — ${pair}`;
+    } else {
+        titleText = `لا توجد فرصة واضحة — ${pair}`;
+    }
+
+    document.getElementById('autoResultSignal').textContent = signalIcon;
+    document.getElementById('autoResultHeader').className   = 'result-header ' + headerClass;
+    document.getElementById('autoResultTitle').textContent  = titleText;
+    document.getElementById('autoResultSub').textContent    = `${tradeType} · تحليل متعدد الفريمات`;
+    document.getElementById('autoResultConf').textContent   = conf + '%';
+
+    // Render markdown analysis
+    const analysisDiv = document.getElementById('autoResultAnalysis');
+    if (window.marked && text) {
+        analysisDiv.innerHTML = marked.parse(text);
+    } else {
+        analysisDiv.textContent = text || 'لا يوجد تحليل تفصيلي.';
+    }
+
+    document.getElementById('autoResult').classList.add('visible');
+    document.getElementById('autoForm').style.display = 'none';
+
+    // Show reset button after result
+    document.getElementById('autoForm').style.display = '';
+    document.getElementById('autoSubmitBtn') && (document.getElementById('autoSubmitBtn').disabled = false);
+}
+
+function copyAutoResult() {
+    navigator.clipboard.writeText(lastAutoResultText || '').then(() => {
+        alert('تم نسخ التوصية!');
+    });
+}
 
 // ── Helpers ──────────────────────────────────────────
 function getToken() {
@@ -808,12 +1324,16 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!getToken()) { window.location.href = 'login.html'; return; }
     // Welcome message
     addMessage(
-        'أهلاً! 👋 أنا **وكيل التداول الذكي** في VisionTrader AI.\n\nأقدر أحلل لك أي شارت بشكل احترافي مع:\n✅ نقطة الدخول المثلى\n✅ وقف الخسارة (SL)\n✅ الأهداف (TP1, TP2, TP3)\n✅ نسبة المخاطرة/العائد (R:R)\n\nاختر من الأسفل أو اكتب مباشرة:',
+        'أهلاً! 👋 أنا **وكيل التداول الذكي** في VisionTrader AI.\n\nأقدر أحلل لك أي شارت بشكل احترافي مع:\n✅ نقطة الدخول المثلى\n✅ وقف الخسارة (SL)\n✅ الأهداف (TP1, TP2, TP3)\n✅ نسبة المخاطرة/العائد (R:R)\n\n💡 **جديد:** جرب **التحليل التلقائي** بالأعلى — بدون رفع أي صورة!',
         'ai',
-        ['أبي تحليل شارت', 'حلل الذهب', 'حلل EURUSD', 'حلل البيتكوين']
+        ['أبي تحليل شارت', 'حلل الذهب', 'حلل EURUSD']
     );
     conversationStarted = false;
     quickStart.style.display = 'block';
+
+    // Check URL param to auto-switch mode
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'auto') switchMode('auto');
 });
 </script>
 </body>

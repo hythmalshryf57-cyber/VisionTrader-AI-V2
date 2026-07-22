@@ -38,6 +38,8 @@ const api = {
 
   // Analysis & Chat
   async analyzeMarket(market, images) { return this.request('POST', '/api/analysis/process', { market, images }, true); },
+  // Auto analysis without uploading a chart — backend captures & analyzes 3 TFs.
+  async autoAnalysis(market, trade_type) { return this.request('POST', '/api/analysis/auto', { market, trade_type }, true); },
   async getMentorResponse(query) { return this.request('POST', '/api/analysis/mentor', { query }, true); },
   async askAssistant(question) { return this.request('POST', '/api/ai/assistant', { question }, true); },
   async askAgent(formData) {
