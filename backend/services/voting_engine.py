@@ -67,7 +67,8 @@ class DynamicStrategyLoader:
         }
         self._lock = threading.Lock()
         self._auto_reload_started = False
-        self._load_all()
+        # ✅ Lazy Load: لا تقم بتحميل الـ 35 استراتيجية فوراً عند الإقلاع لتوفير الذاكرة (RAM < 100MB)
+        # سيتم التحميل تلقائياً عند أول طلب تحليل عبر refresh_if_needed
 
     def _read_file_text(self, file_path: str) -> str:
         try:
@@ -231,11 +232,11 @@ class DynamicStrategyLoader:
 
         def _reload_loop() -> None:
             while True:
+                time.sleep(self.scan_interval_seconds)
                 try:
                     self.refresh_if_needed(force=True)
                 except Exception as e:
                     logger.exception("Strategy auto-reload failed: %s", e)
-                time.sleep(self.scan_interval_seconds)
 
         thread = threading.Thread(target=_reload_loop, daemon=True)
         thread.start()
