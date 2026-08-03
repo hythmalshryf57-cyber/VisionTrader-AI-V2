@@ -57,7 +57,7 @@ class DynamicStrategyLoader:
     def __init__(self, strategies_dir: Optional[str] = None, scan_interval_seconds: int = 300):
         self.strategies_dir = strategies_dir or os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "strategies"))
         self.scan_interval_seconds = scan_interval_seconds
-        self.last_scan = datetime.min
+        self.last_scan = datetime.min.replace(tzinfo=timezone.utc)
         self.loaded_strategies: Dict[str, Dict[str, Any]] = {}
         self.failed_strategies: List[str] = []
         self.cluster_map: Dict[str, List[str]] = {
