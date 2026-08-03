@@ -5,7 +5,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 COPY frontend/ /app/frontend/
 COPY frontend/ /frontend/
+EXPOSE 8000
 EXPOSE 10000
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000", "--workers", "1"]
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+
 
 
