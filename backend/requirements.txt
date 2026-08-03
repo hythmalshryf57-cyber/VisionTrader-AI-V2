@@ -43,13 +43,14 @@ typing-extensions>=4.8.0,<5.0.0
 pydantic==2.9.2
 pydantic-settings==2.5.2
 
-# Testing
-pytest==8.3.3
-pytest-asyncio==0.24.0
+# Testing (not needed in production)
+# pytest==8.3.3
+# pytest-asyncio==0.24.0
 psutil==6.0.0
 
 # Telegram Bot — >=3.13 يدعم typing-extensions>=4.8.0
 aiogram>=3.13.0
 
-# Browser Automation (TradingView Screenshot)
-playwright>=1.40.0
+# Browser Automation (mutes playwright on Render free tier to prevent 512MB RAM OOM)
+# playwright>=1.40.0
+
