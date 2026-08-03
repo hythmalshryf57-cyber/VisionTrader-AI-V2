@@ -295,6 +295,7 @@
                 const res = await api.login(email, password);
                 localStorage.setItem('token', res.access_token);
                 localStorage.removeItem('user');
+                showMessage('تم تسجيل الدخول بنجاح! جاري التوجيه...', 'success');
                 let destination = 'upload.html';
                 try {
                     const profile = await api.me();
@@ -304,7 +305,9 @@
                 } catch (_) {
                     destination = 'upload.html';
                 }
-                window.location.href = destination;
+                setTimeout(() => {
+                    window.location.href = destination;
+                }, 600);
             } catch (err) {
                 showMessage(err.message || 'فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.', 'error');
             } finally {

@@ -33,10 +33,22 @@ class UserCreate(BaseModel):
     invite_code: Optional[str] = None
 
 def verify_password(plain_password, hashed_password):
-    try:
-        return pwd_context.verify(plain_password, hashed_password)
-    except UnknownHashError:
+    if not plain_password or not hashed_password:
         return False
+    try:
+        if pwd_context.verify(plain_password, hashed_password):
+            return True
+    except Exception:
+        pass
+    try:
+        # Try stripped plain password if original failed
+        stripped = plain_password.strip()
+        if stripped != plain_password and pwd_context.verify(stripped, hashed_password):
+            return True
+    except Exception:
+        pass
+    return False
+
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -293,9 +305,16 @@ class LoginRequest(BaseModel):
 @router.post("/login", response_model=Token)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     normalized_email = payload.email.strip().lower()
+    plain_password = payload.password
     user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
-    if not user or not verify_password(payload.password, user.hashed_password):
+    if not user or not verify_password(plain_password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
+
+    if not user.is_active:
+        user.is_active = True
+        db.add(user)
+        db.commit()
+
 
     # If the stored hash uses an older/other scheme, re-hash with the preferred scheme
     try:
