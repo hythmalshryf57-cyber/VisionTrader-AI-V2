@@ -333,8 +333,15 @@ async def start_shared_ws():
         except Exception:
             pass
 
-        asyncio.create_task(shared_ws.start())
-        logger.info("Started shared BinanceWebSocketService for symbols: %s", symbols)
+        async def _delayed_ws_start():
+            await asyncio.sleep(10)
+            try:
+                await shared_ws.start()
+                logger.info("Started shared BinanceWebSocketService for symbols: %s", symbols)
+            except Exception as ex:
+                logger.warning(f"Shared websocket startup failed: {ex}")
+
+        asyncio.create_task(_delayed_ws_start())
     except Exception as e:
         logger.exception("Failed to initialize shared websocket: %s", e)
 
@@ -572,18 +579,25 @@ def _generate_weekly_challenge(db):
     db.commit()
 
 
+def _delayed_background_workers():
+    time.sleep(15)  # اسمح لـ Uvicorn بفتح المنفذ أولاً فوراً في Render
+    try:
+        report_thread = threading.Thread(target=_daily_report_scheduler, daemon=True)
+        report_thread.start()
+        monitor_thread = threading.Thread(target=_monitor_shadow_trades, daemon=True)
+        monitor_thread.start()
+        market_monitor_thread = threading.Thread(target=market_protection_service.run, daemon=True)
+        market_monitor_thread.start()
+        strategy_refresh_thread = threading.Thread(target=_weekly_strategy_refresh_scheduler, daemon=True)
+        strategy_refresh_thread.start()
+        reset_thread = threading.Thread(target=_daily_reset_scheduler, daemon=True)
+        reset_thread.start()
+    except Exception as e:
+        logger.error(f"Error starting delayed background workers: {e}")
+
 @app.on_event("startup")
 def start_background_workers():
-    report_thread = threading.Thread(target=_daily_report_scheduler, daemon=True)
-    report_thread.start()
-    monitor_thread = threading.Thread(target=_monitor_shadow_trades, daemon=True)
-    monitor_thread.start()
-    market_monitor_thread = threading.Thread(target=market_protection_service.run, daemon=True)
-    market_monitor_thread.start()
-    strategy_refresh_thread = threading.Thread(target=_weekly_strategy_refresh_scheduler, daemon=True)
-    strategy_refresh_thread.start()
-    reset_thread = threading.Thread(target=_daily_reset_scheduler, daemon=True)
-    reset_thread.start()
+    threading.Thread(target=_delayed_background_workers, daemon=True).start()
 
 @app.get("/api/health")
 async def health():
