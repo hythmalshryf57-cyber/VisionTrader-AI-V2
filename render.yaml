@@ -6,6 +6,8 @@ startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
 plan: free
 
 envVars:
+  - key: DATABASE_URL
+    value: "postgresql://visiontrader_db_user:gGhr1pKGbJMU8DSnBHpkooFf4Jd4T8p8@dpg-d9ocu0u7bikc73dg827g-a/visiontrader_db"
   - key: TELEGRAM_BOT_TOKEN
     sync: false
   - key: ADMIN_CHAT_ID

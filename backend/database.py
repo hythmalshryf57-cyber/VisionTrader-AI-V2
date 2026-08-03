@@ -35,14 +35,16 @@ def _test_engine(engine):
 
 DEFAULT_SQLITE_URL = f"sqlite:///{BASE_DIR / 'visiontrader.db'}"
 
+DEFAULT_POSTGRES_URL = "postgresql://visiontrader_db_user:gGhr1pKGbJMU8DSnBHpkooFf4Jd4T8p8@dpg-d9ocu0u7bikc73dg827g-a/visiontrader_db"
+
 def _resolve_engine():
-    db_url = (settings.DATABASE_URL or os.getenv("DATABASE_URL") or "").strip()
+    db_url = (settings.DATABASE_URL or os.getenv("DATABASE_URL") or DEFAULT_POSTGRES_URL).strip()
 
     if db_url and not _is_sqlite_url(db_url):
         try:
             engine = _create_sqlalchemy_engine(db_url)
             _test_engine(engine)
-            print("Using configured PostgreSQL database:", db_url)
+            print("Using configured persistent PostgreSQL database.")
             return engine
         except Exception as exc:
             print("Configured PostgreSQL connection failed, fallback to SQLite:", str(exc))
