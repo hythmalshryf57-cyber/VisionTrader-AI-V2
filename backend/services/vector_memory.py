@@ -79,7 +79,7 @@ class VectorMemoryService:
             self.memory_module_recall = None
 
     def _init_storage(self):
-        if chromadb is None or Settings is None:
+        if chromadb is None:
             print("Vector memory disabled: chromadb package not installed.")
             return
 
@@ -95,11 +95,13 @@ class VectorMemoryService:
                 return
 
         try:
+            # ✅ استخدام API الجديد لـ ChromaDB (>= 0.4.0) بدلاً من Client(Settings) المنسوخ
             try:
-                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=persist_dir, anonymized_telemetry=False)
-            except TypeError:
-                settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=persist_dir)
-            self.client = chromadb.Client(settings)
+                self.client = chromadb.PersistentClient(path=persist_dir)
+            except AttributeError:
+                # fallback for older chromadb versions
+                self.client = chromadb.EphemeralClient()
+
             try:
                 self.collection = self.client.get_collection(name=DEFAULT_COLLECTION_NAME)
             except Exception:
@@ -108,10 +110,10 @@ class VectorMemoryService:
             print(f"Vector memory initialized with ChromaDB at {persist_dir}.")
         except Exception as exc:
             print("Failed to initialize ChromaDB vector memory:", exc)
-            traceback.print_exc()
             self.use_chroma = False
             self.client = None
             self.collection = None
+
 
     def store_analysis(self, analysis_id: int, visual_description: str, result: str, db: Optional[SessionLocal] = None) -> bool:
         if not visual_description:
