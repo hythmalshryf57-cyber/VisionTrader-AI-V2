@@ -33,25 +33,28 @@ def _test_engine(engine):
         conn.commit()
 
 
+DEFAULT_SQLITE_URL = f"sqlite:///{BASE_DIR / 'visiontrader.db'}"
+
 def _resolve_engine():
     db_url = (settings.DATABASE_URL or os.getenv("DATABASE_URL") or "").strip()
 
-    if not db_url:
-        print("Using local persistent SQLite database:", DEFAULT_SQLITE_URL)
-        return _create_sqlalchemy_engine(DEFAULT_SQLITE_URL)
+    if db_url and not _is_sqlite_url(db_url):
+        try:
+            engine = _create_sqlalchemy_engine(db_url)
+            _test_engine(engine)
+            print("Using configured PostgreSQL database:", db_url)
+            return engine
+        except Exception as exc:
+            print("Configured PostgreSQL connection failed, fallback to SQLite:", str(exc))
 
-    if _is_sqlite_url(db_url):
+    if db_url and _is_sqlite_url(db_url):
         print("Using configured SQLite database:", db_url)
         return _create_sqlalchemy_engine(db_url)
 
-    try:
-        engine = _create_sqlalchemy_engine(db_url)
-        _test_engine(engine)
-        print("Using configured PostgreSQL database:", db_url)
-        return engine
-    except Exception as exc:
-        print("PostgreSQL connection failed; falling back to SQLite database:", str(exc))
-        return _create_sqlalchemy_engine(DEFAULT_SQLITE_URL)
+    print("Using local SQLite database fallback:", DEFAULT_SQLITE_URL)
+    return _create_sqlalchemy_engine(DEFAULT_SQLITE_URL)
+
+
 
 
 
