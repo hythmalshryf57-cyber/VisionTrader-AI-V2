@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.preprocessing import OneHotEncoder
+# sklearn is lazy imported inside model initialization to keep startup RAM minimal (<100MB)
+
 
 try:
     from database import SessionLocal
@@ -219,6 +219,8 @@ class TradeOutcomeModel:
             df = self._build_dataset(experiences)
             if df is None or df['label'].nunique() < 2:
                 return
+            from sklearn.ensemble import GradientBoostingClassifier
+            from sklearn.preprocessing import OneHotEncoder
             categorical = ['market', 'session']
             self.encoder = OneHotEncoder(handle_unknown='ignore', sparse=False)
             cat_encoded = self.encoder.fit_transform(df[categorical])

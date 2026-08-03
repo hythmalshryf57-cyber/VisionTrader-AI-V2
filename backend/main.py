@@ -50,6 +50,9 @@ from services.alert_manager import create_alert
 from services.agent_manager import AgentManager
 from services.backtest_engine import backtest_engine
 
+import gc
+gc.collect()
+
 # Temporarily disable social sentiment service due to recursion error
 # from services.social_sentiment import social_sentiment_service
 social_sentiment_service = None
